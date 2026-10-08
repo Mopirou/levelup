@@ -149,6 +149,12 @@ const timerKey = (id: string) => `lu-timer-${id}`;
                 }
               }
 
+              @if (!done() && type() !== 'journal') {
+                <div class="lu-field">
+                  <label for="nt">Comment ça s’est passé ? · facultatif</label>
+                  <input id="nt" class="lu-input" maxlength="200" [value]="note()" (input)="note.set($any($event.target).value)" placeholder="Une phrase pour ta Chronique…" />
+                </div>
+              }
               @if (done()) {
                 <div class="okbox"><lu-icon name="circle-check" [size]="18" /> Quête accomplie à {{ doneAt() }}</div>
               } @else {
@@ -268,6 +274,7 @@ export class QuestDetailPage {
   readonly busy = signal(false);
   readonly useInsp = signal(false);
   readonly journal = signal('');
+  readonly note = signal('');
   readonly localCount = signal(0);
   readonly localSteps = signal<boolean[]>([]);
   readonly timer = signal<TimerState>({ startedAt: null, accumulated: 0 });
@@ -464,7 +471,7 @@ export class QuestDetailPage {
     const r = await this.game.complete(q, {
       progress: t === 'timer' ? this.target() : t === 'counter' ? this.localCount() : undefined,
       stepsDone: t === 'steps' ? this.localSteps() : undefined,
-      journalText: t === 'journal' ? this.journal().trim() : undefined,
+      journalText: t === 'journal' ? this.journal().trim() : this.note().trim() || undefined,
       useInspiration: this.useInsp(),
     });
     this.busy.set(false);

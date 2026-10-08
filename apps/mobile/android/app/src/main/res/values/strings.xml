@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Level Up</string>
+    <string name="title_activity_main">Level Up</string>
+    <string name="package_name">app.levelup.mobile</string>
+    <string name="custom_url_scheme">app.levelup.mobile</string>
+</resources>

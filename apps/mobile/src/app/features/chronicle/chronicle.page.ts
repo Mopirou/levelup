@@ -9,7 +9,7 @@ import { UiService } from '../../core/ui.service';
 import { PageHeaderComponent, BarComponent, EmptyComponent } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
 import { ChartComponent, cssVar } from '../../shared/chart.component';
-import { ModalComponent } from '../../shared/modal.component';
+import { RecapComponent } from '../../shared/recap.component';
 import { fmt, longDate, timeOfDay, dayLabel } from '../../shared/format';
 
 type Tab = 'story' | 'stats' | 'recaps';
@@ -18,7 +18,7 @@ const IDLE_LINES = ['Le héros ne quitta pas l’auberge.', 'Une journée tranqu
 
 @Component({
   selector: 'app-chronicle',
-  imports: [IonContent, IonRefresher, IonRefresherContent, PageHeaderComponent, BarComponent, EmptyComponent, IconComponent, ChartComponent, ModalComponent],
+  imports: [IonContent, IonRefresher, IonRefresherContent, PageHeaderComponent, BarComponent, EmptyComponent, IconComponent, ChartComponent, RecapComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
@@ -170,24 +170,7 @@ const IDLE_LINES = ['Le héros ne quitta pas l’auberge.', 'Une journée tranqu
       </div>
 
       @if (recap(); as r) {
-        <lu-modal [label]="'Bilan'" (close)="recap.set(null)">
-          <span class="lu-eyebrow">BILAN {{ r.kind === 'week' ? 'DE LA SEMAINE' : 'DU MOIS' }}</span>
-          <h2>{{ r.title }}</h2>
-          <div class="metrics">
-            <div class="lu-card flat m"><strong>{{ fmt(r.recap.xp) }}</strong><span>XP gagnés</span></div>
-            <div class="lu-card flat m"><strong>{{ r.recap.deltaPct === null ? '—' : (r.recap.deltaPct >= 0 ? '+' : '') + r.recap.deltaPct + ' %' }}</strong><span>vs période préc.</span></div>
-            <div class="lu-card flat m"><strong>{{ r.recap.done }}/{{ r.recap.proposed }}</strong><span>Quêtes</span></div>
-          </div>
-          <p class="narr">{{ r.recap.narrative }}</p>
-          @for (a of abilities; track a) { <div class="ar"><span class="an"><i [style.background]="color(a)"></i>{{ label(a) }}</span><lu-bar [value]="r.recap.xpByAbility[a]" [max]="maxOf(r.recap.xpByAbility)" /><span class="small">{{ r.recap.doneByAbility[a] }}</span></div> }
-          @if (r.recap.best) { <p class="small"><span class="mint">À l’honneur :</span> {{ label(r.recap.best) }}</p> }
-          @if (r.recap.weakest) { <p class="small"><span class="gold">À surveiller :</span> {{ label(r.recap.weakest) }}</p> }
-          <div class="lu-field">
-            <label for="bn">Mon bilan personnel</label>
-            <textarea id="bn" class="lu-input area" rows="4" [value]="note()" (input)="saveNote($any($event.target).value)" placeholder="Ce que je retiens, ce que je veux changer…"></textarea>
-            <span class="hint">Privé : enregistré uniquement sur cet appareil.</span>
-          </div>
-        </lu-modal>
+        <lu-recap [kind]="r.kind" [start]="r.start" [title]="r.title" [recap]="r.recap" (close)="recap.set(null)" />
       }
     </ion-content>
   `,
@@ -240,7 +223,6 @@ export class ChroniclePage {
   readonly monthFilter = signal<string | null>(null);
   readonly shown = signal(14);
   readonly recap = signal<{ kind: 'week' | 'month'; start: string; title: string; recap: ReturnType<StatsService['recap']> } | null>(null);
-  readonly note = signal('');
   readonly oath = signal('');
 
   readonly thisWeek = startOfIsoWeek(this.game.today());
@@ -354,23 +336,7 @@ export class ChroniclePage {
   openRecap(kind: 'week' | 'month', start: string): void {
     const title = kind === 'week' ? this.stats.weekTitle(start) : new Date(`${start}T12:00:00`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
     this.recap.set({ kind, start, title, recap: this.stats.recap(kind, start) });
-    try {
-      this.note.set(localStorage.getItem(`lu-recap-note-${kind}-${start}`) ?? '');
-    } catch {
-      this.note.set('');
-    }
   }
-  saveNote(v: string): void {
-    this.note.set(v);
-    const r = this.recap();
-    if (!r) return;
-    try {
-      localStorage.setItem(`lu-recap-note-${r.kind}-${r.start}`, v);
-    } catch {
-      /* ignore */
-    }
-  }
-
   async refresh(ev: CustomEvent): Promise<void> {
     await this.stats.load(true);
     (ev.target as HTMLIonRefresherElement).complete();

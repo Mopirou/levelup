@@ -1,18 +1,20 @@
 import { UpperCasePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular';
 import { ABILITY_LABEL, DIFFICULTY_LABEL, ABILITIES, canDeclareRest, isReadyToComplete, progressRatio, questXp, type QuestInstance } from '@levelup/engine';
 import { GameService } from '../../core/game.service';
 import { SocialService } from '../../core/social.service';
 import { UiService } from '../../core/ui.service';
 import { haptic, playSound } from '../../core/feedback';
+import { StatsService } from '../../core/stats.service';
+import { RecapComponent } from '../../shared/recap.component';
 import { AvatarComponent, BarComponent, AbilityBadgeComponent, PageHeaderComponent } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
 import { countdown, fmt, longDate, progressText, relativeTime, statusLabel } from '../../shared/format';
 
 @Component({
   selector: 'app-tavern',
-  imports: [UpperCasePipe, IonContent, IonRefresher, IonRefresherContent, AvatarComponent, BarComponent, AbilityBadgeComponent, PageHeaderComponent, IconComponent],
+  imports: [RecapComponent, UpperCasePipe, IonContent, IonRefresher, IonRefresherContent, AvatarComponent, BarComponent, AbilityBadgeComponent, PageHeaderComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
@@ -177,6 +179,9 @@ import { countdown, fmt, longDate, progressText, relativeTime, statusLabel } fro
           </section>
         </div>
       }
+      @if (recap(); as r) {
+        <lu-recap [kind]="r.kind" [start]="r.start" [title]="r.title" [recap]="r.recap" [showNew]="true" (close)="closeRecap()" />
+      }
     </ion-content>
   `,
   styles: `
@@ -225,6 +230,8 @@ export class TavernPage {
   protected game = inject(GameService);
   protected social = inject(SocialService);
   protected ui = inject(UiService);
+  private stats = inject(StatsService);
+  readonly recap = signal<{ kind: 'week' | 'month'; start: string; key: string; title: string; recap: ReturnType<StatsService['recap']> } | null>(null);
   readonly order = ['CON', 'INT', 'DEX', 'FOR', 'CHA', 'SAG'] as const;
   readonly fmt = fmt;
   readonly countdown = countdown;
@@ -283,6 +290,25 @@ export class TavernPage {
 
   async rest(): Promise<void> {
     if (await this.ui.confirm({ title: 'Jour de repos', message: 'Ta série est protégée pour aujourd’hui. Un seul jour de repos par semaine.', confirm: 'Déclarer' })) await this.game.declareRest();
+  }
+
+  constructor() {
+    void this.checkRecap();
+  }
+
+  /** Bilan de la semaine / du mois écoulé, à la première ouverture. */
+  private async checkRecap(): Promise<void> {
+    await this.stats.load();
+    const p = this.stats.pendingRecap();
+    if (!p) return;
+    const title = p.kind === 'week' ? this.stats.weekTitle(p.start) : new Date(`${p.start}T12:00:00`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    this.recap.set({ ...p, title, recap: this.stats.recap(p.kind, p.start) });
+  }
+
+  async closeRecap(): Promise<void> {
+    const r = this.recap();
+    this.recap.set(null);
+    if (r) await this.game.saveSettings(r.kind === 'week' ? { lastRecapWeek: r.key } : { lastRecapMonth: r.key });
   }
 
   async refresh(ev: CustomEvent): Promise<void> {

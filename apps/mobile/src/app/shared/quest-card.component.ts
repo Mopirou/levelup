@@ -98,9 +98,7 @@ export class QuestCardComponent {
     const i = this.inst();
     const v = i.snapshot.validation.type;
     if (v === 'simple' || v === 'journal') return statusLabel(i, false);
-    if (i.status === 'completed' || i.status !== 'proposed') return `${progressText(i)} · ${statusLabel(i, this.ready())}`;
-    if (i.status === 'proposed' && v !== 'simple' && v !== 'journal') return `${progressText(i)} · ${statusLabel(i, false)}`;
-    return statusLabel(i, this.ready());
+    return `${progressText(i)} · ${statusLabel(i, this.ready())}`;
   });
   readonly canReroll = computed(() => this.rerollable() && (this.inst().status === 'proposed' || (this.inst().status === 'accepted' && this.inst().progress === 0 && !(this.inst().stepsDone ?? []).some(Boolean))));
   readonly actionLabel = computed(() => {

@@ -5,7 +5,4 @@ dist
 .env.local
 *.log
 .DS_Store
-apps/mobile/www
-apps/mobile/android
-apps/mobile/ios
 .claude/settings.local.json
