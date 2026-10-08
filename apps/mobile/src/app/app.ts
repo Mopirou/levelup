@@ -1,12 +1,17 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component } from '@angular/core';
+import { IonApp, IonRouterOutlet } from '@ionic/angular';
+import { OverlayHostComponent } from './shared/overlay-host.component';
+import { ToastHostComponent } from './shared/toast-host.component';
 
 @Component({
-  imports: [RouterOutlet],
   selector: 'app-root',
-  styleUrl: './app.scss',
-  templateUrl: './app.html',
+  imports: [IonApp, IonRouterOutlet, OverlayHostComponent, ToastHostComponent],
+  template: `
+    <ion-app>
+      <ion-router-outlet></ion-router-outlet>
+      <lu-overlay-host />
+      <lu-toast-host />
+    </ion-app>
+  `,
 })
-export class App {
-  protected readonly title = signal('mobile');
-}
+export class App {}

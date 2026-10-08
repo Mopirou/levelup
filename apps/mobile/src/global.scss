@@ -1,0 +1,8 @@
+/* Level Up — design system.
+   Tokens issus des maquettes Figma : vert forêt profond, menthe (#8fd6a8), or (#f2d38a), titres Lora, texte Inter.
+   Thème sombre « donjon » par défaut ; thème clair « parchemin » ; automatique selon le système. */
+
+@use 'theme/tokens';
+@use 'theme/ionic';
+@use 'theme/base';
+@use 'theme/components';

@@ -30,6 +30,12 @@
               }
             ],
             "styles": [
+              "@ionic/angular/css/core.css",
+              "@ionic/angular/css/normalize.css",
+              "@ionic/angular/css/structure.css",
+              "@fontsource-variable/lora/index.css",
+              "@fontsource-variable/lora/wght-italic.css",
+              "@fontsource-variable/inter/index.css",
               "src/global.scss"
             ],
             "allowedCommonJsDependencies": [

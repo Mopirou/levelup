@@ -1,0 +1,115 @@
+// Jetons de couleur, typographie, espacements. Tout se redéfinit sous :root[data-theme='light'] ou en mode auto.
+
+:root {
+  --lu-font-title: 'Lora Variable', 'Lora', Georgia, serif;
+  --lu-font-body: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --lu-r-sm: 8px;
+  --lu-r-md: 12px;
+  --lu-r-lg: 16px;
+  --lu-r-xl: 20px;
+  --lu-r-pill: 999px;
+
+  --lu-gutter: 20px;
+  --lu-safe-top: env(safe-area-inset-top, 0px);
+  --lu-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  // Caractéristiques (cahier des charges §10)
+  --lu-for: #c8553d;
+  --lu-dex: #5f9e6e;
+  --lu-con: #e0893d;
+  --lu-int: #4a82b8;
+  --lu-sag: #8a6bb8;
+  --lu-cha: #d9ae3a;
+
+  // Sombre « donjon » (défaut)
+  --lu-bg: #0b1a14;
+  --lu-bg-2: #0f2418;
+  --lu-bg-grad: linear-gradient(180deg, #0b1a14 0%, #14281f 48%, #0b1a14 100%);
+  --lu-surface: #13261f;
+  --lu-surface-grad: linear-gradient(160deg, #1a3329 0%, #0f2018 100%);
+  --lu-surface-2: #1b3a2e;
+  --lu-track: #1f3a2f;
+  --lu-border: rgba(143, 214, 168, 0.14);
+  --lu-border-strong: rgba(143, 214, 168, 0.28);
+  --lu-primary: #285b46;
+  --lu-primary-contrast: #ffffff;
+  --lu-accent: #8fd6a8;
+  --lu-accent-ink: #0b1a14;
+  --lu-gold: #f2d38a;
+  --lu-gold-bg: #2a2418;
+  --lu-gold-strong: #d4af37;
+  --lu-text: #f3f7f2;
+  --lu-text-2: #c7d8c9;
+  --lu-muted: #a8c0b0;
+  --lu-dim: #738077;
+  --lu-danger: #ef8a7d;
+  --lu-danger-bg: rgba(200, 85, 61, 0.18);
+  --lu-ok: #8fd6a8;
+  --lu-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  --lu-overlay: rgba(5, 12, 9, 0.72);
+  --lu-nav-bg: rgba(15, 36, 24, 0.94);
+  color-scheme: dark;
+}
+
+// Clair « parchemin »
+:root[data-theme='light'] {
+  --lu-bg: #f6f0e1;
+  --lu-bg-2: #efe6cf;
+  --lu-bg-grad: linear-gradient(180deg, #f8f3e6 0%, #f0e7d0 100%);
+  --lu-surface: #fffaf0;
+  --lu-surface-grad: linear-gradient(160deg, #fffdf6 0%, #f6eed8 100%);
+  --lu-surface-2: #efe5cb;
+  --lu-track: #e2d6b8;
+  --lu-border: rgba(80, 60, 20, 0.16);
+  --lu-border-strong: rgba(80, 60, 20, 0.3);
+  --lu-primary: #2f5a47;
+  --lu-primary-contrast: #ffffff;
+  --lu-accent: #2f7a58;
+  --lu-accent-ink: #ffffff;
+  --lu-gold: #8a6212;
+  --lu-gold-bg: #f6e8bd;
+  --lu-gold-strong: #b4871f;
+  --lu-text: #1d2a22;
+  --lu-text-2: #34443a;
+  --lu-muted: #5c6a5e;
+  --lu-dim: #7a8576;
+  --lu-danger: #b4402c;
+  --lu-danger-bg: rgba(200, 85, 61, 0.14);
+  --lu-ok: #2f7a58;
+  --lu-shadow: 0 8px 22px rgba(80, 60, 20, 0.14);
+  --lu-overlay: rgba(40, 30, 10, 0.55);
+  --lu-nav-bg: rgba(255, 250, 240, 0.95);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']):not([data-theme='light']) {
+    --lu-bg: #f6f0e1;
+    --lu-bg-2: #efe6cf;
+    --lu-bg-grad: linear-gradient(180deg, #f8f3e6 0%, #f0e7d0 100%);
+    --lu-surface: #fffaf0;
+    --lu-surface-grad: linear-gradient(160deg, #fffdf6 0%, #f6eed8 100%);
+    --lu-surface-2: #efe5cb;
+    --lu-track: #e2d6b8;
+    --lu-border: rgba(80, 60, 20, 0.16);
+    --lu-border-strong: rgba(80, 60, 20, 0.3);
+    --lu-primary: #2f5a47;
+    --lu-accent: #2f7a58;
+    --lu-accent-ink: #ffffff;
+    --lu-gold: #8a6212;
+    --lu-gold-bg: #f6e8bd;
+    --lu-gold-strong: #b4871f;
+    --lu-text: #1d2a22;
+    --lu-text-2: #34443a;
+    --lu-muted: #5c6a5e;
+    --lu-dim: #7a8576;
+    --lu-danger: #b4402c;
+    --lu-danger-bg: rgba(200, 85, 61, 0.14);
+    --lu-ok: #2f7a58;
+    --lu-shadow: 0 8px 22px rgba(80, 60, 20, 0.14);
+    --lu-overlay: rgba(40, 30, 10, 0.55);
+    --lu-nav-bg: rgba(255, 250, 240, 0.95);
+    color-scheme: light;
+  }
+}

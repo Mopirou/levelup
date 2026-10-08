@@ -1,0 +1,35 @@
+// Passerelle vers les variables Ionic.
+:root {
+  --ion-font-family: var(--lu-font-body);
+  --ion-background-color: var(--lu-bg);
+  --ion-text-color: var(--lu-text);
+  --ion-color-primary: var(--lu-primary);
+  --ion-color-primary-contrast: var(--lu-primary-contrast);
+  --ion-item-background: transparent;
+  --ion-toolbar-background: transparent;
+  --ion-tab-bar-background: var(--lu-nav-bg);
+  --ion-safe-area-top: env(safe-area-inset-top, 0px);
+  --ion-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+ion-content {
+  --background: var(--lu-bg-grad);
+  --color: var(--lu-text);
+  --padding-bottom: 0;
+}
+
+ion-tab-bar {
+  --border: 1px solid var(--lu-border);
+}
+
+ion-modal {
+  --background: var(--lu-bg);
+}
+
+ion-action-sheet,
+ion-alert,
+ion-toast,
+ion-popover {
+  --background: var(--lu-surface);
+  --color: var(--lu-text);
+}

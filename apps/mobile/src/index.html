@@ -1,13 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Mobile</title>
+  <title>Level Up</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0b1a14">
+  <meta name="description" content="Level Up : développement personnel gamifié et social. Accomplis des quêtes réelles, gagne de l'XP, progresse avec tes amis.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Level Up">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <script src="env.js"></script>
+  <script>
+    // Thème appliqué avant le premier affichage (pas de flash)
+    try {
+      var t = localStorage.getItem('levelup-theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      if (localStorage.getItem('levelup-reduce-motion') === '1') document.documentElement.classList.add('reduce-motion');
+    } catch (e) {}
+  </script>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b1a14; }
+    #boot { position: fixed; inset: 0; display: grid; place-items: center; background: #0b1a14; color: #f3f7f2; font: 500 22px Georgia, serif; letter-spacing: .02em; }
+    #boot span { opacity: .85 }
+  </style>
 </head>
 <body>
+  <div id="boot"><span>Level Up</span></div>
   <app-root></app-root>
 </body>
 </html>

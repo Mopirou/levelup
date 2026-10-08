@@ -1,0 +1,629 @@
+// ───────────────────────── Mise en page ─────────────────────────
+
+.lu-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 0 var(--lu-gutter) 28px;
+}
+
+.lu-head {
+  padding: calc(var(--lu-safe-top) + 14px) var(--lu-gutter) 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &-context {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 34px;
+  }
+  &-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  &-actions {
+    display: flex;
+    gap: 8px;
+
+    > * {
+      display: flex;
+      gap: 8px;
+    }
+  }
+}
+
+.lu-title {
+  font-family: var(--lu-font-title);
+  font-weight: 500;
+  font-size: 32px;
+  line-height: 1.16;
+  letter-spacing: -0.01em;
+  color: var(--lu-text);
+  margin: 0;
+}
+
+.lu-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--lu-text-2);
+}
+
+.lu-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--lu-surface-2);
+  border: 1px solid var(--lu-border);
+  color: var(--lu-accent);
+  flex: none;
+}
+
+.lu-icon-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--lu-surface-2);
+  border: 1px solid var(--lu-border);
+  color: var(--lu-text);
+  cursor: pointer;
+  padding: 0;
+  flex: none;
+
+  &:active {
+    transform: scale(0.95);
+  }
+  .dot {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: var(--lu-gold);
+    color: #1a1608;
+    font-size: 10px;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+    border: 2px solid var(--lu-bg);
+  }
+}
+
+// ───────────────────────── Cartes ─────────────────────────
+
+.lu-card {
+  position: relative;
+  border-radius: var(--lu-r-xl);
+  background: var(--lu-surface-grad);
+  border: 1px solid var(--lu-border);
+  box-shadow: var(--lu-shadow);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &.flat {
+    box-shadow: none;
+    background: var(--lu-surface);
+  }
+  &.gold {
+    background: var(--lu-gold-bg);
+    border-color: color-mix(in srgb, var(--lu-gold) 35%, transparent);
+  }
+  &.tap {
+    cursor: pointer;
+    transition: transform 0.12s ease;
+    &:active {
+      transform: scale(0.985);
+    }
+  }
+}
+
+.lu-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lu-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  h2 {
+    font-size: 21px;
+    line-height: 27px;
+    font-weight: 600;
+  }
+}
+
+.lu-link {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--lu-accent);
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+// ───────────────────────── Texte ─────────────────────────
+
+.muted {
+  color: var(--lu-muted);
+}
+.dim {
+  color: var(--lu-dim);
+}
+.gold {
+  color: var(--lu-gold);
+}
+.small {
+  font-size: 12px;
+}
+.xs {
+  font-size: 10px;
+}
+.lu-lead {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--lu-text-2);
+}
+.lu-serif {
+  font-family: var(--lu-font-title);
+}
+
+// ───────────────────────── Étiquettes, barres ─────────────────────────
+
+.lu-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--lu-r-pill);
+  background: var(--lu-surface-2);
+  border: 1px solid var(--lu-border);
+  color: var(--lu-text-2);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &.gold {
+    background: var(--lu-gold-bg);
+    color: var(--lu-gold);
+    border-color: color-mix(in srgb, var(--lu-gold) 30%, transparent);
+  }
+  &.mint {
+    background: color-mix(in srgb, var(--lu-accent) 18%, transparent);
+    color: var(--lu-accent);
+    border-color: color-mix(in srgb, var(--lu-accent) 35%, transparent);
+  }
+  &.danger {
+    background: var(--lu-danger-bg);
+    color: var(--lu-danger);
+    border-color: transparent;
+  }
+  &.big {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+}
+
+.lu-bar {
+  height: 6px;
+  border-radius: 100px;
+  background: var(--lu-track);
+  overflow: hidden;
+
+  > i {
+    display: block;
+    height: 100%;
+    border-radius: 100px;
+    background: var(--lu-accent);
+    transition: width 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  &.gold > i {
+    background: var(--lu-gold);
+  }
+  &.thick {
+    height: 8px;
+  }
+  &.dashed > i {
+    background: repeating-linear-gradient(90deg, var(--lu-accent) 0 6px, transparent 6px 9px);
+  }
+}
+
+// ───────────────────────── Boutons ─────────────────────────
+
+.lu-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 14px;
+  font: 600 14px/1 var(--lu-font-body);
+  cursor: pointer;
+  background: var(--lu-primary);
+  color: var(--lu-primary-contrast);
+  transition: transform 0.1s ease, filter 0.15s ease, opacity 0.15s;
+  width: 100%;
+
+  &:active {
+    transform: scale(0.98);
+  }
+  &:disabled,
+  &[aria-disabled='true'] {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  &.light {
+    background: var(--lu-text);
+    color: var(--lu-bg);
+  }
+  &.mint {
+    background: var(--lu-accent);
+    color: var(--lu-accent-ink);
+  }
+  &.ghost {
+    background: transparent;
+    color: var(--lu-text);
+    border: 1px solid var(--lu-border-strong);
+  }
+  &.danger {
+    background: var(--lu-danger-bg);
+    color: var(--lu-danger);
+    border: 1px solid color-mix(in srgb, var(--lu-danger) 40%, transparent);
+  }
+  &.text {
+    background: none;
+    color: var(--lu-text-2);
+    min-height: 40px;
+    font-size: 12px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  &.small {
+    min-height: 36px;
+    padding: 0 14px;
+    font-size: 12px;
+    border-radius: 12px;
+    width: auto;
+  }
+  &.inline {
+    width: auto;
+  }
+}
+
+// ───────────────────────── Formulaires ─────────────────────────
+
+.lu-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  > label,
+  .lu-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--lu-text-2);
+  }
+  .hint {
+    font-size: 11px;
+    color: var(--lu-muted);
+  }
+  .err {
+    font-size: 12px;
+    color: var(--lu-danger);
+  }
+}
+
+.lu-input {
+  appearance: none;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 1px solid var(--lu-border);
+  background: var(--lu-surface-2);
+  color: var(--lu-text);
+  font: 400 14px/1.4 var(--lu-font-body);
+  outline: none;
+  transition: border-color 0.15s;
+
+  &::placeholder {
+    color: var(--lu-dim);
+  }
+  &:focus {
+    border-color: var(--lu-accent);
+  }
+  &.area {
+    padding: 12px 14px;
+    min-height: 96px;
+    resize: vertical;
+  }
+}
+select.lu-input {
+  background-image: none;
+}
+
+.lu-seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 16px;
+  background: var(--lu-surface-2);
+  border: 1px solid var(--lu-border);
+
+  button {
+    flex: 1;
+    min-height: 38px;
+    border-radius: 10px;
+    border: 0;
+    background: transparent;
+    color: var(--lu-text-2);
+    font: 600 12px/1 var(--lu-font-body);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+
+    &.on {
+      background: var(--lu-text);
+      color: var(--lu-bg);
+      font-weight: 700;
+    }
+    &:disabled {
+      opacity: 0.4;
+    }
+  }
+}
+
+.lu-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  button {
+    height: 28px;
+    padding: 0 12px;
+    border-radius: 100px;
+    border: 1px solid var(--lu-border);
+    background: var(--lu-surface-2);
+    color: var(--lu-text-2);
+    font: 600 11px/1 var(--lu-font-body);
+    cursor: pointer;
+
+    &.on {
+      background: var(--lu-text);
+      color: var(--lu-bg);
+      border-color: transparent;
+    }
+  }
+}
+
+.lu-switch {
+  position: relative;
+  width: 46px;
+  height: 28px;
+  flex: none;
+  appearance: none;
+  border-radius: 100px;
+  border: 0;
+  background: var(--lu-track);
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--lu-text);
+    transition: transform 0.2s;
+  }
+  &[aria-checked='true'] {
+    background: var(--lu-accent);
+    &::after {
+      transform: translateX(18px);
+      background: var(--lu-accent-ink);
+    }
+  }
+}
+
+.lu-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--lu-border);
+  background: none;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+  .grow {
+    flex: 1;
+    min-width: 0;
+  }
+  .label {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .sub {
+    font-size: 11px;
+    color: var(--lu-muted);
+    margin-top: 2px;
+  }
+}
+
+// ───────────────────────── Avatar, états ─────────────────────────
+
+.lu-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e5eddf;
+  color: #285b46;
+  font-family: var(--lu-font-title);
+  font-weight: 600;
+  overflow: hidden;
+  border: 2px solid transparent;
+}
+
+.lu-empty {
+  text-align: center;
+  padding: 32px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  color: var(--lu-muted);
+
+  h3 {
+    font-size: 20px;
+  }
+  p {
+    font-size: 13px;
+    line-height: 1.5;
+    max-width: 300px;
+  }
+}
+
+.lu-skeleton {
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--lu-surface) 0%, var(--lu-surface-2) 50%, var(--lu-surface) 100%);
+  background-size: 200% 100%;
+  animation: lu-shimmer 1.4s infinite linear;
+}
+@keyframes lu-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.lu-banner {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: 12px;
+  border-radius: 14px;
+  background: var(--lu-gold-bg);
+  color: var(--lu-gold);
+  border: 1px solid color-mix(in srgb, var(--lu-gold) 30%, transparent);
+}
+
+.pop {
+  animation: lu-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes lu-pop {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+.fade-in {
+  animation: lu-fade 0.3s ease both;
+}
+@keyframes lu-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+// ───────────────────────── Barre d'onglets (maquettes) ─────────────────────────
+
+ion-tab-bar.lu-tabbar {
+  --background: var(--lu-nav-bg);
+  --border: 1px solid var(--lu-border);
+  height: calc(72px + var(--lu-safe-bottom));
+  padding: 14px 12px calc(12px + var(--lu-safe-bottom));
+  contain: none;
+  backdrop-filter: blur(14px);
+
+  ion-tab-button {
+    --background: transparent;
+    --color: var(--lu-text-2);
+    --color-selected: var(--lu-accent);
+    --padding-top: 0;
+    --padding-bottom: 0;
+    gap: 5px;
+    max-width: none;
+    font-family: var(--lu-font-body);
+
+    .pill {
+      position: relative;
+      width: 48px;
+      height: 29px;
+      border-radius: 100px;
+      display: grid;
+      place-items: center;
+      transition: background 0.18s ease, color 0.18s ease;
+      color: var(--lu-text-2);
+    }
+    .lbl {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      color: var(--lu-text-2);
+    }
+    .count {
+      position: absolute;
+      top: -5px;
+      right: 0;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: 8px;
+      background: var(--lu-gold);
+      color: #1a1608;
+      font-size: 9px;
+      font-weight: 800;
+      display: grid;
+      place-items: center;
+    }
+    &.tab-selected {
+      .pill {
+        background: var(--lu-accent);
+        color: var(--lu-accent-ink);
+      }
+      .lbl {
+        color: var(--lu-accent);
+        font-weight: 700;
+      }
+    }
+  }
+}

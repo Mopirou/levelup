@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mobile",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "-w", "@levelup/mobile", "--", "--port", "4200", "--host", "127.0.0.1"],
+      "port": 4200
+    }
+  ]
+}
