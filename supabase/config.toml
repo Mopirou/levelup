@@ -1,0 +1,50 @@
+# Configuration Supabase (CLI). Région du projet distant : à choisir en Union européenne (RGPD).
+project_id = "level-up"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://localhost:4200"
+additional_redirect_urls = ["http://localhost:4200", "http://localhost:4200/auth/callback", "app.levelup.mobile://callback"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+enable_signup = true
+minimum_password_length = 8
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+[auth.external.google]
+enabled = false
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
+
+[auth.external.apple]
+enabled = false
+client_id = "env(APPLE_CLIENT_ID)"
+secret = "env(APPLE_CLIENT_SECRET)"
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[functions.game]
+verify_jwt = false   # le jeton est vérifié dans la fonction (le tirage planifié utilise un secret)
+
+[functions.account]
+verify_jwt = false
+
+[functions.push]
+verify_jwt = false   # appelée par un Database Webhook, protégée par PUSH_WEBHOOK_SECRET

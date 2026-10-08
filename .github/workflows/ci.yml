@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Contenu et seed à jour
+        run: |
+          npm run gen
+          git diff --exit-code -- packages/content/data supabase/seed.sql supabase/functions/_shared/engine.mjs
+      - name: Moteur de jeu (couverture ≥ 90 %)
+        run: npm run test:engine
+      - name: Base de données (migrations, RLS)
+        run: npm run test:db
+      - name: Application
+        run: npm run build
