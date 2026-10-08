@@ -2811,6 +2811,17 @@ var MemoryStore = class {
 var fail2 = (error, ctx) => {
   if (error) throw new Error(`${ctx}: ${error.message ?? error}`);
 };
+var PAGE = 1e3;
+async function pageAll(build, ctx) {
+  const out = [];
+  for (let from = 0; from < 2e5; from += PAGE) {
+    const { data, error } = await build(from, from + PAGE - 1);
+    fail2(error, ctx);
+    out.push(...data ?? []);
+    if ((data?.length ?? 0) < PAGE) break;
+  }
+  return out;
+}
 var SupabaseStore = class {
   constructor(db) {
     this.db = db;
@@ -3011,9 +3022,8 @@ var SupabaseStore = class {
     if (f.from) q = q.gte("period_start", f.from);
     if (f.to) q = q.lte("period_start", f.to);
     if (f.covers) q = q.lte("period_start", f.covers).gte("period_end", f.covers);
-    const { data, error } = await q.order("period_start", { ascending: true }).limit(5e3);
-    fail2(error, "instances.select");
-    return (data ?? []).map((r) => this.toInstance(r));
+    const rows = await pageAll((a, b) => q.order("period_start", { ascending: true }).order("id", { ascending: true }).range(a, b), "instances.select");
+    return rows.map((r) => this.toInstance(r));
   }
   async getInstance(userId, id) {
     const { data, error } = await this.db.from("quest_instances").select("*").eq("profile_id", userId).eq("id", id).maybeSingle();
@@ -3063,9 +3073,8 @@ var SupabaseStore = class {
   async listXpEvents(userId, since) {
     let q = this.db.from("xp_events").select("*").eq("profile_id", userId);
     if (since) q = q.gte("game_date", since);
-    const { data, error } = await q.order("created_at", { ascending: true }).limit(1e5);
-    fail2(error, "xp_events.select");
-    return (data ?? []).map((e) => ({
+    const rows = await pageAll((a, b) => q.order("created_at", { ascending: true }).order("id", { ascending: true }).range(a, b), "xp_events.select");
+    return rows.map((e) => ({
       id: e.id,
       instanceId: e.instance_id,
       ability: e.ability,
@@ -3105,9 +3114,8 @@ var SupabaseStore = class {
     return count ?? 0;
   }
   async listJournal(userId) {
-    const { data, error } = await this.db.from("journal_entries").select("*").eq("profile_id", userId).order("created_at", { ascending: false }).limit(2e3);
-    fail2(error, "journal.select");
-    return (data ?? []).map((e) => ({ id: e.id, instanceId: e.instance_id, text: e.text, createdAt: e.created_at }));
+    const rows = await pageAll((a, b) => this.db.from("journal_entries").select("*").eq("profile_id", userId).order("created_at", { ascending: false }).order("id").range(a, b), "journal.select");
+    return rows.map((e) => ({ id: e.id, instanceId: e.instance_id, text: e.text, createdAt: e.created_at }));
   }
   // ───── Publications
   async createPost(userId, d) {

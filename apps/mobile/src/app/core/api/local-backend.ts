@@ -67,6 +67,10 @@ export async function createLocalBackend(): Promise<Backend> {
     }, 150);
   };
   store.onChange = persist;
+  // Enregistre immédiatement quand la page se ferme ou passe en arrière-plan.
+  const flush = () => void db.kv.put({ key: 'game', value: store.snapshot() }).catch(() => undefined);
+  window.addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flush());
 
   const listeners = new Set<(u: AuthUser | null) => void>();
   const asUser = (): AuthUser | null => (account?.signedIn ? { id: LOCAL_ID, email: account.email } : null);

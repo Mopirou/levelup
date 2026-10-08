@@ -40,19 +40,18 @@ interface Row {
         @for (g of groups(); track g.label) {
           <p class="day">{{ g.label }}</p>
           @for (r of g.rows; track r.key) {
-            <article class="row" [class.unread]="r.unread" role="button" tabindex="0" (click)="open(r)" (keydown.enter)="open(r)">
+            <article class="row" [class.unread]="r.unread">
               <span class="ic"><lu-icon [name]="r.icon" [size]="18" /></span>
               <div class="tx">
-                <p>{{ r.text }}</p>
-                <span class="xs muted">{{ ago(r.at) }}</span>
+                <button type="button" class="open" (click)="open(r)"><p>{{ r.text }}</p><span class="xs muted">{{ ago(r.at) }}</span></button>
                 @if (r.actions) {
-                  <div class="acts" (click)="$event.stopPropagation()">
+                  <div class="acts">
                     <button type="button" class="lu-btn small mint" (click)="answer(r, true)">Accepter</button>
                     <button type="button" class="lu-btn small ghost" (click)="answer(r, false)">Pas maintenant</button>
                   </div>
                 }
               </div>
-              @if (r.unread) { <i class="dot" aria-label="Non lue"></i> }
+              @if (r.unread) { <span class="dot" role="img" aria-label="Non lue"></span> }
             </article>
           }
         } @empty {
@@ -68,6 +67,7 @@ interface Row {
     .row.unread { background: var(--lu-surface-2); border-color: var(--lu-border-strong); }
     .row.unread p { font-weight: 700; }
     .ic { width: 36px; height: 36px; border-radius: 50%; background: var(--lu-surface-2); display: grid; place-items: center; color: var(--lu-accent); flex: none; }
+    .open { background: none; border: 0; padding: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
     .tx { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; } .tx p { font-size: 13px; line-height: 1.45; }
     .acts { display: flex; gap: 8px; margin-top: 6px; }
     .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--lu-gold); margin-top: 6px; flex: none; }

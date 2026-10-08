@@ -60,7 +60,7 @@ import { countdown, fmt, longDate, progressText, relativeTime, statusLabel } fro
               <span>{{ fmt(game.levelInfo().current) }} / {{ fmt(game.levelInfo().needed) }} XP</span>
               <span class="muted">{{ game.levelInfo().nextLevelXp ? fmt(game.levelInfo().remaining) + ' XP avant le niv. ' + (ch.level + 1) : 'Niveau maximum' }}</span>
             </div>
-            <lu-bar [value]="game.levelInfo().ratio" />
+            <lu-bar [value]="game.levelInfo().ratio" label="Progression vers le niveau suivant" />
             <p class="xs muted">{{ fmt(ch.totalXp) }} XP cumulés · {{ totalQuests() }} quêtes accomplies</p>
             <div class="res">
               <span class="r"><lu-icon name="flame" [size]="15" /> {{ ch.streakCurrent }} jour{{ ch.streakCurrent > 1 ? 's' : '' }} de série</span>
@@ -102,11 +102,11 @@ import { countdown, fmt, longDate, progressText, relativeTime, statusLabel } fro
             @if (others().length) {
               <div class="list">
                 @for (q of others(); track q.id) {
-                  <div class="item" role="button" tabindex="0" (click)="ui.go(['/quest', q.id])" (keydown.enter)="ui.go(['/quest', q.id])">
+                  <div class="item">
                     <button type="button" class="check" [class.on]="q.status === 'completed'" [disabled]="q.status === 'completed' || q.snapshot.validation.type !== 'simple'" (click)="quick(q, $event)" [attr.aria-label]="q.status === 'completed' ? 'Accomplie' : 'Valider ' + q.snapshot.title">
                       @if (q.status === 'completed') { <lu-icon name="check" [size]="12" [stroke]="3" /> }
                     </button>
-                    <span class="t" [class.struck]="q.status === 'completed'">{{ q.snapshot.title }}</span>
+                    <button type="button" class="t" [class.struck]="q.status === 'completed'" (click)="ui.go(['/quest', q.id])">{{ q.snapshot.title }}</button>
                     <span class="gold small">+{{ q.status === 'completed' ? q.xpAwarded : xpOf(q) }} XP</span>
                   </div>
                 }
@@ -205,7 +205,7 @@ import { countdown, fmt, longDate, progressText, relativeTime, statusLabel } fro
     .mint { color: var(--lu-accent); }
     .list { display: flex; flex-direction: column; gap: 10px; }
     .item { display: flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer; }
-    .item .t { flex: 1; font-size: 13px; }
+    .item .t { flex: 1; font-size: 13px; background: none; border: 0; padding: 6px 0; text-align: left; color: var(--lu-text); cursor: pointer; font-family: inherit; }
     .struck { text-decoration: line-through; opacity: .7; }
     .check { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--lu-border-strong); background: var(--lu-surface-2); color: var(--lu-accent-ink); display: grid; place-items: center; padding: 0; cursor: pointer; flex: none; }
     .check.on { background: var(--lu-accent); border-color: var(--lu-accent); }

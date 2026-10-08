@@ -8,6 +8,19 @@ const fail = (error: any, ctx: string) => {
   if (error) throw new Error(`${ctx}: ${error.message ?? error}`);
 };
 
+/** PostgREST plafonne chaque réponse (max_rows = 1000) : on lit par pages jusqu'à épuisement. */
+const PAGE = 1000;
+async function pageAll(build: (from: number, to: number) => any, ctx: string): Promise<any[]> {
+  const out: any[] = [];
+  for (let from = 0; from < 200000; from += PAGE) {
+    const { data, error } = await build(from, from + PAGE - 1);
+    fail(error, ctx);
+    out.push(...(data ?? []));
+    if ((data?.length ?? 0) < PAGE) break;
+  }
+  return out;
+}
+
 export class SupabaseStore {
   constructor(private db: Client) {}
 
@@ -175,9 +188,8 @@ export class SupabaseStore {
     if (f.from) q = q.gte('period_start', f.from);
     if (f.to) q = q.lte('period_start', f.to);
     if (f.covers) q = q.lte('period_start', f.covers).gte('period_end', f.covers);
-    const { data, error } = await q.order('period_start', { ascending: true }).limit(5000);
-    fail(error, 'instances.select');
-    return (data ?? []).map((r: any) => this.toInstance(r));
+    const rows = await pageAll((a, b) => q.order('period_start', { ascending: true }).order('id', { ascending: true }).range(a, b), 'instances.select');
+    return rows.map((r: any) => this.toInstance(r));
   }
 
   async getInstance(userId: string, id: string): Promise<any | null> {
@@ -228,9 +240,8 @@ export class SupabaseStore {
   async listXpEvents(userId: string, since?: string): Promise<any[]> {
     let q = this.db.from('xp_events').select('*').eq('profile_id', userId);
     if (since) q = q.gte('game_date', since);
-    const { data, error } = await q.order('created_at', { ascending: true }).limit(100000);
-    fail(error, 'xp_events.select');
-    return (data ?? []).map((e: any) => ({
+    const rows = await pageAll((a, b) => q.order('created_at', { ascending: true }).order('id', { ascending: true }).range(a, b), 'xp_events.select');
+    return rows.map((e: any) => ({
       id: e.id, instanceId: e.instance_id, ability: e.ability, amount: e.amount, reason: e.reason, custom: e.is_custom,
       createdAt: e.created_at, gameDate: e.game_date,
     }));
@@ -273,9 +284,8 @@ export class SupabaseStore {
   }
 
   async listJournal(userId: string): Promise<any[]> {
-    const { data, error } = await this.db.from('journal_entries').select('*').eq('profile_id', userId).order('created_at', { ascending: false }).limit(2000);
-    fail(error, 'journal.select');
-    return (data ?? []).map((e: any) => ({ id: e.id, instanceId: e.instance_id, text: e.text, createdAt: e.created_at }));
+    const rows = await pageAll((a, b) => this.db.from('journal_entries').select('*').eq('profile_id', userId).order('created_at', { ascending: false }).order('id').range(a, b), 'journal.select');
+    return rows.map((e: any) => ({ id: e.id, instanceId: e.instance_id, text: e.text, createdAt: e.created_at }));
   }
 
   // ───── Publications

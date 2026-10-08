@@ -52,7 +52,7 @@ export class PageHeaderComponent {
 @Component({
   selector: 'lu-bar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<div class="lu-bar" [class.gold]="tone() === 'gold'" [class.thick]="thick()" [class.dashed]="dashed()" role="progressbar" [attr.aria-valuenow]="pct()" aria-valuemin="0" aria-valuemax="100"><i [style.width.%]="pct()"></i></div>`,
+  template: `<div class="lu-bar" [class.gold]="tone() === 'gold'" [class.thick]="thick()" [class.dashed]="dashed()" role="progressbar" [attr.aria-label]="label()" [attr.aria-valuenow]="pct()" aria-valuemin="0" aria-valuemax="100"><i [style.width.%]="pct()"></i></div>`,
   styles: ':host{display:block}',
 })
 export class BarComponent {
@@ -61,6 +61,7 @@ export class BarComponent {
   readonly tone = input<'mint' | 'gold'>('mint');
   readonly thick = input(false);
   readonly dashed = input(false);
+  readonly label = input('Progression');
   readonly pct = computed(() => Math.round(Math.min(Math.max(this.max() ? this.value() / this.max() : 0, 0), 1) * 100));
 }
 

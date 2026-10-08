@@ -62,6 +62,7 @@ beforeAll(async () => {
   await db.exec(read('migrations/20261008000001_schema.sql'));
   await db.exec(read('migrations/20261008000002_security.sql'));
   await db.exec(read('migrations/20261008000003_cron.sql'));
+  await db.exec(read('migrations/20261008000004_friend_code.sql'));
   await db.exec(read('seed.sql'));
   await mkUser(ids.alice, 'alice');
   await mkUser(ids.bob, 'bob');
@@ -88,6 +89,13 @@ describe('schéma et contenu', () => {
     const [p] = await admin(`select username::text u, friend_code from profiles where id = $1`, [ids.alice]);
     expect(p.u).toBe('alice');
     expect(p.friend_code).toMatch(/^ELAN-ALICE-\d{4}$/);
+  });
+  it('le code ami suit le pseudo choisi dans Le Seuil', async () => {
+    await admin(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'seuil@ex.fr', '{"username":"aventurierabc123"}')`, ['00000000-0000-0000-0000-0000000000e1']);
+    expect((await admin(`select friend_code from profiles where id = $1`, ['00000000-0000-0000-0000-0000000000e1']))[0].friend_code).toMatch(/^ELAN-AVENTURI/);
+    await as('00000000-0000-0000-0000-0000000000e1', `update profiles set username = 'alex-en-chemin' where id = $1`, ['00000000-0000-0000-0000-0000000000e1']);
+    expect((await admin(`select friend_code from profiles where id = $1`, ['00000000-0000-0000-0000-0000000000e1']))[0].friend_code).toMatch(/^ELAN-ALEXENCH-[0-9]{4}$/);
+    await admin(`delete from auth.users where id = $1`, ['00000000-0000-0000-0000-0000000000e1']);
   });
   it('vérifie la disponibilité d’un pseudo', async () => {
     expect((await as(null, `select username_available('alice') ok`))[0].ok).toBe(false);
