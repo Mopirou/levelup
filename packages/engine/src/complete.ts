@@ -9,8 +9,7 @@ import {
 import {
   BASE_XP,
   QuestXpBreakdown,
-  abilityProgress,
-  abilityStart,
+  abilityProgressOf,
   levelFromXp,
   partialXp,
   pendingImprovements,
@@ -114,8 +113,8 @@ export function applyXp(character: CharacterCore, ability: AbilityId, amount: nu
   for (let l = before.level; l > level; l--) levelsLost.push(l);
 
   const abilityUps: AbilityUp[] = [];
-  const from = abilityProgress(abilityStart(before, ability), before.abilityXp[ability] ?? 0).score;
-  const to = abilityProgress(abilityStart(next, ability), abilityXp[ability]).score;
+  const from = abilityProgressOf(before, ability).score;
+  const to = abilityProgressOf(next, ability).score;
   if (to > from) abilityUps.push({ ability, from, to });
 
   return {

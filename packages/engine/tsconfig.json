@@ -6,6 +6,8 @@
     "strict": true,
     "noUncheckedIndexedAccess": false,
     "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
     "lib": ["ES2022"],
     "noEmit": true
   },

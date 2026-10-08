@@ -95,26 +95,34 @@ export interface AbilityProgress {
   legendary: boolean;
 }
 
-/** Score courant d'une caractéristique à partir du score de départ (créa + améliorations) et de l'XP gagnée. */
-export function abilityProgress(startScore: number, abilityXp: number): AbilityProgress {
-  let s = Math.max(startScore, MIN_SCORE);
+const costAt = (k: number, bonus: number): number => (k + bonus >= SOFT_CAP_SCORE ? 2000 : 100 * (k - 7));
+
+/**
+ * Score courant d'une caractéristique. Les améliorations (bonus) s'ajoutent au score sans refaire payer l'XP déjà gagnée :
+ * le k-ième point gagné par l'XP coûte 100 × (k - 7) sur la trajectoire de départ, ou 2 000 XP une fois le score réel ≥ 20.
+ */
+export function abilityProgress(baseScore: number, abilityXp: number, bonus = 0): AbilityProgress {
+  let k = Math.max(baseScore, MIN_SCORE);
   let xp = Math.max(abilityXp, 0);
-  while (s < MAX_SCORE && xp >= abilityUpgradeCost(s)) {
-    xp -= abilityUpgradeCost(s);
-    s++;
+  while (k + bonus < MAX_SCORE && xp >= costAt(k, bonus)) {
+    xp -= costAt(k, bonus);
+    k++;
   }
-  if (s >= MAX_SCORE) return { score: MAX_SCORE, current: xp, needed: 0, ratio: 1, legendary: true };
-  const needed = abilityUpgradeCost(s);
-  return { score: s, current: xp, needed, ratio: xp / needed, legendary: s > SOFT_CAP_SCORE };
+  if (k + bonus >= MAX_SCORE) return { score: MAX_SCORE, current: xp, needed: 0, ratio: 1, legendary: true };
+  const needed = costAt(k, bonus);
+  return { score: k + bonus, current: xp, needed, ratio: xp / needed, legendary: k + bonus > SOFT_CAP_SCORE };
 }
 
-export function abilityStart(c: Pick<CharacterCore, 'baseScores' | 'improvements'>, a: AbilityId): number {
-  return c.baseScores[a] + (c.improvements[a] ?? 0);
+export function abilityProgressOf(
+  c: Pick<CharacterCore, 'baseScores' | 'improvements' | 'abilityXp'>,
+  a: AbilityId,
+): AbilityProgress {
+  return abilityProgress(c.baseScores[a], c.abilityXp[a] ?? 0, c.improvements[a] ?? 0);
 }
 
 export function abilityScores(c: Pick<CharacterCore, 'baseScores' | 'improvements' | 'abilityXp'>): Record<AbilityId, number> {
   const out = emptyAbilityRecord(0);
-  for (const a of ABILITIES) out[a] = abilityProgress(abilityStart(c, a), c.abilityXp[a] ?? 0).score;
+  for (const a of ABILITIES) out[a] = abilityProgressOf(c, a).score;
   return out;
 }
 
