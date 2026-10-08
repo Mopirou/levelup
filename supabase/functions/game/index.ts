@@ -4,7 +4,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 // @ts-ignore — module généré par scripts/build-server-engine.mjs
 import * as engine from '../_shared/engine.mjs';
-import { SupabaseStore } from '../_shared/supabase-store.ts';
+
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -23,7 +23,7 @@ Deno.serve(async (req: Request) => {
   const anon = Deno.env.get('SUPABASE_ANON_KEY')!;
   const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const admin = createClient(url, service, { auth: { persistSession: false } });
-  const ctx = { store: new SupabaseStore(admin), now: () => Date.now(), uuid: () => crypto.randomUUID() };
+  const ctx = { store: new engine.SupabaseStore(admin), now: () => Date.now(), uuid: () => crypto.randomUUID() };
 
   let body: any;
   try {

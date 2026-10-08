@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
-// Implémentation de GameStore au-dessus de Supabase (rôle service). Les types viennent de packages/engine ;
-// ici ils restent volontairement lâches (any) : le typage strict est fait côté engine, testé avec MemoryStore.
+// Implémentation de GameStore au-dessus de Supabase : rôle service dans les Edge Functions, jeton utilisateur dans l’app (RLS).
+// Les types du client restent volontairement lâches (any) ; le typage strict est porté par GameStore et testé avec MemoryStore.
 
 type Client = any;
 
