@@ -1,0 +1,14 @@
+[
+  { "id": "FOR1", "ability": "FOR", "text": "Combien de pompes peux-tu enchaîner d’une traite ?", "low": "Moins de 5", "high": "Plus de 30" },
+  { "id": "FOR2", "ability": "FOR", "text": "À quel point oses-tu faire une chose qui te fait un peu peur ?", "low": "Presque jamais", "high": "Régulièrement" },
+  { "id": "DEX1", "ability": "DEX", "text": "À quelle fréquence pratiques-tu une activité créative ou manuelle (dessin, musique, bricolage, écriture) ?", "low": "Jamais", "high": "Presque tous les jours" },
+  { "id": "DEX2", "ability": "DEX", "text": "Comment te sens-tu en termes de souplesse et de coordination ?", "low": "Très raide", "high": "Très à l’aise" },
+  { "id": "CON1", "ability": "CON", "text": "Quand as-tu marché ou couru 30 minutes d’affilée pour la dernière fois ?", "low": "Il y a des mois", "high": "Cette semaine" },
+  { "id": "CON2", "ability": "CON", "text": "Comment sont ton sommeil et ton alimentation en ce moment ?", "low": "Désordonnés", "high": "Réguliers et sains" },
+  { "id": "INT1", "ability": "INT", "text": "Quand as-tu lu un livre en entier pour la dernière fois ?", "low": "Il y a des années", "high": "Ce mois-ci" },
+  { "id": "INT2", "ability": "INT", "text": "À quelle fréquence apprends-tu quelque chose de nouveau (langue, compétence, sujet) ?", "low": "Rarement", "high": "Tous les jours" },
+  { "id": "SAG1", "ability": "SAG", "text": "Combien de temps par semaine prends-tu pour toi, sans écran (méditation, balade, journal) ?", "low": "Aucun", "high": "Plusieurs heures" },
+  { "id": "SAG2", "ability": "SAG", "text": "Comment gères-tu le stress et les émotions fortes ?", "low": "Je suis souvent débordé(e)", "high": "Je garde le cap" },
+  { "id": "CHA1", "ability": "CHA", "text": "À quelle fréquence donnes-tu des nouvelles à des proches ou en cherches-tu ?", "low": "Rarement", "high": "Chaque jour" },
+  { "id": "CHA2", "ability": "CHA", "text": "Comment te sens-tu pour prendre la parole devant un groupe ?", "low": "Très mal à l’aise", "high": "À l’aise" }
+]

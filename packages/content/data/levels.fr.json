@@ -1,0 +1,22 @@
+[
+  { "level": 1, "text": "Tout héros commence quelque part. Le tien commence ici, ce soir, avec une décision." },
+  { "level": 2, "text": "Les premiers pas laissent des traces. La Forge s’ouvre à toi : tu peux désormais inventer tes propres quêtes." },
+  { "level": 3, "text": "Une voie se dessine devant toi. Choisis celle qui te ressemble, les chemins du royaume sont nombreux." },
+  { "level": 4, "text": "Tes efforts forment déjà une habitude. Le royaume te regarde avec curiosité : tu peux améliorer une de tes caractéristiques." },
+  { "level": 5, "text": "Tu n’es plus un voyageur : tu es un Héros du royaume. Les quêtes Légendaires s’ouvrent à toi, et ton journal quotidien s’agrandit." },
+  { "level": 6, "text": "Les villageois murmurent ton nom au marché. Une troisième quête hebdomadaire t’attend sur le Tableau d’Affichage." },
+  { "level": 7, "text": "La régularité devient une seconde nature. Ce que tu as bâti tient debout, même les jours de vent." },
+  { "level": 8, "text": "Ton chemin se fait plus sûr. Une nouvelle amélioration est à ta portée : choisis ce que tu veux renforcer." },
+  { "level": 9, "text": "On te demande des conseils maintenant. Tu aurais souri, il y a quelques mois. Ton bonus de maîtrise grandit." },
+  { "level": 10, "text": "Dix niveaux de patience. Une cinquième quête quotidienne et une seconde quête mensuelle viennent récompenser ta constance." },
+  { "level": 11, "text": "Tu deviens Maître du royaume. Les quêtes épiques, qui durent un trimestre, s’ouvrent devant toi." },
+  { "level": 12, "text": "Ta fiche dépasse déjà celle de bien des légendes. Une amélioration de caractéristique t’attend." },
+  { "level": 13, "text": "Le bonus de maîtrise franchit un nouveau cap. Le moindre effort pèse davantage dans la balance." },
+  { "level": 14, "text": "Une quatrième quête hebdomadaire rejoint ton Tableau. Les semaines ne te font plus peur." },
+  { "level": 15, "text": "Quinze niveaux : ce n’est plus un élan, c’est un mode de vie. Les chroniqueurs notent ton nom." },
+  { "level": 16, "text": "Une nouvelle amélioration te permet d’affiner ton portrait. Les bardes ont écrit une chanson sur toi." },
+  { "level": 17, "text": "Tu rejoins le cercle des Légendes. Une sixième quête quotidienne te rejoint, le défi grandit avec toi." },
+  { "level": 18, "text": "Ce que tu fais maintenant, peu de gens le font. Et ils ne savent pas par où commencer." },
+  { "level": 19, "text": "Une dernière amélioration te permet de sculpter ton héros. Le sommet est proche." },
+  { "level": 20, "text": "Tu es devenu Légende. Ta fiche brille d’or, et le royaume inscrit ton nom dans ses annales. Mais le chemin, lui, continue." }
+]

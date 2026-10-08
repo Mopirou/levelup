@@ -1,0 +1,176 @@
+// Phrases modèles des bilans. Variables : {name} {best} {weak} {done} {xp}
+const openers = {
+  up: [
+    'Cette période, {name} a pris de l’élan : {xp} XP, plus que la précédente.',
+    '{name} a accéléré. Les chiffres le disent, mais les sourires aussi.',
+    'Une belle montée en puissance : {done} quêtes accomplies et un rythme qui s’installe.',
+    'Le feu de camp brillait fort cette période, et {name} y a gardé la main.',
+    'Plus d’XP que la fois d’avant : {name} avance, et on le voit.',
+    'On sent l’élan : {done} quêtes, {xp} XP, et la route devant soi.',
+  ],
+  down: [
+    'Une période plus calme pour {name}. Les routes ne sont pas toujours des lignes droites.',
+    'Moins d’XP que la précédente, mais {done} quêtes tout de même. Rien n’est perdu.',
+    'Le rythme a ralenti. Ce n’est pas un échec : c’est un souffle.',
+    'La Taverne était plus tranquille. Les héros ont aussi besoin de repos.',
+    'Une période creuse n’efface rien de ce que {name} a bâti.',
+    'Moins d’élan cette fois-ci. Le prochain pas compte plus que ceux qui manquent.',
+  ],
+  flat: [
+    'Une période régulière pour {name} : {done} quêtes, {xp} XP, un rythme tenu.',
+    'Stable comme un roc : {name} garde le cap.',
+    'Pas de grandes vagues, mais une marche régulière. C’est ainsi qu’on va loin.',
+    'La constance est une qualité discrète. {name} l’a cultivée.',
+    'Le rythme est le même que la fois d’avant. La régularité fait son chemin.',
+    'Ni plus ni moins que d’habitude : un équilibre solide.',
+  ],
+  first: [
+    'Premier bilan pour {name} : {done} quêtes accomplies et {xp} XP pour commencer.',
+    'Tout commence ici : {done} quêtes à ton actif, c’est déjà un début d’histoire.',
+    'Les premières pages du journal sont écrites : {xp} XP gagnés.',
+    'Une première période se referme. {name} a posé les premières pierres.',
+    'Le voyage ne fait que commencer, et il a déjà de la couleur.',
+    'Un premier pas, puis un autre : {done} quêtes, c’est un bon départ.',
+  ],
+};
+
+const bestByAbility = {
+  FOR: [
+    'Le Courage a mené la danse : {name} a osé et soulevé plus que d’habitude.',
+    'Le Courage a brillé : les efforts francs ont payé.',
+    'Du Courage à revendre cette période. Les pas vers l’inconnu ont fait la différence.',
+    'C’est le Courage qui a porté la période, sans bruit mais avec force.',
+    'Beaucoup d’audace cette fois : le Courage tire la fiche vers le haut.',
+    'Le Courage est en tête, et tout le reste en bénéficie.',
+  ],
+  DEX: [
+    'La Créativité a éclaté : crayons, notes et mains en mouvement.',
+    'Beaucoup de gestes créatifs cette période, et ça se voit sur la fiche.',
+    'La Créativité a pris la tête, portée par des idées qui s’enchaînent.',
+    'C’est la Créativité qui a nourri la période, avec légèreté.',
+    'Des mains actives, des idées vives : la Créativité s’est imposée.',
+    'La Créativité a donné le ton, et ça fait du bien.',
+  ],
+  CON: [
+    'La Vitalité a pris les devants : marche, sommeil et bonne alimentation.',
+    'Le corps a répondu présent : la Vitalité est en tête.',
+    'Beaucoup de souffle cette période, et la Vitalité s’en souvient.',
+    'La Vitalité s’est construite sur la régularité. C’est la meilleure des bases.',
+    'La Vitalité a mené la danse, et tout le reste s’en est mieux porté.',
+    'On sent que le corps a été entretenu : la Vitalité est en tête.',
+  ],
+  INT: [
+    'Le Savoir a mené la danse : {name} a lu, appris, compris.',
+    'Beaucoup de curiosité cette période, et le Savoir en récolte les fruits.',
+    'Le Savoir a pris la tête, nourri par des pages et des questions.',
+    'La tête a travaillé : le Savoir est en tête.',
+    'Le Savoir est la caractéristique qui a le plus progressé.',
+    'Les livres sont restés ouverts : le Savoir a avancé.',
+  ],
+  SAG: [
+    'L’Équilibre a gagné du terrain : respirations, pauses et regard apaisé.',
+    'Le calme a fait son chemin : l’Équilibre est en tête.',
+    'L’Équilibre a porté la période, discrètement et efficacement.',
+    'Beaucoup d’attention à soi cette fois : l’Équilibre brille.',
+    'Moments de silence, journal, nature : l’Équilibre a progressé.',
+    'L’Équilibre a pris les devants, et tout le reste en respire mieux.',
+  ],
+  CHA: [
+    'Les Liens ont été à l’honneur : appels, messages et rencontres.',
+    'Beaucoup de gestes tournés vers les autres, et les Liens en sont renforcés.',
+    'Les Liens ont pris la tête, nourris par la générosité et l’écoute.',
+    'Les rencontres ont compté : les Liens avancent.',
+    'Les Liens sont en tête, et c’est sans doute la plus belle des victoires.',
+    'Entouré, soutenu, présent : les Liens ont mené la période.',
+  ],
+};
+
+const weakByAbility = {
+  FOR: [
+    'Le Courage, lui, est resté dans l’ombre : une petite audace suffirait à le réveiller.',
+    'Pense à ton Courage : un pas hors de ta zone de confort, et il reprend sa place.',
+    'Le Courage attend son heure. Une petite quête, une grande première fois ?',
+    'Le Courage a un peu dormi. Il n’attend qu’un petit défi.',
+    'Il y a un peu de Courage à reprendre : commence par une audace de deux minutes.',
+    'Le Courage gagnerait à être sollicité : un oui, un non franc, un nouveau lieu.',
+  ],
+  DEX: [
+    'Du côté de la Créativité, c’était calme : un crayon, un instrument, et tout repart.',
+    'La Créativité a été oubliée sur l’établi. Elle demande peu pour revenir.',
+    'Pense à ta Créativité : quelques lignes ou un geste créatif suffiront.',
+    'La Créativité s’est mise en veille, mais elle se réveille vite.',
+    'La Créativité attend son tour : dix minutes de dessin, d’écriture ou de musique.',
+    'Un petit élan créatif ferait du bien à l’ensemble de la fiche.',
+  ],
+  CON: [
+    'La Vitalité demande un peu d’attention : une marche, un verre d’eau, un coucher plus tôt.',
+    'Le corps aimerait qu’on pense à lui : la Vitalité reste en retrait.',
+    'Pense à ta Vitalité : de petits gestes de santé, chaque jour.',
+    'La Vitalité s’essouffle un peu : une promenade lui rendrait le sourire.',
+    'La Vitalité reste à renforcer : sommeil et mouvement seront ses alliés.',
+    'Une marche régulière redonnerait de la vigueur à la Vitalité.',
+  ],
+  INT: [
+    'Les livres sont restés fermés : le Savoir t’attend quand tu voudras.',
+    'Le Savoir aimerait un peu de curiosité : dix pages, un mot nouveau, une question.',
+    'Pense à ton Savoir : quinze minutes de lecture par jour changeraient la donne.',
+    'Le Savoir est en retrait. Une petite leçon et il repart.',
+    'Le Savoir est resté sur l’étagère : prends-le dans tes mains, même cinq minutes.',
+    'Un peu d’étude fera du bien à ton Savoir.',
+  ],
+  SAG: [
+    'L’Équilibre est en retrait : cinq minutes de silence suffiraient à le ramener.',
+    'Pense à ton Équilibre : respirer, observer, écrire quelques lignes.',
+    'L’Équilibre aimerait un peu de calme : un souffle, une pause, un regard au loin.',
+    'Un peu d’attention à soi remettrait l’Équilibre en marche.',
+    'Ton Équilibre a besoin de silence : une petite méditation lui fera du bien.',
+    'L’Équilibre n’a pas eu sa part : réserve-lui un moment tranquille.',
+  ],
+  CHA: [
+    'Les Liens ont été un peu délaissés : un message, un appel, un café.',
+    'Pense à tes Liens : un mot sincère à quelqu’un qui compte.',
+    'Les Liens attendent un geste simple : écouter, remercier, inviter.',
+    'Un petit signe à un proche relancerait les Liens.',
+    'Les Liens sont restés discrets : une conversation suffirait à les raviver.',
+    'Un peu de chaleur humaine, et les Liens repartent.',
+  ],
+};
+
+const closers = {
+  week: [
+    'À la semaine prochaine, {name}.',
+    'La route continue : la semaine qui vient a ses propres quêtes.',
+    'Prends un instant pour être fier du chemin parcouru.',
+    'Une nouvelle semaine s’ouvre : choisis tes quêtes avec envie.',
+    'Respire, relis, repars. Le Tableau d’Affichage t’attend.',
+    'Cette semaine n’est plus à refaire. La prochaine est à écrire.',
+    'Garde ce qui t’a fait du bien, laisse le reste de côté.',
+    'Un pas après l’autre, la semaine suivante ne demande pas plus.',
+    'La régularité n’est pas un sprint : continue à ton rythme.',
+    'Demain est un autre jour de jeu.',
+    'Le tavernier a déjà préparé de nouvelles quêtes pour toi.',
+    'Le chemin se construit en marchant. Bonne semaine, {name}.',
+  ],
+  month: [
+    'Un mois de plus dans ton histoire. Elle commence à prendre forme.',
+    'Le mois est terminé : regarde ce que tu as bâti, et choisis la suite.',
+    'Un nouveau mois commence, avec ses propres défis à relever.',
+    'Garde ce mois comme un repère : tu pourras y revenir quand le doute viendra.',
+    'Un mois de petits pas, c’est déjà un voyage.',
+    'Tu as vécu un mois entier d’aventure. Les prochains t’attendent.',
+    'Prends le temps de te féliciter : c’est aussi une manière d’avancer.',
+    'Le mois prochain sera ce que tu en feras. Il est déjà bien parti.',
+    'Rien ne s’est perdu : tout s’est empilé.',
+    'Chaque mois laisse sa trace : ceux-ci ne s’effacent pas.',
+    'Un bilan n’est pas un jugement, c’est un point sur la carte.',
+    'Merci pour ce mois, {name}. La Taverne t’attend pour le suivant.',
+  ],
+};
+
+const templates = {
+  openers: Object.entries(openers).flatMap(([trend, arr]) => arr.map((text) => ({ trend, text }))),
+  best: Object.entries(bestByAbility).flatMap(([ability, arr]) => arr.map((text) => ({ ability, text }))),
+  weak: Object.entries(weakByAbility).flatMap(([ability, arr]) => arr.map((text) => ({ ability, text }))),
+  closers: Object.entries(closers).flatMap(([kind, arr]) => arr.map((text) => ({ kind, text }))),
+};
+export default templates;

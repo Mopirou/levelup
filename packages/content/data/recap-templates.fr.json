@@ -1,0 +1,490 @@
+{
+  "openers": [
+    {
+      "trend": "up",
+      "text": "Cette période, {name} a pris de l’élan : {xp} XP, plus que la précédente."
+    },
+    {
+      "trend": "up",
+      "text": "{name} a accéléré. Les chiffres le disent, mais les sourires aussi."
+    },
+    {
+      "trend": "up",
+      "text": "Une belle montée en puissance : {done} quêtes accomplies et un rythme qui s’installe."
+    },
+    {
+      "trend": "up",
+      "text": "Le feu de camp brillait fort cette période, et {name} y a gardé la main."
+    },
+    {
+      "trend": "up",
+      "text": "Plus d’XP que la fois d’avant : {name} avance, et on le voit."
+    },
+    {
+      "trend": "up",
+      "text": "On sent l’élan : {done} quêtes, {xp} XP, et la route devant soi."
+    },
+    {
+      "trend": "down",
+      "text": "Une période plus calme pour {name}. Les routes ne sont pas toujours des lignes droites."
+    },
+    {
+      "trend": "down",
+      "text": "Moins d’XP que la précédente, mais {done} quêtes tout de même. Rien n’est perdu."
+    },
+    {
+      "trend": "down",
+      "text": "Le rythme a ralenti. Ce n’est pas un échec : c’est un souffle."
+    },
+    {
+      "trend": "down",
+      "text": "La Taverne était plus tranquille. Les héros ont aussi besoin de repos."
+    },
+    {
+      "trend": "down",
+      "text": "Une période creuse n’efface rien de ce que {name} a bâti."
+    },
+    {
+      "trend": "down",
+      "text": "Moins d’élan cette fois-ci. Le prochain pas compte plus que ceux qui manquent."
+    },
+    {
+      "trend": "flat",
+      "text": "Une période régulière pour {name} : {done} quêtes, {xp} XP, un rythme tenu."
+    },
+    {
+      "trend": "flat",
+      "text": "Stable comme un roc : {name} garde le cap."
+    },
+    {
+      "trend": "flat",
+      "text": "Pas de grandes vagues, mais une marche régulière. C’est ainsi qu’on va loin."
+    },
+    {
+      "trend": "flat",
+      "text": "La constance est une qualité discrète. {name} l’a cultivée."
+    },
+    {
+      "trend": "flat",
+      "text": "Le rythme est le même que la fois d’avant. La régularité fait son chemin."
+    },
+    {
+      "trend": "flat",
+      "text": "Ni plus ni moins que d’habitude : un équilibre solide."
+    },
+    {
+      "trend": "first",
+      "text": "Premier bilan pour {name} : {done} quêtes accomplies et {xp} XP pour commencer."
+    },
+    {
+      "trend": "first",
+      "text": "Tout commence ici : {done} quêtes à ton actif, c’est déjà un début d’histoire."
+    },
+    {
+      "trend": "first",
+      "text": "Les premières pages du journal sont écrites : {xp} XP gagnés."
+    },
+    {
+      "trend": "first",
+      "text": "Une première période se referme. {name} a posé les premières pierres."
+    },
+    {
+      "trend": "first",
+      "text": "Le voyage ne fait que commencer, et il a déjà de la couleur."
+    },
+    {
+      "trend": "first",
+      "text": "Un premier pas, puis un autre : {done} quêtes, c’est un bon départ."
+    }
+  ],
+  "best": [
+    {
+      "ability": "FOR",
+      "text": "Le Courage a mené la danse : {name} a osé et soulevé plus que d’habitude."
+    },
+    {
+      "ability": "FOR",
+      "text": "Le Courage a brillé : les efforts francs ont payé."
+    },
+    {
+      "ability": "FOR",
+      "text": "Du Courage à revendre cette période. Les pas vers l’inconnu ont fait la différence."
+    },
+    {
+      "ability": "FOR",
+      "text": "C’est le Courage qui a porté la période, sans bruit mais avec force."
+    },
+    {
+      "ability": "FOR",
+      "text": "Beaucoup d’audace cette fois : le Courage tire la fiche vers le haut."
+    },
+    {
+      "ability": "FOR",
+      "text": "Le Courage est en tête, et tout le reste en bénéficie."
+    },
+    {
+      "ability": "DEX",
+      "text": "La Créativité a éclaté : crayons, notes et mains en mouvement."
+    },
+    {
+      "ability": "DEX",
+      "text": "Beaucoup de gestes créatifs cette période, et ça se voit sur la fiche."
+    },
+    {
+      "ability": "DEX",
+      "text": "La Créativité a pris la tête, portée par des idées qui s’enchaînent."
+    },
+    {
+      "ability": "DEX",
+      "text": "C’est la Créativité qui a nourri la période, avec légèreté."
+    },
+    {
+      "ability": "DEX",
+      "text": "Des mains actives, des idées vives : la Créativité s’est imposée."
+    },
+    {
+      "ability": "DEX",
+      "text": "La Créativité a donné le ton, et ça fait du bien."
+    },
+    {
+      "ability": "CON",
+      "text": "La Vitalité a pris les devants : marche, sommeil et bonne alimentation."
+    },
+    {
+      "ability": "CON",
+      "text": "Le corps a répondu présent : la Vitalité est en tête."
+    },
+    {
+      "ability": "CON",
+      "text": "Beaucoup de souffle cette période, et la Vitalité s’en souvient."
+    },
+    {
+      "ability": "CON",
+      "text": "La Vitalité s’est construite sur la régularité. C’est la meilleure des bases."
+    },
+    {
+      "ability": "CON",
+      "text": "La Vitalité a mené la danse, et tout le reste s’en est mieux porté."
+    },
+    {
+      "ability": "CON",
+      "text": "On sent que le corps a été entretenu : la Vitalité est en tête."
+    },
+    {
+      "ability": "INT",
+      "text": "Le Savoir a mené la danse : {name} a lu, appris, compris."
+    },
+    {
+      "ability": "INT",
+      "text": "Beaucoup de curiosité cette période, et le Savoir en récolte les fruits."
+    },
+    {
+      "ability": "INT",
+      "text": "Le Savoir a pris la tête, nourri par des pages et des questions."
+    },
+    {
+      "ability": "INT",
+      "text": "La tête a travaillé : le Savoir est en tête."
+    },
+    {
+      "ability": "INT",
+      "text": "Le Savoir est la caractéristique qui a le plus progressé."
+    },
+    {
+      "ability": "INT",
+      "text": "Les livres sont restés ouverts : le Savoir a avancé."
+    },
+    {
+      "ability": "SAG",
+      "text": "L’Équilibre a gagné du terrain : respirations, pauses et regard apaisé."
+    },
+    {
+      "ability": "SAG",
+      "text": "Le calme a fait son chemin : l’Équilibre est en tête."
+    },
+    {
+      "ability": "SAG",
+      "text": "L’Équilibre a porté la période, discrètement et efficacement."
+    },
+    {
+      "ability": "SAG",
+      "text": "Beaucoup d’attention à soi cette fois : l’Équilibre brille."
+    },
+    {
+      "ability": "SAG",
+      "text": "Moments de silence, journal, nature : l’Équilibre a progressé."
+    },
+    {
+      "ability": "SAG",
+      "text": "L’Équilibre a pris les devants, et tout le reste en respire mieux."
+    },
+    {
+      "ability": "CHA",
+      "text": "Les Liens ont été à l’honneur : appels, messages et rencontres."
+    },
+    {
+      "ability": "CHA",
+      "text": "Beaucoup de gestes tournés vers les autres, et les Liens en sont renforcés."
+    },
+    {
+      "ability": "CHA",
+      "text": "Les Liens ont pris la tête, nourris par la générosité et l’écoute."
+    },
+    {
+      "ability": "CHA",
+      "text": "Les rencontres ont compté : les Liens avancent."
+    },
+    {
+      "ability": "CHA",
+      "text": "Les Liens sont en tête, et c’est sans doute la plus belle des victoires."
+    },
+    {
+      "ability": "CHA",
+      "text": "Entouré, soutenu, présent : les Liens ont mené la période."
+    }
+  ],
+  "weak": [
+    {
+      "ability": "FOR",
+      "text": "Le Courage, lui, est resté dans l’ombre : une petite audace suffirait à le réveiller."
+    },
+    {
+      "ability": "FOR",
+      "text": "Pense à ton Courage : un pas hors de ta zone de confort, et il reprend sa place."
+    },
+    {
+      "ability": "FOR",
+      "text": "Le Courage attend son heure. Une petite quête, une grande première fois ?"
+    },
+    {
+      "ability": "FOR",
+      "text": "Le Courage a un peu dormi. Il n’attend qu’un petit défi."
+    },
+    {
+      "ability": "FOR",
+      "text": "Il y a un peu de Courage à reprendre : commence par une audace de deux minutes."
+    },
+    {
+      "ability": "FOR",
+      "text": "Le Courage gagnerait à être sollicité : un oui, un non franc, un nouveau lieu."
+    },
+    {
+      "ability": "DEX",
+      "text": "Du côté de la Créativité, c’était calme : un crayon, un instrument, et tout repart."
+    },
+    {
+      "ability": "DEX",
+      "text": "La Créativité a été oubliée sur l’établi. Elle demande peu pour revenir."
+    },
+    {
+      "ability": "DEX",
+      "text": "Pense à ta Créativité : quelques lignes ou un geste créatif suffiront."
+    },
+    {
+      "ability": "DEX",
+      "text": "La Créativité s’est mise en veille, mais elle se réveille vite."
+    },
+    {
+      "ability": "DEX",
+      "text": "La Créativité attend son tour : dix minutes de dessin, d’écriture ou de musique."
+    },
+    {
+      "ability": "DEX",
+      "text": "Un petit élan créatif ferait du bien à l’ensemble de la fiche."
+    },
+    {
+      "ability": "CON",
+      "text": "La Vitalité demande un peu d’attention : une marche, un verre d’eau, un coucher plus tôt."
+    },
+    {
+      "ability": "CON",
+      "text": "Le corps aimerait qu’on pense à lui : la Vitalité reste en retrait."
+    },
+    {
+      "ability": "CON",
+      "text": "Pense à ta Vitalité : de petits gestes de santé, chaque jour."
+    },
+    {
+      "ability": "CON",
+      "text": "La Vitalité s’essouffle un peu : une promenade lui rendrait le sourire."
+    },
+    {
+      "ability": "CON",
+      "text": "La Vitalité reste à renforcer : sommeil et mouvement seront ses alliés."
+    },
+    {
+      "ability": "CON",
+      "text": "Une marche régulière redonnerait de la vigueur à la Vitalité."
+    },
+    {
+      "ability": "INT",
+      "text": "Les livres sont restés fermés : le Savoir t’attend quand tu voudras."
+    },
+    {
+      "ability": "INT",
+      "text": "Le Savoir aimerait un peu de curiosité : dix pages, un mot nouveau, une question."
+    },
+    {
+      "ability": "INT",
+      "text": "Pense à ton Savoir : quinze minutes de lecture par jour changeraient la donne."
+    },
+    {
+      "ability": "INT",
+      "text": "Le Savoir est en retrait. Une petite leçon et il repart."
+    },
+    {
+      "ability": "INT",
+      "text": "Le Savoir est resté sur l’étagère : prends-le dans tes mains, même cinq minutes."
+    },
+    {
+      "ability": "INT",
+      "text": "Un peu d’étude fera du bien à ton Savoir."
+    },
+    {
+      "ability": "SAG",
+      "text": "L’Équilibre est en retrait : cinq minutes de silence suffiraient à le ramener."
+    },
+    {
+      "ability": "SAG",
+      "text": "Pense à ton Équilibre : respirer, observer, écrire quelques lignes."
+    },
+    {
+      "ability": "SAG",
+      "text": "L’Équilibre aimerait un peu de calme : un souffle, une pause, un regard au loin."
+    },
+    {
+      "ability": "SAG",
+      "text": "Un peu d’attention à soi remettrait l’Équilibre en marche."
+    },
+    {
+      "ability": "SAG",
+      "text": "Ton Équilibre a besoin de silence : une petite méditation lui fera du bien."
+    },
+    {
+      "ability": "SAG",
+      "text": "L’Équilibre n’a pas eu sa part : réserve-lui un moment tranquille."
+    },
+    {
+      "ability": "CHA",
+      "text": "Les Liens ont été un peu délaissés : un message, un appel, un café."
+    },
+    {
+      "ability": "CHA",
+      "text": "Pense à tes Liens : un mot sincère à quelqu’un qui compte."
+    },
+    {
+      "ability": "CHA",
+      "text": "Les Liens attendent un geste simple : écouter, remercier, inviter."
+    },
+    {
+      "ability": "CHA",
+      "text": "Un petit signe à un proche relancerait les Liens."
+    },
+    {
+      "ability": "CHA",
+      "text": "Les Liens sont restés discrets : une conversation suffirait à les raviver."
+    },
+    {
+      "ability": "CHA",
+      "text": "Un peu de chaleur humaine, et les Liens repartent."
+    }
+  ],
+  "closers": [
+    {
+      "kind": "week",
+      "text": "À la semaine prochaine, {name}."
+    },
+    {
+      "kind": "week",
+      "text": "La route continue : la semaine qui vient a ses propres quêtes."
+    },
+    {
+      "kind": "week",
+      "text": "Prends un instant pour être fier du chemin parcouru."
+    },
+    {
+      "kind": "week",
+      "text": "Une nouvelle semaine s’ouvre : choisis tes quêtes avec envie."
+    },
+    {
+      "kind": "week",
+      "text": "Respire, relis, repars. Le Tableau d’Affichage t’attend."
+    },
+    {
+      "kind": "week",
+      "text": "Cette semaine n’est plus à refaire. La prochaine est à écrire."
+    },
+    {
+      "kind": "week",
+      "text": "Garde ce qui t’a fait du bien, laisse le reste de côté."
+    },
+    {
+      "kind": "week",
+      "text": "Un pas après l’autre, la semaine suivante ne demande pas plus."
+    },
+    {
+      "kind": "week",
+      "text": "La régularité n’est pas un sprint : continue à ton rythme."
+    },
+    {
+      "kind": "week",
+      "text": "Demain est un autre jour de jeu."
+    },
+    {
+      "kind": "week",
+      "text": "Le tavernier a déjà préparé de nouvelles quêtes pour toi."
+    },
+    {
+      "kind": "week",
+      "text": "Le chemin se construit en marchant. Bonne semaine, {name}."
+    },
+    {
+      "kind": "month",
+      "text": "Un mois de plus dans ton histoire. Elle commence à prendre forme."
+    },
+    {
+      "kind": "month",
+      "text": "Le mois est terminé : regarde ce que tu as bâti, et choisis la suite."
+    },
+    {
+      "kind": "month",
+      "text": "Un nouveau mois commence, avec ses propres défis à relever."
+    },
+    {
+      "kind": "month",
+      "text": "Garde ce mois comme un repère : tu pourras y revenir quand le doute viendra."
+    },
+    {
+      "kind": "month",
+      "text": "Un mois de petits pas, c’est déjà un voyage."
+    },
+    {
+      "kind": "month",
+      "text": "Tu as vécu un mois entier d’aventure. Les prochains t’attendent."
+    },
+    {
+      "kind": "month",
+      "text": "Prends le temps de te féliciter : c’est aussi une manière d’avancer."
+    },
+    {
+      "kind": "month",
+      "text": "Le mois prochain sera ce que tu en feras. Il est déjà bien parti."
+    },
+    {
+      "kind": "month",
+      "text": "Rien ne s’est perdu : tout s’est empilé."
+    },
+    {
+      "kind": "month",
+      "text": "Chaque mois laisse sa trace : ceux-ci ne s’effacent pas."
+    },
+    {
+      "kind": "month",
+      "text": "Un bilan n’est pas un jugement, c’est un point sur la carte."
+    },
+    {
+      "kind": "month",
+      "text": "Merci pour ce mois, {name}. La Taverne t’attend pour le suivant."
+    }
+  ]
+}

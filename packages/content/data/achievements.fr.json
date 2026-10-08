@@ -1,0 +1,992 @@
+[
+  {
+    "id": "premier-pas",
+    "category": "constance",
+    "name": "Le Premier Pas",
+    "description": "Accomplir ta première quête.",
+    "condition": {
+      "kind": "quests_total",
+      "target": 1
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "premier-elan",
+    "category": "constance",
+    "name": "Premier élan",
+    "description": "Accomplir 10 quêtes.",
+    "condition": {
+      "kind": "quests_total",
+      "target": 10
+    },
+    "xpBonus": 50,
+    "titleUnlocked": null
+  },
+  {
+    "id": "cinquante-pas",
+    "category": "constance",
+    "name": "Cinquante pas",
+    "description": "Accomplir 50 quêtes.",
+    "condition": {
+      "kind": "quests_total",
+      "target": 50
+    },
+    "xpBonus": 100,
+    "titleUnlocked": "Marcheur fidèle"
+  },
+  {
+    "id": "centurion",
+    "category": "constance",
+    "name": "Le Centurion",
+    "description": "Accomplir 100 quêtes.",
+    "condition": {
+      "kind": "quests_total",
+      "target": 100
+    },
+    "xpBonus": 150,
+    "titleUnlocked": "Centurion"
+  },
+  {
+    "id": "deux-cent-cinquante",
+    "category": "constance",
+    "name": "Chemin parcouru",
+    "description": "Accomplir 250 quêtes.",
+    "condition": {
+      "kind": "quests_total",
+      "target": 250
+    },
+    "xpBonus": 250,
+    "titleUnlocked": null
+  },
+  {
+    "id": "cinq-cents",
+    "category": "constance",
+    "name": "Les Cinq Cents",
+    "description": "Accomplir 500 quêtes.",
+    "condition": {
+      "kind": "quests_total",
+      "target": 500
+    },
+    "xpBonus": 400,
+    "titleUnlocked": "Infatigable"
+  },
+  {
+    "id": "mille-quetes",
+    "category": "constance",
+    "name": "Le Millénaire",
+    "description": "Accomplir 1 000 quêtes.",
+    "condition": {
+      "kind": "quests_total",
+      "target": 1000
+    },
+    "xpBonus": 500,
+    "titleUnlocked": "Légende des mille quêtes"
+  },
+  {
+    "id": "serie-3",
+    "category": "constance",
+    "name": "Trois d’affilée",
+    "description": "Tenir une série de 3 jours.",
+    "condition": {
+      "kind": "streak_best",
+      "target": 3
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "feu-sacre",
+    "category": "constance",
+    "name": "Feu sacré",
+    "description": "Tenir une série de 7 jours.",
+    "condition": {
+      "kind": "streak_best",
+      "target": 7
+    },
+    "xpBonus": 50,
+    "titleUnlocked": "Gardien du feu"
+  },
+  {
+    "id": "serie-14",
+    "category": "constance",
+    "name": "Deux semaines de flamme",
+    "description": "Tenir une série de 14 jours.",
+    "condition": {
+      "kind": "streak_best",
+      "target": 14
+    },
+    "xpBonus": 100,
+    "titleUnlocked": null
+  },
+  {
+    "id": "serie-30",
+    "category": "constance",
+    "name": "Un mois sans faillir",
+    "description": "Tenir une série de 30 jours.",
+    "condition": {
+      "kind": "streak_best",
+      "target": 30
+    },
+    "xpBonus": 200,
+    "titleUnlocked": "Le Constant"
+  },
+  {
+    "id": "serie-60",
+    "category": "constance",
+    "name": "Deux lunes",
+    "description": "Tenir une série de 60 jours.",
+    "condition": {
+      "kind": "streak_best",
+      "target": 60
+    },
+    "xpBonus": 300,
+    "titleUnlocked": null
+  },
+  {
+    "id": "increvable",
+    "category": "constance",
+    "name": "Increvable",
+    "description": "Tenir une série de 100 jours.",
+    "condition": {
+      "kind": "streak_best",
+      "target": 100
+    },
+    "xpBonus": 500,
+    "titleUnlocked": "L’Increvable"
+  },
+  {
+    "id": "serie-200",
+    "category": "constance",
+    "name": "Roc dans la tempête",
+    "description": "Tenir une série de 200 jours.",
+    "condition": {
+      "kind": "streak_best",
+      "target": 200
+    },
+    "xpBonus": 500,
+    "titleUnlocked": null
+  },
+  {
+    "id": "annee-heros",
+    "category": "constance",
+    "name": "L’Année du Héros",
+    "description": "Tenir une série de 365 jours.",
+    "condition": {
+      "kind": "streak_best",
+      "target": 365
+    },
+    "xpBonus": 500,
+    "titleUnlocked": "Héros de l’année"
+  },
+  {
+    "id": "journee-parfaite",
+    "category": "constance",
+    "name": "Journée accomplie",
+    "description": "Accomplir toutes tes quêtes du jour.",
+    "condition": {
+      "kind": "perfect_days",
+      "target": 1
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "sept-journees-parfaites",
+    "category": "constance",
+    "name": "Sept journées parfaites",
+    "description": "Accomplir toutes tes quêtes du jour 7 fois.",
+    "condition": {
+      "kind": "perfect_days",
+      "target": 7
+    },
+    "xpBonus": 100,
+    "titleUnlocked": null
+  },
+  {
+    "id": "trente-journees-parfaites",
+    "category": "constance",
+    "name": "Trente journées parfaites",
+    "description": "Accomplir toutes tes quêtes du jour 30 fois.",
+    "condition": {
+      "kind": "perfect_days",
+      "target": 30
+    },
+    "xpBonus": 250,
+    "titleUnlocked": "L’Exemplaire"
+  },
+  {
+    "id": "lieve-tot",
+    "category": "constance",
+    "name": "Le Lève-tôt",
+    "description": "Valider 10 quêtes avant 8 h.",
+    "condition": {
+      "kind": "early_quests",
+      "target": 10
+    },
+    "xpBonus": 100,
+    "titleUnlocked": "Le Lève-tôt"
+  },
+  {
+    "id": "chouette",
+    "category": "constance",
+    "name": "La Chouette",
+    "description": "Valider 10 quêtes après 21 h.",
+    "condition": {
+      "kind": "late_quests",
+      "target": 10
+    },
+    "xpBonus": 75,
+    "titleUnlocked": "La Chouette"
+  },
+  {
+    "id": "repos-du-sage",
+    "category": "constance",
+    "name": "Le Repos du Sage",
+    "description": "Déclarer un premier jour de repos.",
+    "condition": {
+      "kind": "rest_days",
+      "target": 1
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "for-14",
+    "category": "maitrise",
+    "name": "Courage aguerri",
+    "description": "Atteindre un score de Courage de 14.",
+    "condition": {
+      "kind": "ability_score",
+      "ability": "FOR",
+      "target": 14
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "for-18",
+    "category": "maitrise",
+    "name": "Courage remarquable",
+    "description": "Atteindre un score de Courage de 18.",
+    "condition": {
+      "kind": "ability_score",
+      "ability": "FOR",
+      "target": 18
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
+    "id": "dex-14",
+    "category": "maitrise",
+    "name": "Créativité aguerri",
+    "description": "Atteindre un score de Créativité de 14.",
+    "condition": {
+      "kind": "ability_score",
+      "ability": "DEX",
+      "target": 14
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "dex-18",
+    "category": "maitrise",
+    "name": "Créativité remarquable",
+    "description": "Atteindre un score de Créativité de 18.",
+    "condition": {
+      "kind": "ability_score",
+      "ability": "DEX",
+      "target": 18
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
+    "id": "con-14",
+    "category": "maitrise",
+    "name": "Vitalité aguerri",
+    "description": "Atteindre un score de Vitalité de 14.",
+    "condition": {
+      "kind": "ability_score",
+      "ability": "CON",
+      "target": 14
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "con-18",
+    "category": "maitrise",
+    "name": "Vitalité remarquable",
+    "description": "Atteindre un score de Vitalité de 18.",
+    "condition": {
+      "kind": "ability_score",
+      "ability": "CON",
+      "target": 18
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
+    "id": "int-14",
+    "category": "maitrise",
+    "name": "Savoir aguerri",
+    "description": "Atteindre un score de Savoir de 14.",
+    "condition": {
+      "kind": "ability_score",
+      "ability": "INT",
+      "target": 14
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "int-18",
+    "category": "maitrise",
+    "name": "Savoir remarquable",
+    "description": "Atteindre un score de Savoir de 18.",
+    "condition": {
+      "kind": "ability_score",
+      "ability": "INT",
+      "target": 18
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
+    "id": "sag-14",
+    "category": "maitrise",
+    "name": "Équilibre aguerri",
+    "description": "Atteindre un score de Équilibre de 14.",
+    "condition": {
+      "kind": "ability_score",
+      "ability": "SAG",
+      "target": 14
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "sag-18",
+    "category": "maitrise",
+    "name": "Équilibre remarquable",
+    "description": "Atteindre un score de Équilibre de 18.",
+    "condition": {
+      "kind": "ability_score",
+      "ability": "SAG",
+      "target": 18
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
+    "id": "cha-14",
+    "category": "maitrise",
+    "name": "Liens aguerri",
+    "description": "Atteindre un score de Liens de 14.",
+    "condition": {
+      "kind": "ability_score",
+      "ability": "CHA",
+      "target": 14
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "cha-18",
+    "category": "maitrise",
+    "name": "Liens remarquable",
+    "description": "Atteindre un score de Liens de 18.",
+    "condition": {
+      "kind": "ability_score",
+      "ability": "CHA",
+      "target": 18
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
+    "id": "niveau-5",
+    "category": "maitrise",
+    "name": "Héros du royaume",
+    "description": "Atteindre le niveau 5.",
+    "condition": {
+      "kind": "level",
+      "target": 5
+    },
+    "xpBonus": 100,
+    "titleUnlocked": "Héros du royaume"
+  },
+  {
+    "id": "niveau-10",
+    "category": "maitrise",
+    "name": "Dix niveaux de patience",
+    "description": "Atteindre le niveau 10.",
+    "condition": {
+      "kind": "level",
+      "target": 10
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
+    "id": "niveau-11",
+    "category": "maitrise",
+    "name": "Maître du royaume",
+    "description": "Atteindre le niveau 11.",
+    "condition": {
+      "kind": "level",
+      "target": 11
+    },
+    "xpBonus": 250,
+    "titleUnlocked": "Maître du royaume"
+  },
+  {
+    "id": "niveau-15",
+    "category": "maitrise",
+    "name": "Quinze niveaux",
+    "description": "Atteindre le niveau 15.",
+    "condition": {
+      "kind": "level",
+      "target": 15
+    },
+    "xpBonus": 300,
+    "titleUnlocked": null
+  },
+  {
+    "id": "niveau-17",
+    "category": "maitrise",
+    "name": "Légende vivante",
+    "description": "Atteindre le niveau 17.",
+    "condition": {
+      "kind": "level",
+      "target": 17
+    },
+    "xpBonus": 400,
+    "titleUnlocked": "La Légende"
+  },
+  {
+    "id": "niveau-20",
+    "category": "maitrise",
+    "name": "La Fiche dorée",
+    "description": "Atteindre le niveau 20.",
+    "condition": {
+      "kind": "level",
+      "target": 20
+    },
+    "xpBonus": 500,
+    "titleUnlocked": "Légende des Légendes"
+  },
+  {
+    "id": "rang-legendaire",
+    "category": "maitrise",
+    "name": "Au-delà du plafond",
+    "description": "Faire passer une caractéristique au rang légendaire (score 21).",
+    "condition": {
+      "kind": "legendary_abilities",
+      "target": 1
+    },
+    "xpBonus": 500,
+    "titleUnlocked": "Au-delà des limites"
+  },
+  {
+    "id": "decouvreur-10",
+    "category": "exploration",
+    "name": "Premiers horizons",
+    "description": "Accomplir 10 quêtes différentes.",
+    "condition": {
+      "kind": "discovered",
+      "target": 10
+    },
+    "xpBonus": 50,
+    "titleUnlocked": null
+  },
+  {
+    "id": "decouvreur-50",
+    "category": "exploration",
+    "name": "Explorateur du Grimoire",
+    "description": "Accomplir 50 quêtes différentes.",
+    "condition": {
+      "kind": "discovered",
+      "target": 50
+    },
+    "xpBonus": 150,
+    "titleUnlocked": "Curieux"
+  },
+  {
+    "id": "decouvreur-100",
+    "category": "exploration",
+    "name": "Cartographe",
+    "description": "Accomplir 100 quêtes différentes.",
+    "condition": {
+      "kind": "discovered",
+      "target": 100
+    },
+    "xpBonus": 250,
+    "titleUnlocked": null
+  },
+  {
+    "id": "decouvreur-200",
+    "category": "exploration",
+    "name": "Le Grimoire complet",
+    "description": "Accomplir 200 quêtes différentes.",
+    "condition": {
+      "kind": "discovered",
+      "target": 200
+    },
+    "xpBonus": 500,
+    "titleUnlocked": "Bibliothécaire du royaume"
+  },
+  {
+    "id": "premier-journal",
+    "category": "exploration",
+    "name": "Première page",
+    "description": "Valider une quête Journal.",
+    "condition": {
+      "kind": "journal_entries",
+      "target": 1
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "journal-10",
+    "category": "exploration",
+    "name": "Le Carnet se remplit",
+    "description": "Écrire 10 entrées de journal.",
+    "condition": {
+      "kind": "journal_entries",
+      "target": 10
+    },
+    "xpBonus": 100,
+    "titleUnlocked": null
+  },
+  {
+    "id": "journal-50",
+    "category": "exploration",
+    "name": "Chroniqueur du royaume",
+    "description": "Écrire 50 entrées de journal.",
+    "condition": {
+      "kind": "journal_entries",
+      "target": 50
+    },
+    "xpBonus": 250,
+    "titleUnlocked": "Chroniqueur"
+  },
+  {
+    "id": "forgeron",
+    "category": "exploration",
+    "name": "Premier coup de marteau",
+    "description": "Forger ta première quête personnalisée.",
+    "condition": {
+      "kind": "custom_quests",
+      "target": 1
+    },
+    "xpBonus": 50,
+    "titleUnlocked": null
+  },
+  {
+    "id": "maitre-forgeron",
+    "category": "exploration",
+    "name": "Maître forgeron",
+    "description": "Forger 5 quêtes personnalisées.",
+    "condition": {
+      "kind": "custom_quests",
+      "target": 5
+    },
+    "xpBonus": 150,
+    "titleUnlocked": "Maître forgeron"
+  },
+  {
+    "id": "premiere-publication",
+    "category": "exploration",
+    "name": "La Plume du Crieur",
+    "description": "Publier ta première victoire au Village.",
+    "condition": {
+      "kind": "posts_shared",
+      "target": 1
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "dix-publications",
+    "category": "exploration",
+    "name": "Voix du Village",
+    "description": "Publier 10 victoires au Village.",
+    "condition": {
+      "kind": "posts_shared",
+      "target": 10
+    },
+    "xpBonus": 100,
+    "titleUnlocked": null
+  },
+  {
+    "id": "cinquante-publications",
+    "category": "exploration",
+    "name": "Barde du Village",
+    "description": "Publier 50 victoires au Village.",
+    "condition": {
+      "kind": "posts_shared",
+      "target": 50
+    },
+    "xpBonus": 250,
+    "titleUnlocked": "Barde du Village"
+  },
+  {
+    "id": "premier-compagnon",
+    "category": "exploration",
+    "name": "Une main tendue",
+    "description": "Ajouter ton premier compagnon.",
+    "condition": {
+      "kind": "friends",
+      "target": 1
+    },
+    "xpBonus": 50,
+    "titleUnlocked": null
+  },
+  {
+    "id": "cinq-compagnons",
+    "category": "exploration",
+    "name": "La Compagnie",
+    "description": "Avoir 5 compagnons.",
+    "condition": {
+      "kind": "friends",
+      "target": 5
+    },
+    "xpBonus": 100,
+    "titleUnlocked": null
+  },
+  {
+    "id": "vingt-compagnons",
+    "category": "exploration",
+    "name": "La Grande Compagnie",
+    "description": "Avoir 20 compagnons.",
+    "condition": {
+      "kind": "friends",
+      "target": 20
+    },
+    "xpBonus": 250,
+    "titleUnlocked": "Rassembleur"
+  },
+  {
+    "id": "encourageur",
+    "category": "exploration",
+    "name": "Le Mot Gentil",
+    "description": "Encourager 100 publications de tes compagnons.",
+    "condition": {
+      "kind": "reactions_given",
+      "target": 100
+    },
+    "xpBonus": 150,
+    "titleUnlocked": "Le Bienveillant"
+  },
+  {
+    "id": "tueur-de-dragons-1",
+    "category": "exploits",
+    "name": "Premier Dragon",
+    "description": "Accomplir une quête Légendaire.",
+    "condition": {
+      "kind": "quests_by_difficulty",
+      "difficulty": "expert",
+      "target": 1
+    },
+    "xpBonus": 100,
+    "titleUnlocked": null
+  },
+  {
+    "id": "tueur-de-dragons-5",
+    "category": "exploits",
+    "name": "Chasseur de dragons",
+    "description": "Accomplir 5 quêtes Légendaires.",
+    "condition": {
+      "kind": "quests_by_difficulty",
+      "difficulty": "expert",
+      "target": 5
+    },
+    "xpBonus": 250,
+    "titleUnlocked": null
+  },
+  {
+    "id": "tueur-de-dragons",
+    "category": "exploits",
+    "name": "Tueur de Dragons",
+    "description": "Accomplir 10 quêtes Légendaires.",
+    "condition": {
+      "kind": "quests_by_difficulty",
+      "difficulty": "expert",
+      "target": 10
+    },
+    "xpBonus": 400,
+    "titleUnlocked": "Tueur de Dragons"
+  },
+  {
+    "id": "tueur-de-dragons-25",
+    "category": "exploits",
+    "name": "Fléau des dragons",
+    "description": "Accomplir 25 quêtes Légendaires.",
+    "condition": {
+      "kind": "quests_by_difficulty",
+      "difficulty": "expert",
+      "target": 25
+    },
+    "xpBonus": 500,
+    "titleUnlocked": null
+  },
+  {
+    "id": "audacieux-10",
+    "category": "exploits",
+    "name": "Audacieux",
+    "description": "Accomplir 10 quêtes Audacieuses.",
+    "condition": {
+      "kind": "quests_by_difficulty",
+      "difficulty": "high",
+      "target": 10
+    },
+    "xpBonus": 100,
+    "titleUnlocked": null
+  },
+  {
+    "id": "audacieux-50",
+    "category": "exploits",
+    "name": "Le Téméraire",
+    "description": "Accomplir 50 quêtes Audacieuses.",
+    "condition": {
+      "kind": "quests_by_difficulty",
+      "difficulty": "high",
+      "target": 50
+    },
+    "xpBonus": 300,
+    "titleUnlocked": "Le Téméraire"
+  },
+  {
+    "id": "semainier",
+    "category": "exploits",
+    "name": "Maître de la semaine",
+    "description": "Accomplir 10 quêtes hebdomadaires.",
+    "condition": {
+      "kind": "weekly_done",
+      "target": 10
+    },
+    "xpBonus": 150,
+    "titleUnlocked": null
+  },
+  {
+    "id": "moissonneur",
+    "category": "exploits",
+    "name": "Le Moissonneur",
+    "description": "Accomplir 6 quêtes mensuelles.",
+    "condition": {
+      "kind": "monthly_done",
+      "target": 6
+    },
+    "xpBonus": 250,
+    "titleUnlocked": null
+  },
+  {
+    "id": "dix-heures-silence",
+    "category": "exploits",
+    "name": "Dix heures de silence",
+    "description": "Cumuler 10 heures sur le chronomètre intégré.",
+    "condition": {
+      "kind": "timer_minutes",
+      "target": 600
+    },
+    "xpBonus": 150,
+    "titleUnlocked": null
+  },
+  {
+    "id": "cinquante-heures",
+    "category": "exploits",
+    "name": "Cinquante heures de présence",
+    "description": "Cumuler 50 heures sur le chronomètre intégré.",
+    "condition": {
+      "kind": "timer_minutes",
+      "target": 3000
+    },
+    "xpBonus": 400,
+    "titleUnlocked": "Le Patient"
+  },
+  {
+    "id": "inspire-1",
+    "category": "exploits",
+    "name": "Première étincelle",
+    "description": "Utiliser un point d’Inspiration.",
+    "condition": {
+      "kind": "inspiration_used",
+      "target": 1
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "inspire-10",
+    "category": "exploits",
+    "name": "Étincelle",
+    "description": "Utiliser 10 points d’Inspiration.",
+    "condition": {
+      "kind": "inspiration_used",
+      "target": 10
+    },
+    "xpBonus": 150,
+    "titleUnlocked": null
+  },
+  {
+    "id": "equilibre-10",
+    "category": "equilibre",
+    "name": "Fondations",
+    "description": "Avoir toutes les caractéristiques à 10 ou plus.",
+    "condition": {
+      "kind": "all_scores_min",
+      "target": 10
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "equilibre-12",
+    "category": "equilibre",
+    "name": "Bien campé",
+    "description": "Avoir toutes les caractéristiques à 12 ou plus.",
+    "condition": {
+      "kind": "all_scores_min",
+      "target": 12
+    },
+    "xpBonus": 150,
+    "titleUnlocked": null
+  },
+  {
+    "id": "polymathe",
+    "category": "equilibre",
+    "name": "Polymathe",
+    "description": "Avoir toutes les caractéristiques à 14 ou plus.",
+    "condition": {
+      "kind": "all_scores_min",
+      "target": 14
+    },
+    "xpBonus": 300,
+    "titleUnlocked": "Polymathe"
+  },
+  {
+    "id": "equilibre-16",
+    "category": "equilibre",
+    "name": "Héros complet",
+    "description": "Avoir toutes les caractéristiques à 16 ou plus.",
+    "condition": {
+      "kind": "all_scores_min",
+      "target": 16
+    },
+    "xpBonus": 400,
+    "titleUnlocked": null
+  },
+  {
+    "id": "six-couleurs",
+    "category": "equilibre",
+    "name": "Les Six Couleurs",
+    "description": "Accomplir une quête dans chacune des six caractéristiques au cours d’une même semaine.",
+    "condition": {
+      "kind": "week_all_abilities",
+      "target": 6
+    },
+    "xpBonus": 150,
+    "titleUnlocked": "Arc-en-ciel"
+  },
+  {
+    "id": "equilibre-20",
+    "category": "equilibre",
+    "name": "La Perfection tranquille",
+    "description": "Avoir toutes les caractéristiques à 20.",
+    "condition": {
+      "kind": "all_scores_min",
+      "target": 20
+    },
+    "xpBonus": 500,
+    "titleUnlocked": "Perfection tranquille"
+  },
+  {
+    "id": "retour-du-roi",
+    "category": "secrets",
+    "name": "Le Retour du Roi",
+    "description": "Reprendre après 14 jours d’absence.",
+    "condition": {
+      "kind": "comeback",
+      "target": 14
+    },
+    "xpBonus": 100,
+    "titleUnlocked": "Le Revenant",
+    "isSecret": true,
+    "hint": "Les rois partent parfois. Les grands reviennent."
+  },
+  {
+    "id": "retour-30",
+    "category": "secrets",
+    "name": "Le Long Exil",
+    "description": "Reprendre après 30 jours d’absence.",
+    "condition": {
+      "kind": "comeback",
+      "target": 30
+    },
+    "xpBonus": 150,
+    "titleUnlocked": null,
+    "isSecret": true,
+    "hint": "Il n’est jamais trop tard."
+  },
+  {
+    "id": "dix-mille-xp",
+    "category": "secrets",
+    "name": "Dix mille voix",
+    "description": "Gagner 10 000 XP au total.",
+    "condition": {
+      "kind": "total_xp",
+      "target": 10000
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null,
+    "isSecret": true,
+    "hint": "Les chiffres ronds portent chance."
+  },
+  {
+    "id": "cinquante-mille-xp",
+    "category": "secrets",
+    "name": "Un royaume d’XP",
+    "description": "Gagner 50 000 XP au total.",
+    "condition": {
+      "kind": "total_xp",
+      "target": 50000
+    },
+    "xpBonus": 400,
+    "titleUnlocked": null,
+    "isSecret": true,
+    "hint": "Peu de héros vont jusque-là."
+  },
+  {
+    "id": "repos-10",
+    "category": "secrets",
+    "name": "Le Sage Patient",
+    "description": "Déclarer 10 jours de repos.",
+    "condition": {
+      "kind": "rest_days",
+      "target": 10
+    },
+    "xpBonus": 100,
+    "titleUnlocked": "Le Sage Patient",
+    "isSecret": true,
+    "hint": "Savoir s’arrêter est aussi une force."
+  },
+  {
+    "id": "inspire-30",
+    "category": "secrets",
+    "name": "Cœur d’étincelles",
+    "description": "Utiliser 30 points d’Inspiration.",
+    "condition": {
+      "kind": "inspiration_used",
+      "target": 30
+    },
+    "xpBonus": 250,
+    "titleUnlocked": null,
+    "isSecret": true,
+    "hint": "Une étincelle a grandi."
+  }
+]

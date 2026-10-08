@@ -1,0 +1,1109 @@
+[
+  {
+    "id": "tav-001",
+    "text": "Ta série tient depuis {streak} jours. Les bardes commencent à chanter ton nom.",
+    "when": {
+      "streakMin": 7
+    }
+  },
+  {
+    "id": "tav-002",
+    "text": "{streak} jours d’affilée. Le feu de la cheminée n’a jamais brûlé aussi régulièrement.",
+    "when": {
+      "streakMin": 5
+    }
+  },
+  {
+    "id": "tav-003",
+    "text": "Une série de {streak} jours : la Taverne a gardé ta place près du feu.",
+    "when": {
+      "streakMin": 10
+    }
+  },
+  {
+    "id": "tav-004",
+    "text": "Trois jours de suite, {name}. C’est comme ça que les habitudes naissent.",
+    "when": {
+      "streakMin": 3,
+      "streakMax": 4
+    }
+  },
+  {
+    "id": "tav-005",
+    "text": "Deux jours d’affilée. Un pas, puis un autre : tu viens de tracer un chemin.",
+    "when": {
+      "streakMin": 2,
+      "streakMax": 2
+    }
+  },
+  {
+    "id": "tav-006",
+    "text": "Une semaine entière sans faillir ! Le tavernier a servi une tournée en ton honneur.",
+    "when": {
+      "streakMin": 7,
+      "streakMax": 8
+    }
+  },
+  {
+    "id": "tav-007",
+    "text": "Quatorze jours. Même les anciens murmurent que tu as la flamme.",
+    "when": {
+      "streakMin": 14,
+      "streakMax": 15
+    }
+  },
+  {
+    "id": "tav-008",
+    "text": "{streak} jours : tu n’es plus un voyageur de passage, tu es un habitué.",
+    "when": {
+      "streakMin": 20
+    }
+  },
+  {
+    "id": "tav-009",
+    "text": "Un mois de constance. Il y a des royaumes qui se sont construits avec moins.",
+    "when": {
+      "streakMin": 30,
+      "streakMax": 32
+    }
+  },
+  {
+    "id": "tav-010",
+    "text": "{streak} jours de suite. Le tavernier n’a plus besoin de te demander ta commande.",
+    "when": {
+      "streakMin": 40
+    }
+  },
+  {
+    "id": "tav-011",
+    "text": "Cent jours de flamme. On raconte ton histoire aux nouveaux arrivants.",
+    "when": {
+      "streakMin": 100
+    }
+  },
+  {
+    "id": "tav-012",
+    "text": "Une série si longue qu’elle a sa propre chaise à la Taverne. {streak} jours, {name}.",
+    "when": {
+      "streakMin": 60
+    }
+  },
+  {
+    "id": "tav-013",
+    "text": "Chaque jour compte, {name}. Aujourd’hui encore, une seule quête suffit à garder la flamme.",
+    "when": {
+      "streakMin": 1,
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-014",
+    "text": "Ta flamme brille depuis {streak} jours. Il suffit d’une petite quête pour l’entretenir.",
+    "when": {
+      "streakMin": 3,
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-015",
+    "text": "Pas de série pour l’instant ? Aujourd’hui est un excellent jour pour en commencer une.",
+    "when": {
+      "streakMax": 0,
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-016",
+    "text": "La flamme s’est éteinte, mais les braises sont encore chaudes. Une quête, et le feu repart.",
+    "when": {
+      "streakMax": 0,
+      "levelMin": 2
+    }
+  },
+  {
+    "id": "tav-017",
+    "text": "Ta série est en sécurité pour aujourd’hui. Le tavernier t’en félicite.",
+    "when": {
+      "streakMin": 1,
+      "daily": "some"
+    }
+  },
+  {
+    "id": "tav-018",
+    "text": "Encore une quête et ta journée est complète. La flamme n’attend que ça.",
+    "when": {
+      "daily": "some",
+      "streakMin": 3
+    }
+  },
+  {
+    "id": "tav-019",
+    "text": "Tu approches de la semaine pleine. Plus que quelques jours avant une nouvelle Inspiration.",
+    "when": {
+      "streakMin": 4,
+      "streakMax": 6
+    }
+  },
+  {
+    "id": "tav-020",
+    "text": "Sept jours de plus et tu gagnes un point d’Inspiration. Le tavernier compte avec toi.",
+    "when": {
+      "streakMin": 1,
+      "streakMax": 6
+    }
+  },
+  {
+    "id": "tav-021",
+    "text": "Le tavernier ne dit rien, mais il a retiré ton nom de la liste des absents. {streak} jours, bravo.",
+    "when": {
+      "streakMin": 6
+    }
+  },
+  {
+    "id": "tav-022",
+    "text": "Tu reviens toujours à la même table, avec le même sourire. Bonne série, {name}.",
+    "when": {
+      "streakMin": 8
+    }
+  },
+  {
+    "id": "tav-023",
+    "text": "Ta {weakest} s’endort. Une quête t’attend de ce côté-là.",
+    "when": {
+      "weakest": "SAG"
+    }
+  },
+  {
+    "id": "tav-024",
+    "text": "Ton {weakest}… eh bien, il attend son tour avec patience. Aujourd’hui, peut-être ?",
+    "when": {
+      "weakest": "INT"
+    }
+  },
+  {
+    "id": "tav-025",
+    "text": "Les Liens se tissent lentement. Un message à quelqu’un te ferait du bien aujourd’hui.",
+    "when": {
+      "weakest": "CHA"
+    }
+  },
+  {
+    "id": "tav-026",
+    "text": "Ta Vitalité demande un peu d’air : une marche, un verre d’eau, un coucher tôt.",
+    "when": {
+      "weakest": "CON"
+    }
+  },
+  {
+    "id": "tav-027",
+    "text": "Ta Créativité est restée sur l’établi. Un croquis, quelques lignes, et elle se réveille.",
+    "when": {
+      "weakest": "DEX"
+    }
+  },
+  {
+    "id": "tav-028",
+    "text": "Ton Courage attend sa petite audace du jour. Rien de grand : juste un pas de côté.",
+    "when": {
+      "weakest": "FOR"
+    }
+  },
+  {
+    "id": "tav-029",
+    "text": "{weakest} est ta caractéristique la plus discrète. Elle aimerait qu’on lui parle.",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-030",
+    "text": "Le Tableau d’Affichage a quelques idées pour ta {weakest}. Va jeter un œil.",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-031",
+    "text": "Tes autres caractéristiques te remercient. {weakest}, elle, aimerait un peu d’attention.",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-032",
+    "text": "Un héros équilibré avance plus loin. Cap sur {weakest} aujourd’hui ?",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-033",
+    "text": "Un peu de {weakest} fera du bien à l’ensemble de ta fiche.",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-034",
+    "text": "Ton point fort, c’est {strongest}. Mais la force d’un héros se mesure à son maillon faible.",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-035",
+    "text": "{strongest} te porte depuis un moment. Donne un coup de pouce à {weakest}, elle te le rendra.",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-036",
+    "text": "Équilibre ton royaume : quand une caractéristique dort, les autres portent la charge.",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-037",
+    "text": "Le tavernier a remarqué que ta {weakest} ne s’est pas montrée depuis un moment.",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-038",
+    "text": "Ce matin, une quête de {weakest} a l’air de te chercher. Rencontre fortuite ?",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-039",
+    "text": "Tout va bien, sauf peut-être {weakest}. Pas d’urgence : un petit geste suffira.",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-040",
+    "text": "Ta fiche aime l’équilibre. Aujourd’hui, que dirais-tu d’une quête de {weakest} ?",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-041",
+    "text": "Un peu de {weakest}, juste pour voir ? Le tavernier te prépare une quête sur mesure.",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-042",
+    "text": "Tu avances bien, {name}. Une pensée pour {weakest}, qui aimerait être de la partie.",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-043",
+    "text": "La Sagesse ne se mesure pas en kilos ni en pages lues. Elle se mesure à la qualité de ton attention.",
+    "when": {
+      "weakest": "SAG",
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-044",
+    "text": "Un livre qui attend sur la table, un mot nouveau à apprendre : ton Savoir fait la sieste.",
+    "when": {
+      "weakest": "INT",
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-045",
+    "text": "Appeler quelqu’un, remercier, écouter : tes Liens aiment les petits gestes.",
+    "when": {
+      "weakest": "CHA",
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-046",
+    "text": "Marche, eau, sommeil : trois mots qui font beaucoup pour ta Vitalité.",
+    "when": {
+      "weakest": "CON",
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-047",
+    "text": "Un trait de crayon, une note, un geste de la main : ta Créativité n’en demande pas plus.",
+    "when": {
+      "weakest": "DEX",
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-048",
+    "text": "Quelques pompes, une porte à pousser, un oui ou un non franc : ton Courage se réveille vite.",
+    "when": {
+      "weakest": "FOR",
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-049",
+    "text": "Ta Sagesse en a besoin : cinq minutes de silence valent mieux que cinq heures d’agitation.",
+    "when": {
+      "weakest": "SAG",
+      "daily": "some"
+    }
+  },
+  {
+    "id": "tav-050",
+    "text": "Il te reste une quête à faire, et c’est peut-être celle qui comptera le plus pour ton {weakest}.",
+    "when": {
+      "daily": "some"
+    }
+  },
+  {
+    "id": "tav-051",
+    "text": "Même les héros les plus forts ont une faiblesse. La tienne s’appelle {weakest}, et elle est adorable.",
+    "when": {
+      "streakMin": 0
+    }
+  },
+  {
+    "id": "tav-052",
+    "text": "Lundi, nouvelle semaine : le Tableau d’Affichage a été mis à jour.",
+    "when": {
+      "monday": true
+    }
+  },
+  {
+    "id": "tav-053",
+    "text": "C’est lundi. Les quêtes hebdomadaires t’attendent, choisis celles qui te donnent envie.",
+    "when": {
+      "monday": true
+    }
+  },
+  {
+    "id": "tav-054",
+    "text": "Un lundi à la Taverne : la bière est tiède, mais le départ est tout neuf.",
+    "when": {
+      "monday": true
+    }
+  },
+  {
+    "id": "tav-055",
+    "text": "Mardi : le jour où l’on prend son rythme. Les routes sont encore longues, mais dégagées.",
+    "when": {
+      "weekdays": [
+        2
+      ]
+    }
+  },
+  {
+    "id": "tav-056",
+    "text": "Mardi tranquille. Une quête, deux quêtes, et la semaine prend forme.",
+    "when": {
+      "weekdays": [
+        2
+      ]
+    }
+  },
+  {
+    "id": "tav-057",
+    "text": "Mercredi, le milieu du chemin. Regarde d’où tu viens, regarde où tu vas.",
+    "when": {
+      "weekdays": [
+        3
+      ]
+    }
+  },
+  {
+    "id": "tav-058",
+    "text": "Mercredi : le col est franchi, la descente commence. Garde ton souffle.",
+    "when": {
+      "weekdays": [
+        3
+      ]
+    }
+  },
+  {
+    "id": "tav-059",
+    "text": "Jeudi : l’avant-veille de la veille du week-end. Reste concentré encore un peu.",
+    "when": {
+      "weekdays": [
+        4
+      ]
+    }
+  },
+  {
+    "id": "tav-060",
+    "text": "Jeudi. La Taverne est calme, la route est belle. Profites-en pour avancer.",
+    "when": {
+      "weekdays": [
+        4
+      ]
+    }
+  },
+  {
+    "id": "tav-061",
+    "text": "Vendredi ! Dernière ligne droite avant le repos. Termine ce que tu as commencé.",
+    "when": {
+      "weekdays": [
+        5
+      ]
+    }
+  },
+  {
+    "id": "tav-062",
+    "text": "Le week-end approche, mais les héros n’ont pas d’horaires. Une petite quête, et tu es libre.",
+    "when": {
+      "weekdays": [
+        5
+      ]
+    }
+  },
+  {
+    "id": "tav-063",
+    "text": "Vendredi : avant de rentrer, vérifie si ta semaine est bien remplie.",
+    "when": {
+      "weekdays": [
+        5
+      ]
+    }
+  },
+  {
+    "id": "tav-064",
+    "text": "Samedi : le temps est à toi. Pourquoi pas une quête qui te fait vraiment plaisir ?",
+    "when": {
+      "weekdays": [
+        6
+      ]
+    }
+  },
+  {
+    "id": "tav-065",
+    "text": "Un samedi sans pression. Les quêtes libres du Tableau sont là, à ton rythme.",
+    "when": {
+      "weekdays": [
+        6
+      ]
+    }
+  },
+  {
+    "id": "tav-066",
+    "text": "Samedi matin : les routes sont libres, les idées aussi.",
+    "when": {
+      "weekdays": [
+        6
+      ],
+      "hourMax": 12
+    }
+  },
+  {
+    "id": "tav-067",
+    "text": "Dimanche : le jour du bilan et du repos. Prends le temps de regarder ta semaine.",
+    "when": {
+      "weekdays": [
+        7
+      ]
+    }
+  },
+  {
+    "id": "tav-068",
+    "text": "Dimanche. Le Tableau d’Affichage se prépare pour la nouvelle semaine. Et toi ?",
+    "when": {
+      "weekdays": [
+        7
+      ]
+    }
+  },
+  {
+    "id": "tav-069",
+    "text": "Dimanche calme, quêtes douces. Il est temps de faire respirer ton héros.",
+    "when": {
+      "weekdays": [
+        7
+      ]
+    }
+  },
+  {
+    "id": "tav-070",
+    "text": "Dimanche soir : prépare ton lundi, un petit pas à la fois.",
+    "when": {
+      "weekdays": [
+        7
+      ],
+      "hourMin": 17
+    }
+  },
+  {
+    "id": "tav-071",
+    "text": "Un jour de repos est permis une fois par semaine. Si tu en as besoin, déclare-le.",
+    "when": {
+      "weekdays": [
+        6,
+        7
+      ],
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-072",
+    "text": "La fin de semaine approche : les quêtes hebdomadaires se terminent bientôt.",
+    "when": {
+      "weekdays": [
+        6,
+        7
+      ],
+      "daily": "some"
+    }
+  },
+  {
+    "id": "tav-073",
+    "text": "Bonjour, {name}. Le feu est allumé, le café chaud, la journée est à toi.",
+    "when": {
+      "hourMin": 5,
+      "hourMax": 9
+    }
+  },
+  {
+    "id": "tav-074",
+    "text": "Un matin comme les autres, et pourtant il n’y en a pas deux pareils.",
+    "when": {
+      "hourMin": 5,
+      "hourMax": 9
+    }
+  },
+  {
+    "id": "tav-075",
+    "text": "Tôt levé, bien parti. Le Tableau d’Affichage attend tes premiers pas.",
+    "when": {
+      "hourMin": 5,
+      "hourMax": 8
+    }
+  },
+  {
+    "id": "tav-076",
+    "text": "Le soleil se lève sur la Taverne. Une quête avant le petit-déjeuner ?",
+    "when": {
+      "hourMin": 5,
+      "hourMax": 8,
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-077",
+    "text": "Mi-journée : le tavernier sert la soupe. Prends une pause, puis une quête.",
+    "when": {
+      "hourMin": 11,
+      "hourMax": 14
+    }
+  },
+  {
+    "id": "tav-078",
+    "text": "L’après-midi s’étire. C’est le bon moment pour une petite quête qui te fera du bien.",
+    "when": {
+      "hourMin": 14,
+      "hourMax": 17
+    }
+  },
+  {
+    "id": "tav-079",
+    "text": "Le coup de mou de l’après-midi : une marche de quelques minutes vaut mieux qu’un café de plus.",
+    "when": {
+      "hourMin": 14,
+      "hourMax": 16
+    }
+  },
+  {
+    "id": "tav-080",
+    "text": "Le soleil descend. Il est encore temps de finir ce que tu as commencé.",
+    "when": {
+      "hourMin": 17,
+      "hourMax": 20,
+      "daily": "some"
+    }
+  },
+  {
+    "id": "tav-081",
+    "text": "Le soir tombe sur la Taverne. Les quêtes de la journée sont presque terminées.",
+    "when": {
+      "hourMin": 18,
+      "hourMax": 21,
+      "daily": "some"
+    }
+  },
+  {
+    "id": "tav-082",
+    "text": "Bonsoir, {name}. Le feu crépite, les chandelles sont allumées.",
+    "when": {
+      "hourMin": 18,
+      "hourMax": 23
+    }
+  },
+  {
+    "id": "tav-083",
+    "text": "Il est tard, {name}. Une dernière petite quête, puis dors bien.",
+    "when": {
+      "hourMin": 21,
+      "hourMax": 23,
+      "daily": "some"
+    }
+  },
+  {
+    "id": "tav-084",
+    "text": "La journée touche à sa fin. Tout ce que tu as fait compte, même ce qui n’a pas été fait.",
+    "when": {
+      "hourMin": 20,
+      "hourMax": 23
+    }
+  },
+  {
+    "id": "tav-085",
+    "text": "Les chandelles s’éteignent bientôt. Repose-toi, la Taverne t’attend demain.",
+    "when": {
+      "hourMin": 22,
+      "hourMax": 23
+    }
+  },
+  {
+    "id": "tav-086",
+    "text": "Encore debout ? Les nuits sont faites pour le repos des héros.",
+    "when": {
+      "hourMin": 0,
+      "hourMax": 4
+    }
+  },
+  {
+    "id": "tav-087",
+    "text": "La nuit porte conseil, mais elle porte surtout du sommeil. Va dormir, tu as bien travaillé.",
+    "when": {
+      "hourMin": 0,
+      "hourMax": 4
+    }
+  },
+  {
+    "id": "tav-088",
+    "text": "Veilleur de nuit ? La journée de jeu s’achève bientôt, et les quêtes se renouvellent à l’aube.",
+    "when": {
+      "hourMin": 1,
+      "hourMax": 3
+    }
+  },
+  {
+    "id": "tav-089",
+    "text": "Journée accomplie. La Taverne te remercie pour cette belle journée.",
+    "when": {
+      "daily": "all"
+    }
+  },
+  {
+    "id": "tav-090",
+    "text": "Toutes tes quêtes sont faites. Le tavernier te tend une chope bien méritée.",
+    "when": {
+      "daily": "all"
+    }
+  },
+  {
+    "id": "tav-091",
+    "text": "Rien à ajouter : tu as tout fait. Profite du reste de la journée.",
+    "when": {
+      "daily": "all"
+    }
+  },
+  {
+    "id": "tav-092",
+    "text": "Les quêtes du jour sont terminées. Si tu veux aller plus loin, le Tableau a des quêtes libres.",
+    "when": {
+      "daily": "all"
+    }
+  },
+  {
+    "id": "tav-093",
+    "text": "Tu as fait ce qu’il fallait. Maintenant, laisse reposer.",
+    "when": {
+      "daily": "all"
+    }
+  },
+  {
+    "id": "tav-094",
+    "text": "Ta fiche s’est enrichie aujourd’hui. Demain, une nouvelle page.",
+    "when": {
+      "daily": "all"
+    }
+  },
+  {
+    "id": "tav-095",
+    "text": "Un pas après l’autre : voilà ce que ça donne. Bravo pour aujourd’hui, {name}.",
+    "when": {
+      "daily": "all"
+    }
+  },
+  {
+    "id": "tav-096",
+    "text": "Le Tableau d’Affichage est vide, la Taverne est paisible. Bien joué.",
+    "when": {
+      "daily": "all"
+    }
+  },
+  {
+    "id": "tav-097",
+    "text": "Un bon début, {name}. Tu as déjà fait une quête aujourd’hui.",
+    "when": {
+      "daily": "some",
+      "hourMax": 12
+    }
+  },
+  {
+    "id": "tav-098",
+    "text": "Il te reste quelques quêtes. Pas de pression : chaque pas compte.",
+    "when": {
+      "daily": "some"
+    }
+  },
+  {
+    "id": "tav-099",
+    "text": "Tu es en chemin, {name}. Encore un peu et la journée sera complète.",
+    "when": {
+      "daily": "some"
+    }
+  },
+  {
+    "id": "tav-100",
+    "text": "Une quête de faite, c’est déjà un bon pas dans la bonne direction.",
+    "when": {
+      "daily": "some"
+    }
+  },
+  {
+    "id": "tav-101",
+    "text": "Aujourd’hui n’a pas encore commencé pour ton héros. Une toute petite quête pour lancer la machine ?",
+    "when": {
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-102",
+    "text": "Le Tableau d’Affichage a de nouvelles quêtes pour toi. Commence par la plus facile.",
+    "when": {
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-103",
+    "text": "Pas encore de quête aujourd’hui ? Les journées se remplissent mieux à petits pas.",
+    "when": {
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-104",
+    "text": "Une quête de 5 minutes suffit pour lancer la journée. Laquelle choisis-tu ?",
+    "when": {
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-105",
+    "text": "Commence petit, {name}. La première quête est toujours la plus difficile.",
+    "when": {
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-106",
+    "text": "Les petits pas n’ont pas besoin d’être beaux, juste d’exister.",
+    "when": {
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-107",
+    "text": "Le tavernier garde ta place. Prends ton temps.",
+    "when": {
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-108",
+    "text": "Tu n’as pas à tout faire, juste à commencer. Le reste suivra.",
+    "when": {
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-109",
+    "text": "Nouveau mois, nouveau défi. Le Tableau d’Affichage a été mis à jour.",
+    "when": {
+      "firstOfMonth": true
+    }
+  },
+  {
+    "id": "tav-110",
+    "text": "Le premier du mois : un cahier neuf, des pages blanches. Qu’y écriras-tu ?",
+    "when": {
+      "firstOfMonth": true
+    }
+  },
+  {
+    "id": "tav-111",
+    "text": "Un nouveau mois commence. Regarde les quêtes mensuelles : l’une d’elles te fera grandir.",
+    "when": {
+      "firstOfMonth": true
+    }
+  },
+  {
+    "id": "tav-112",
+    "text": "C’est le début du mois : le bon moment pour fixer un cap.",
+    "when": {
+      "firstOfMonth": true
+    }
+  },
+  {
+    "id": "tav-113",
+    "text": "Les saisons passent, les héros restent. Bon début de mois, {name}.",
+    "when": {
+      "firstOfMonth": true
+    }
+  },
+  {
+    "id": "tav-114",
+    "text": "Bienvenue à la Taverne, {name}. Ici, on avance à son rythme.",
+    "when": {
+      "newPlayer": true
+    }
+  },
+  {
+    "id": "tav-115",
+    "text": "Premier jour d’aventure ! Le tavernier t’a préparé quelques quêtes pour te lancer.",
+    "when": {
+      "newPlayer": true
+    }
+  },
+  {
+    "id": "tav-116",
+    "text": "Chaque légende commence par une première quête. Voici la tienne.",
+    "when": {
+      "newPlayer": true
+    }
+  },
+  {
+    "id": "tav-117",
+    "text": "Tu es nouveau ici ? Le tavernier t’explique : une quête, un pas, un peu d’XP.",
+    "when": {
+      "newPlayer": true
+    }
+  },
+  {
+    "id": "tav-118",
+    "text": "Niveau {level} déjà. Le tavernier t’a réservé la meilleure table.",
+    "when": {
+      "levelMin": 5,
+      "levelMax": 9
+    }
+  },
+  {
+    "id": "tav-119",
+    "text": "Niveau {level} : les clients te saluent en entrant. Tu es devenu quelqu’un ici.",
+    "when": {
+      "levelMin": 10,
+      "levelMax": 14
+    }
+  },
+  {
+    "id": "tav-120",
+    "text": "Niveau {level}. On parle de toi jusque dans les villages voisins.",
+    "when": {
+      "levelMin": 15,
+      "levelMax": 19
+    }
+  },
+  {
+    "id": "tav-121",
+    "text": "Niveau 20 : le tavernier t’appelle Légende, mais il t’offre quand même ton verre.",
+    "when": {
+      "levelMin": 20
+    }
+  },
+  {
+    "id": "tav-122",
+    "text": "Niveau {level}, {name}. Chaque jour, tu écris un peu plus de ton histoire.",
+    "when": {
+      "levelMin": 2,
+      "levelMax": 4
+    }
+  },
+  {
+    "id": "tav-123",
+    "text": "Les débutants se reconnaissent à leur enthousiasme. Garde le tien, {name}.",
+    "when": {
+      "levelMax": 3
+    }
+  },
+  {
+    "id": "tav-124",
+    "text": "Les vétérans de la Taverne te regardent avec respect : tu avances.",
+    "when": {
+      "levelMin": 8
+    }
+  },
+  {
+    "id": "tav-125",
+    "text": "Plus tu montes, plus les quêtes sont belles. Le Grimoire te réserve de beaux défis.",
+    "when": {
+      "levelMin": 5
+    }
+  },
+  {
+    "id": "tav-126",
+    "text": "Tu as une Inspiration en poche. Elle peut relancer une quête ou doubler une victoire.",
+    "when": {
+      "inspirationMin": 1
+    }
+  },
+  {
+    "id": "tav-127",
+    "text": "Tes Inspirations sont prêtes. Un coup de pouce du destin n’est jamais loin.",
+    "when": {
+      "inspirationMin": 2
+    }
+  },
+  {
+    "id": "tav-128",
+    "text": "Trois Inspirations ! Ton réservoir est plein : n’hésite pas à en profiter.",
+    "when": {
+      "inspirationMin": 3
+    }
+  },
+  {
+    "id": "tav-129",
+    "text": "Utilise une Inspiration pour doubler l’XP d’une quête qui te tient à cœur.",
+    "when": {
+      "inspirationMin": 1,
+      "daily": "some"
+    }
+  },
+  {
+    "id": "tav-130",
+    "text": "Une quête qui ne te dit rien ? Une Inspiration peut la relancer.",
+    "when": {
+      "inspirationMin": 1,
+      "daily": "none"
+    }
+  },
+  {
+    "id": "tav-131",
+    "text": "Chaque 7 jours de série, une Inspiration. Le tavernier tient le compte.",
+    "when": {
+      "streakMin": 1,
+      "streakMax": 6
+    }
+  },
+  {
+    "id": "tav-132",
+    "text": "Te revoilà, {name} ! Le tavernier a gardé ta place au chaud.",
+    "when": {
+      "awayMin": 3
+    }
+  },
+  {
+    "id": "tav-133",
+    "text": "Tu as manqué à la Taverne. Quelques quêtes douces pour te remettre en route ?",
+    "when": {
+      "awayMin": 3
+    }
+  },
+  {
+    "id": "tav-134",
+    "text": "Pas de reproche : on revient quand on peut. Une petite quête, et c’est reparti.",
+    "when": {
+      "awayMin": 5
+    }
+  },
+  {
+    "id": "tav-135",
+    "text": "Les braises étaient encore chaudes. Bienvenue de retour.",
+    "when": {
+      "awayMin": 7
+    }
+  },
+  {
+    "id": "tav-136",
+    "text": "Une semaine d’absence ? Le Tableau d’Affichage t’a gardé des surprises.",
+    "when": {
+      "awayMin": 7
+    }
+  },
+  {
+    "id": "tav-137",
+    "text": "Les héros reviennent toujours. Le tien est de retour, et il n’a rien oublié.",
+    "when": {
+      "awayMin": 14
+    }
+  },
+  {
+    "id": "tav-138",
+    "text": "Tu reprends doucement, c’est parfait. Une quête à la fois.",
+    "when": {
+      "awayMin": 10
+    }
+  },
+  {
+    "id": "tav-139",
+    "text": "Un mois loin de la Taverne ? Le tavernier t’offre un repas de bienvenue.",
+    "when": {
+      "awayMin": 30
+    }
+  },
+  {
+    "id": "tav-140",
+    "text": "Un petit pas, un grand élan. C’est le mot d’ordre de la maison."
+  },
+  {
+    "id": "tav-141",
+    "text": "Il n’y a pas de mauvais début, seulement des débuts qui n’ont pas encore eu lieu."
+  },
+  {
+    "id": "tav-142",
+    "text": "Dans cette Taverne, on ne juge personne. On trinque aux petits pas."
+  },
+  {
+    "id": "tav-143",
+    "text": "Les grandes aventures sont faites de petits matins."
+  },
+  {
+    "id": "tav-144",
+    "text": "La régularité bat l’intensité. Retiens-le, {name}."
+  },
+  {
+    "id": "tav-145",
+    "text": "Un héros n’est pas quelqu’un qui ne tombe pas, c’est quelqu’un qui revient à la Taverne."
+  },
+  {
+    "id": "tav-146",
+    "text": "Chaque quête accomplie est une pierre posée sur ton chemin."
+  },
+  {
+    "id": "tav-147",
+    "text": "Tu n’as pas besoin d’être parfait, {name}. Juste présent."
+  },
+  {
+    "id": "tav-148",
+    "text": "Aujourd’hui est un bon jour pour être fier de toi, un petit peu."
+  },
+  {
+    "id": "tav-149",
+    "text": "Le tavernier te sourit. Il sait qu’on se débrouille toujours mieux quand on avance ensemble."
+  },
+  {
+    "id": "tav-150",
+    "text": "Rien ne presse : le feu brûle, la table est dressée, et ton prochain pas t’attend."
+  }
+]
