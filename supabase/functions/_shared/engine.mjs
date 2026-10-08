@@ -1324,14 +1324,14 @@ var achievements_fr_default = [
     titleUnlocked: null
   },
   {
-    id: "for-14",
+    id: "for-16",
     category: "maitrise",
     name: "Courage aguerri",
-    description: "Atteindre un score de Courage de 14.",
+    description: "Atteindre un score de Courage de 16.",
     condition: {
       kind: "ability_score",
       ability: "FOR",
-      target: 14
+      target: 16
     },
     xpBonus: 75,
     titleUnlocked: null
@@ -1350,14 +1350,14 @@ var achievements_fr_default = [
     titleUnlocked: null
   },
   {
-    id: "dex-14",
+    id: "dex-16",
     category: "maitrise",
     name: "Cr\xE9ativit\xE9 aguerri",
-    description: "Atteindre un score de Cr\xE9ativit\xE9 de 14.",
+    description: "Atteindre un score de Cr\xE9ativit\xE9 de 16.",
     condition: {
       kind: "ability_score",
       ability: "DEX",
-      target: 14
+      target: 16
     },
     xpBonus: 75,
     titleUnlocked: null
@@ -1376,14 +1376,14 @@ var achievements_fr_default = [
     titleUnlocked: null
   },
   {
-    id: "con-14",
+    id: "con-16",
     category: "maitrise",
     name: "Vitalit\xE9 aguerri",
-    description: "Atteindre un score de Vitalit\xE9 de 14.",
+    description: "Atteindre un score de Vitalit\xE9 de 16.",
     condition: {
       kind: "ability_score",
       ability: "CON",
-      target: 14
+      target: 16
     },
     xpBonus: 75,
     titleUnlocked: null
@@ -1402,14 +1402,14 @@ var achievements_fr_default = [
     titleUnlocked: null
   },
   {
-    id: "int-14",
+    id: "int-16",
     category: "maitrise",
     name: "Savoir aguerri",
-    description: "Atteindre un score de Savoir de 14.",
+    description: "Atteindre un score de Savoir de 16.",
     condition: {
       kind: "ability_score",
       ability: "INT",
-      target: 14
+      target: 16
     },
     xpBonus: 75,
     titleUnlocked: null
@@ -1428,14 +1428,14 @@ var achievements_fr_default = [
     titleUnlocked: null
   },
   {
-    id: "sag-14",
+    id: "sag-16",
     category: "maitrise",
     name: "\xC9quilibre aguerri",
-    description: "Atteindre un score de \xC9quilibre de 14.",
+    description: "Atteindre un score de \xC9quilibre de 16.",
     condition: {
       kind: "ability_score",
       ability: "SAG",
-      target: 14
+      target: 16
     },
     xpBonus: 75,
     titleUnlocked: null
@@ -1454,14 +1454,14 @@ var achievements_fr_default = [
     titleUnlocked: null
   },
   {
-    id: "cha-14",
+    id: "cha-16",
     category: "maitrise",
     name: "Liens aguerri",
-    description: "Atteindre un score de Liens de 14.",
+    description: "Atteindre un score de Liens de 16.",
     condition: {
       kind: "ability_score",
       ability: "CHA",
-      target: 14
+      target: 16
     },
     xpBonus: 75,
     titleUnlocked: null
@@ -1906,27 +1906,27 @@ var achievements_fr_default = [
     titleUnlocked: null
   },
   {
-    id: "equilibre-10",
+    id: "equilibre-15",
     category: "equilibre",
-    name: "Fondations",
-    description: "Avoir toutes les caract\xE9ristiques \xE0 10 ou plus.",
+    name: "Ligne droite",
+    description: "Avoir toutes les caract\xE9ristiques \xE0 15 ou plus.",
     condition: {
       kind: "all_scores_min",
-      target: 10
+      target: 15
     },
-    xpBonus: 75,
+    xpBonus: 250,
     titleUnlocked: null
   },
   {
-    id: "equilibre-12",
+    id: "equilibre-18",
     category: "equilibre",
-    name: "Bien camp\xE9",
-    description: "Avoir toutes les caract\xE9ristiques \xE0 12 ou plus.",
+    name: "Presque parfait",
+    description: "Avoir toutes les caract\xE9ristiques \xE0 18 ou plus.",
     condition: {
       kind: "all_scores_min",
-      target: 12
+      target: 18
     },
-    xpBonus: 150,
+    xpBonus: 450,
     titleUnlocked: null
   },
   {
@@ -2783,6 +2783,9 @@ var MemoryStore = class {
   async countJournal(userId) {
     return this.data(userId).journal.length;
   }
+  async listJournal(userId) {
+    return structuredClone(this.data(userId).journal);
+  }
   async createPost(userId, draft) {
     const id = `post-${this.posts.length + 1}-${Math.random().toString(36).slice(2, 8)}`;
     this.posts.push({ ...structuredClone(draft), id, authorId: userId, createdAt: (/* @__PURE__ */ new Date()).toISOString() });
@@ -3100,6 +3103,11 @@ var SupabaseStore = class {
     const { count, error } = await this.db.from("journal_entries").select("id", { count: "exact", head: true }).eq("profile_id", userId);
     fail2(error, "journal.count");
     return count ?? 0;
+  }
+  async listJournal(userId) {
+    const { data, error } = await this.db.from("journal_entries").select("*").eq("profile_id", userId).order("created_at", { ascending: false }).limit(2e3);
+    fail2(error, "journal.select");
+    return (data ?? []).map((e) => ({ id: e.id, instanceId: e.instance_id, text: e.text, createdAt: e.created_at }));
   }
   // ───── Publications
   async createPost(userId, d) {

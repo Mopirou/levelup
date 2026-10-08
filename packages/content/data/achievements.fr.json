@@ -252,14 +252,14 @@
     "titleUnlocked": null
   },
   {
-    "id": "for-14",
+    "id": "for-16",
     "category": "maitrise",
     "name": "Courage aguerri",
-    "description": "Atteindre un score de Courage de 14.",
+    "description": "Atteindre un score de Courage de 16.",
     "condition": {
       "kind": "ability_score",
       "ability": "FOR",
-      "target": 14
+      "target": 16
     },
     "xpBonus": 75,
     "titleUnlocked": null
@@ -278,14 +278,14 @@
     "titleUnlocked": null
   },
   {
-    "id": "dex-14",
+    "id": "dex-16",
     "category": "maitrise",
     "name": "Créativité aguerri",
-    "description": "Atteindre un score de Créativité de 14.",
+    "description": "Atteindre un score de Créativité de 16.",
     "condition": {
       "kind": "ability_score",
       "ability": "DEX",
-      "target": 14
+      "target": 16
     },
     "xpBonus": 75,
     "titleUnlocked": null
@@ -304,14 +304,14 @@
     "titleUnlocked": null
   },
   {
-    "id": "con-14",
+    "id": "con-16",
     "category": "maitrise",
     "name": "Vitalité aguerri",
-    "description": "Atteindre un score de Vitalité de 14.",
+    "description": "Atteindre un score de Vitalité de 16.",
     "condition": {
       "kind": "ability_score",
       "ability": "CON",
-      "target": 14
+      "target": 16
     },
     "xpBonus": 75,
     "titleUnlocked": null
@@ -330,14 +330,14 @@
     "titleUnlocked": null
   },
   {
-    "id": "int-14",
+    "id": "int-16",
     "category": "maitrise",
     "name": "Savoir aguerri",
-    "description": "Atteindre un score de Savoir de 14.",
+    "description": "Atteindre un score de Savoir de 16.",
     "condition": {
       "kind": "ability_score",
       "ability": "INT",
-      "target": 14
+      "target": 16
     },
     "xpBonus": 75,
     "titleUnlocked": null
@@ -356,14 +356,14 @@
     "titleUnlocked": null
   },
   {
-    "id": "sag-14",
+    "id": "sag-16",
     "category": "maitrise",
     "name": "Équilibre aguerri",
-    "description": "Atteindre un score de Équilibre de 14.",
+    "description": "Atteindre un score de Équilibre de 16.",
     "condition": {
       "kind": "ability_score",
       "ability": "SAG",
-      "target": 14
+      "target": 16
     },
     "xpBonus": 75,
     "titleUnlocked": null
@@ -382,14 +382,14 @@
     "titleUnlocked": null
   },
   {
-    "id": "cha-14",
+    "id": "cha-16",
     "category": "maitrise",
     "name": "Liens aguerri",
-    "description": "Atteindre un score de Liens de 14.",
+    "description": "Atteindre un score de Liens de 16.",
     "condition": {
       "kind": "ability_score",
       "ability": "CHA",
-      "target": 14
+      "target": 16
     },
     "xpBonus": 75,
     "titleUnlocked": null
@@ -834,27 +834,27 @@
     "titleUnlocked": null
   },
   {
-    "id": "equilibre-10",
+    "id": "equilibre-15",
     "category": "equilibre",
-    "name": "Fondations",
-    "description": "Avoir toutes les caractéristiques à 10 ou plus.",
+    "name": "Ligne droite",
+    "description": "Avoir toutes les caractéristiques à 15 ou plus.",
     "condition": {
       "kind": "all_scores_min",
-      "target": 10
+      "target": 15
     },
-    "xpBonus": 75,
+    "xpBonus": 250,
     "titleUnlocked": null
   },
   {
-    "id": "equilibre-12",
+    "id": "equilibre-18",
     "category": "equilibre",
-    "name": "Bien campé",
-    "description": "Avoir toutes les caractéristiques à 12 ou plus.",
+    "name": "Presque parfait",
+    "description": "Avoir toutes les caractéristiques à 18 ou plus.",
     "condition": {
       "kind": "all_scores_min",
-      "target": 12
+      "target": 18
     },
-    "xpBonus": 150,
+    "xpBonus": 450,
     "titleUnlocked": null
   },
   {

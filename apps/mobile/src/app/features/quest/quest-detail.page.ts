@@ -18,12 +18,12 @@ import { SocialService } from '../../core/social.service';
 import { UiService } from '../../core/ui.service';
 import { haptic, playSound } from '../../core/feedback';
 import type { PickedPhoto } from '../../core/photo';
-import { AbilityBadgeComponent, BarComponent, PageHeaderComponent } from '../../shared/ui';
+import { BarComponent, PageHeaderComponent } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
 import { SceneComponent } from '../../shared/scene.component';
 import { ShareFormComponent, type ShareDraft } from '../../shared/share-card.component';
 import { fmt, longDate, timeOfDay } from '../../shared/format';
-import { BackendService } from '../../core/backend.service';
+import { PostQueue } from '../../core/post-queue';
 
 interface TimerState {
   startedAt: number | null;
@@ -34,7 +34,7 @@ const timerKey = (id: string) => `lu-timer-${id}`;
 
 @Component({
   selector: 'app-quest-detail',
-  imports: [IonContent, PageHeaderComponent, BarComponent, AbilityBadgeComponent, IconComponent, SceneComponent, ShareFormComponent],
+  imports: [IonContent, PageHeaderComponent, BarComponent, IconComponent, SceneComponent, ShareFormComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
@@ -259,7 +259,7 @@ export class QuestDetailPage {
   protected game = inject(GameService);
   protected ui = inject(UiService);
   private social = inject(SocialService);
-  private be = inject(BackendService);
+  private queue = inject(PostQueue);
   private sheet = inject(ActionSheetController);
   private destroyRef = inject(DestroyRef);
   readonly fmt = fmt;
@@ -489,7 +489,7 @@ export class QuestDetailPage {
     }
     this.busy.set(true);
     try {
-      await this.be.social.publish({
+      const sent = await this.queue.publish({
         type: 'quest',
         text: d.text.trim(),
         visibility: d.visibility,
@@ -497,7 +497,7 @@ export class QuestDetailPage {
         media: d.photos.map((p: PickedPhoto) => ({ blob: p.blob, ext: p.ext, width: p.width, height: p.height })),
       });
       this.shared.set(true);
-      this.game.toast(d.visibility === 'friends' ? 'Partagé au Village !' : 'Enregistré dans ta Chronique.', 'success');
+      this.game.toast(!sent ? 'Hors ligne : ton partage partira au retour du réseau.' : d.visibility === 'friends' ? 'Partagé au Village !' : 'Enregistré dans ta Chronique.', sent ? 'success' : 'info');
       void this.social.loadPreview();
     } catch (e) {
       const msg = String((e as Error)?.message ?? '');

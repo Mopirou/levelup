@@ -65,7 +65,7 @@ const CACHE_KEY = 'snapshot-v1';
 
 @Injectable({ providedIn: 'root' })
 export class GameService {
-  private be = inject(BackendService);
+  readonly be = inject(BackendService);
 
   readonly character = signal<CharacterRecord | null>(null);
   readonly settings = signal<SettingsRecord | null>(null);

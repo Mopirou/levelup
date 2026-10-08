@@ -92,12 +92,13 @@ export class QuestCardComponent {
     );
   });
   readonly ratio = computed(() => (this.inst().status === 'completed' ? 1 : progressRatio(this.inst())));
-  readonly ready = computed(() => this.inst().status === 'accepted' && isReadyToComplete(this.inst()) === null && this.inst().snapshot.validation.type !== 'journal');
+  readonly ready = computed(() => this.inst().status === 'accepted' && ['counter', 'timer', 'steps'].includes(this.inst().snapshot.validation.type) && isReadyToComplete(this.inst()) === null);
   readonly showBar = computed(() => ['counter', 'timer', 'steps'].includes(this.inst().snapshot.validation.type) || this.inst().status === 'completed');
   readonly stateText = computed(() => {
     const i = this.inst();
     const v = i.snapshot.validation.type;
-    if (i.status === 'completed' || (v !== 'simple' && v !== 'journal' && i.status !== 'proposed')) return `${progressText(i)} · ${statusLabel(i, this.ready())}`;
+    if (v === 'simple' || v === 'journal') return statusLabel(i, false);
+    if (i.status === 'completed' || i.status !== 'proposed') return `${progressText(i)} · ${statusLabel(i, this.ready())}`;
     if (i.status === 'proposed' && v !== 'simple' && v !== 'journal') return `${progressText(i)} · ${statusLabel(i, false)}`;
     return statusLabel(i, this.ready());
   });

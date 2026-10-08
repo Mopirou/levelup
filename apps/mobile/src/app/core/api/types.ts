@@ -194,7 +194,7 @@ export interface NewPost {
   text: string;
   visibility: Visibility;
   instanceId?: string | null;
-  media: { blob: Blob; ext: string; width: number; height: number; alt?: string }[];
+  media: { blob: Blob; ext: 'jpg' | 'webp'; width: number; height: number; alt?: string }[];
 }
 
 export interface LeaderRow {

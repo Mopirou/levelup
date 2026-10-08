@@ -133,6 +133,7 @@ export interface GameStore {
 
   saveJournal(userId: string, entry: JournalEntry): Promise<void>;
   countJournal(userId: string): Promise<number>;
+  listJournal(userId: string): Promise<JournalEntry[]>;
 
   createPost(userId: string, draft: PostDraft): Promise<string>;
   /** RG-22 : retire la mention de quête et l'XP d'une publication quand la quête est annulée. */

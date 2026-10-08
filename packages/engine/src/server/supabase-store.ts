@@ -272,6 +272,12 @@ export class SupabaseStore {
     return count ?? 0;
   }
 
+  async listJournal(userId: string): Promise<any[]> {
+    const { data, error } = await this.db.from('journal_entries').select('*').eq('profile_id', userId).order('created_at', { ascending: false }).limit(2000);
+    fail(error, 'journal.select');
+    return (data ?? []).map((e: any) => ({ id: e.id, instanceId: e.instance_id, text: e.text, createdAt: e.created_at }));
+  }
+
   // ───── Publications
   async createPost(userId: string, d: any): Promise<string> {
     const { data, error } = await this.db

@@ -27,7 +27,7 @@ const rows = [
   ['repos-du-sage', 'constance', 'Le Repos du Sage', 'Déclarer un premier jour de repos.', { kind: 'rest_days', target: 1 }, 25, null],
   // ── Maîtrise (24)
   ...A.flatMap((a) => [
-    [`${a.toLowerCase()}-14`, 'maitrise', `${LABEL[a]} aguerri`, `Atteindre un score de ${LABEL[a]} de 14.`, { kind: 'ability_score', ability: a, target: 14 }, 75, null],
+    [`${a.toLowerCase()}-16`, 'maitrise', `${LABEL[a]} aguerri`, `Atteindre un score de ${LABEL[a]} de 16.`, { kind: 'ability_score', ability: a, target: 16 }, 75, null],
     [`${a.toLowerCase()}-18`, 'maitrise', `${LABEL[a]} remarquable`, `Atteindre un score de ${LABEL[a]} de 18.`, { kind: 'ability_score', ability: a, target: 18 }, 200, null],
   ]),
   ['niveau-5', 'maitrise', 'Héros du royaume', 'Atteindre le niveau 5.', { kind: 'level', target: 5 }, 100, 'Héros du royaume'],
@@ -68,8 +68,8 @@ const rows = [
   ['inspire-1', 'exploits', 'Première étincelle', 'Utiliser un point d’Inspiration.', { kind: 'inspiration_used', target: 1 }, 25, null],
   ['inspire-10', 'exploits', 'Étincelle', 'Utiliser 10 points d’Inspiration.', { kind: 'inspiration_used', target: 10 }, 150, null],
   // ── Équilibre (6)
-  ['equilibre-10', 'equilibre', 'Fondations', 'Avoir toutes les caractéristiques à 10 ou plus.', { kind: 'all_scores_min', target: 10 }, 75, null],
-  ['equilibre-12', 'equilibre', 'Bien campé', 'Avoir toutes les caractéristiques à 12 ou plus.', { kind: 'all_scores_min', target: 12 }, 150, null],
+  ['equilibre-15', 'equilibre', 'Ligne droite', 'Avoir toutes les caractéristiques à 15 ou plus.', { kind: 'all_scores_min', target: 15 }, 250, null],
+  ['equilibre-18', 'equilibre', 'Presque parfait', 'Avoir toutes les caractéristiques à 18 ou plus.', { kind: 'all_scores_min', target: 18 }, 450, null],
   ['polymathe', 'equilibre', 'Polymathe', 'Avoir toutes les caractéristiques à 14 ou plus.', { kind: 'all_scores_min', target: 14 }, 300, 'Polymathe'],
   ['equilibre-16', 'equilibre', 'Héros complet', 'Avoir toutes les caractéristiques à 16 ou plus.', { kind: 'all_scores_min', target: 16 }, 400, null],
   ['six-couleurs', 'equilibre', 'Les Six Couleurs', 'Accomplir une quête dans chacune des six caractéristiques au cours d’une même semaine.', { kind: 'week_all_abilities', target: 6 }, 150, 'Arc-en-ciel'],

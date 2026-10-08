@@ -149,6 +149,14 @@ describe('validation d’une quête', () => {
     const char = (await s.store.getCharacter(U))!;
     expect(char.totalXp).toBe(events.reduce((n, e) => n + e.amount, 0));
   });
+  it('une première quête ne débloque que « Le Premier Pas » (pas de bonus d’XP excessif)', async () => {
+    const s = await started();
+    const q = (await s.store.listInstances(U, { status: 'accepted' })).find((x) => x.snapshot.validation.type === 'simple');
+    if (!q) return;
+    const r = await completeQuestAction(s.ctx, U, { instanceId: q.id, useInspiration: false });
+    expect(r.ok && r.data.achievements.map((a) => a.id)).toEqual(['premier-pas']);
+    expect(r.ok && r.data.character.level).toBeLessThanOrEqual(2);
+  });
   it('est idempotente (RG-18)', async () => {
     const s = await started();
     const q = (await s.store.listInstances(U, { period: 'daily', status: 'accepted' })).find((x) => x.snapshot.validation.type === 'simple');

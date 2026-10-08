@@ -32,6 +32,19 @@ export class UiService {
     await sheet.present();
   }
 
+  /** Liste de choix (feuille d'actions). Renvoie la valeur choisie, ou null. */
+  async choose<T extends string>(header: string, options: { text: string; value: T }[]): Promise<T | null> {
+    return new Promise<T | null>(async (resolve) => {
+      const s = await this.sheet.create({
+        header,
+        cssClass: 'lu-sheet',
+        buttons: [...options.map((o) => ({ text: o.text, handler: () => resolve(o.value) })), { text: 'Fermer', role: 'cancel', handler: () => resolve(null) }],
+      });
+      s.onDidDismiss().then(() => resolve(null));
+      await s.present();
+    });
+  }
+
   async confirm(opts: { title: string; message?: string; confirm: string; danger?: boolean }): Promise<boolean> {
     return new Promise<boolean>(async (resolve) => {
       const a = await this.alert.create({

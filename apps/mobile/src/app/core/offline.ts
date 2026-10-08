@@ -6,6 +6,12 @@ export type PendingAction =
   | { kind: 'progress'; instanceId: string; progress?: number; stepsDone?: boolean[] }
   | { kind: 'accept'; instanceId: string };
 
+export interface QueuedPost {
+  id?: number;
+  post: { type: 'photo' | 'quest'; text: string; visibility: 'friends' | 'private'; instanceId?: string | null; media: { blob: Blob; ext: 'jpg' | 'webp'; width: number; height: number }[] };
+  createdAt: string;
+}
+
 export interface PendingRow {
   id?: number;
   action: PendingAction;
@@ -16,9 +22,11 @@ export interface PendingRow {
 class OfflineDb extends Dexie {
   cache!: Dexie.Table<{ key: string; value: any }, string>;
   pending!: Dexie.Table<PendingRow, number>;
+  posts!: Dexie.Table<QueuedPost, number>;
   constructor() {
     super('levelup-offline');
     this.version(1).stores({ cache: 'key', pending: '++id' });
+    this.version(2).stores({ cache: 'key', pending: '++id', posts: '++id' });
   }
 }
 
@@ -64,6 +72,18 @@ export const offline = {
   async pending(): Promise<PendingRow[]> {
     const d = await open();
     return (await d?.pending.orderBy('id').toArray().catch(() => [])) ?? [];
+  },
+  async queuePost(post: QueuedPost['post']): Promise<void> {
+    const d = await open();
+    await d?.posts.add({ post, createdAt: new Date().toISOString() });
+  },
+  async queuedPosts(): Promise<QueuedPost[]> {
+    const d = await open();
+    return (await d?.posts.orderBy('id').toArray().catch(() => [])) ?? [];
+  },
+  async removePost(id: number): Promise<void> {
+    const d = await open();
+    await d?.posts.delete(id).catch(() => undefined);
   },
   async remove(id: number): Promise<void> {
     const d = await open();

@@ -178,6 +178,9 @@ export class MemoryStore implements GameStore {
   async countJournal(userId: string) {
     return this.data(userId).journal.length;
   }
+  async listJournal(userId: string) {
+    return structuredClone(this.data(userId).journal);
+  }
 
   async createPost(userId: string, draft: PostDraft) {
     const id = `post-${this.posts.length + 1}-${Math.random().toString(36).slice(2, 8)}`;
