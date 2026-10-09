@@ -78,6 +78,8 @@ export interface GameApi {
   abandon(instanceId: string): Promise<CommandResult<{ instance: QuestInstance }>>;
   progress(instanceId: string, patch: { progress?: number; stepsDone?: boolean[] }): Promise<CommandResult<{ instance: QuestInstance }>>;
   reroll(instanceId: string): Promise<CommandResult<{ instance: QuestInstance; usedInspiration: boolean }>>;
+  /** « Trop dur » / « trop facile » : ajuste la cible d'une quête à compteur ou à minuteur */
+  tune(instanceId: string, direction: 'easier' | 'harder'): Promise<CommandResult<{ instance: QuestInstance }>>;
   complete(req: CompleteRequest): Promise<CommandResult<{ data: CompleteResponse }>>;
   undo(instanceId: string): Promise<CommandResult<{ character: CharacterRecord; instance: QuestInstance }>>;
   choosePath(pathId: string): Promise<CommandResult<{ character: CharacterRecord }>>;

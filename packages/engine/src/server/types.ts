@@ -42,6 +42,8 @@ export interface SettingsRecord extends SettingsCore {
   reducedMotion: boolean;
   lastRecapWeek: string | null;
   lastRecapMonth: string | null;
+  /** Centres d'intérêt : disciplines (« cuisine ») ou activités précises (« langues:espagnol »). */
+  interests: string[];
 }
 
 export const defaultSettings = (timezone = 'Europe/Paris'): SettingsRecord => ({
@@ -59,6 +61,7 @@ export const defaultSettings = (timezone = 'Europe/Paris'): SettingsRecord => ({
   reducedMotion: false,
   lastRecapWeek: null,
   lastRecapMonth: null,
+  interests: [],
 });
 
 export type XpReason = 'quest' | 'partial' | 'achievement' | 'undo' | 'hardcore' | 'bonus';
@@ -115,6 +118,7 @@ export interface GameStore {
 
   listTemplates(userId: string): Promise<QuestTemplate[]>;
   getPreferences(userId: string): Promise<Record<string, QuestPreference>>;
+  savePreference(userId: string, p: QuestPreference): Promise<void>;
 
   listInstances(userId: string, filter?: InstanceFilter): Promise<QuestInstance[]>;
   getInstance(userId: string, id: string): Promise<QuestInstance | null>;

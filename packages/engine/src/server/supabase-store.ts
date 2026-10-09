@@ -97,7 +97,7 @@ export class SupabaseStore {
         resetHour: 4, timezone: 'Europe/Paris', dailyQuestCount: 6, hardcore: false,
         autoShare: { level: true, achievement: true, streak: true }, defaultVisibility: 'friends', leaderboardOptIn: true,
         notifPrefs: {}, friendRequestsFrom: 'everyone', theme: 'auto', sounds: true, reducedMotion: false,
-        lastRecapWeek: null, lastRecapMonth: null,
+        lastRecapWeek: null, lastRecapMonth: null, interests: [],
       };
     }
     return {
@@ -115,6 +115,7 @@ export class SupabaseStore {
       reducedMotion: data.reduced_motion,
       lastRecapWeek: data.last_recap_week,
       lastRecapMonth: data.last_recap_month,
+      interests: data.interests ?? [],
     };
   }
 
@@ -136,6 +137,7 @@ export class SupabaseStore {
         reduced_motion: s.reducedMotion,
         last_recap_week: s.lastRecapWeek ?? null,
         last_recap_month: s.lastRecapMonth ?? null,
+        interests: s.interests ?? [],
       },
       { onConflict: 'profile_id' },
     );
@@ -161,8 +163,20 @@ export class SupabaseStore {
     const { data, error } = await this.db.from('quest_preferences').select('*').eq('profile_id', userId);
     fail(error, 'prefs.select');
     const out: Record<string, any> = {};
-    for (const p of data ?? []) out[p.template_id] = { templateId: p.template_id, isFavorite: p.is_favorite, isExcluded: p.is_excluded, isPinned: p.is_pinned };
+    for (const p of data ?? []) out[p.template_id] = { templateId: p.template_id, isFavorite: p.is_favorite, isExcluded: p.is_excluded, isPinned: p.is_pinned, tune: p.tune ?? 0 };
     return out;
+  }
+
+  async savePreference(userId: string, p: any): Promise<void> {
+    const { error } = await this.db.from('quest_preferences').upsert({
+      profile_id: userId,
+      template_id: p.templateId,
+      is_favorite: !!p.isFavorite,
+      is_excluded: !!p.isExcluded,
+      is_pinned: !!p.isPinned,
+      tune: p.tune ?? 0,
+    }, { onConflict: 'profile_id,template_id' });
+    fail(error, 'prefs.upsert');
   }
 
   // ───── Instances

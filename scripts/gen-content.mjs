@@ -45,6 +45,7 @@ for (const a of ABILITIES) {
   }
 }
 // ───────────── Quêtes guidées par discipline (4 paliers : jour, semaine, mois, épique) ─────────────
+const { default: guidedTasks } = await import(pathToFileURL(join(root, 'src', 'guided-tasks.mjs')).href);
 const { default: themeRows } = await import(pathToFileURL(join(root, 'src', 'guided.mjs')).href);
 const TIERS = [
   { n: 1, difficulty: 'easy', period: 'daily' },
@@ -59,9 +60,15 @@ for (const th of themeRows) {
   if (th.activities.length !== 5) throw new Error(`${th.id}: ${th.activities.length} activités (attendu 5)`);
   const secondary = th.secondary.map(([ability, pct]) => ({ ability, pct }));
   if (secondary.reduce((n, s) => n + s.pct, 0) >= 100) throw new Error(`${th.id}: parts secondaires >= 100`);
-  const [day, week, monthH, epicH] = th.time;
+  // Le temps de référence ne sert qu'à calibrer le nombre de séances : on ne montre aucune durée au joueur.
+  const [day, weekMin] = th.time;
+  const perWeek = Math.min(Math.max(Math.round(weekMin / day), 2), 4);
+  const sessions = [1, perWeek, perWeek * 3, perWeek * 10];
   themes.push({ id: th.id, label: th.label, blurb: th.blurb, ability: th.primary, secondary, activities: th.activities.map((a) => a[0]) });
   for (const [name, doing, why, flow, tech, goal] of th.activities) {
+    const task = guidedTasks[th.id]?.[name];
+    if (!task) throw new Error(`${th.id}/${name}: tâches précises manquantes (guided-tasks.mjs)`);
+    const [dayTitle, dayObjective, dayVal, weekTitle, weekObjective, weekVal, unit] = task;
     const tags = ['guidé', th.id, ...(th.physical ? ['sport'] : [])];
     const mk = (tier, extra) => {
       quests.push({
@@ -71,32 +78,32 @@ for (const th of themeRows) {
       guidedCount++;
     };
     mk(TIERS[0], {
-      title: `${name}, ${day} minutes guidées`,
+      title: dayTitle,
       flavor: why,
-      objective: `Pendant ${day} minutes, ${doing}, en suivant un cours guidé (vidéo, application ou professeur).`,
+      objective: dayObjective,
       tips: [flow, tech],
-      validation: { type: 'timer', minutes: day },
+      validation: parseValidation(dayVal),
     });
     mk(TIERS[1], {
-      title: `${name}, ${week} min cette semaine`,
+      title: weekTitle,
       flavor: `${why} Quelques séances par semaine donnent des progrès visibles.`,
-      objective: `Cumuler ${week} minutes sur la semaine : ${doing}, en suivant des séances guidées.`,
-      tips: [tech, 'Répartis tes séances sur 2 à 4 jours et ajoute les minutes après chaque séance.'],
-      validation: { type: 'counter', target: week, unit: 'minutes' },
+      objective: weekObjective,
+      tips: [tech, 'Répartis tes séances sur plusieurs jours et coche-les au fur et à mesure.'],
+      validation: parseValidation(weekVal),
     });
     mk(TIERS[2], {
-      title: `${name}, ${monthH} heures ce mois-ci`,
+      title: `${name}, ${sessions[2]} fois ce mois-ci`,
       flavor: `${why} Un mois de pratique régulière installe l’habitude et le niveau.`,
-      objective: `Cumuler ${monthH} heures sur le mois : ${doing}, avec un cours ou un programme guidé.`,
+      objective: `Faire ${sessions[2]} ${unit} sur le mois, à raison de quelques-uns par semaine.`,
       tips: [tech, 'Planifie tes créneaux à l’avance et note ta progression chaque semaine.'],
-      validation: { type: 'counter', target: monthH * 60, unit: 'minutes' },
+      validation: { type: 'counter', target: sessions[2], unit },
     });
     mk(TIERS[3], {
-      title: `${name}, ${epicH} heures de pratique`,
+      title: `${name}, ${sessions[3]} fois au total`,
       flavor: `${why} Un grand objectif, qui demande de la constance sur la durée.`,
-      objective: `Cumuler ${epicH} heures de pratique guidée (${doing}) jusqu’à ${goal}.${th.physical ? PRUDENCE : ''}`,
+      objective: `Faire ${sessions[3]} ${unit} sur la durée, jusqu’à ${goal}.${th.physical ? PRUDENCE : ''}`,
       tips: [tech, 'Fixe-toi un point d’étape toutes les deux semaines pour mesurer ta progression.'],
-      validation: { type: 'counter', target: epicH * 60, unit: 'minutes' },
+      validation: { type: 'counter', target: sessions[3], unit },
     });
   }
 }

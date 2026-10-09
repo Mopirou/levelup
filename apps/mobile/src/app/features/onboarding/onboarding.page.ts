@@ -26,9 +26,10 @@ import { AuthService } from '../../core/auth.service';
 import { BackendService } from '../../core/backend.service';
 import { GameService } from '../../core/game.service';
 import { IconComponent } from '../../shared/icon.component';
+import { InterestsPickerComponent } from '../../shared/interests-picker.component';
 import { AbilityBadgeComponent, BarComponent, PORTRAIT_IDS, PortraitComponent, RadarComponent } from '../../shared/ui';
 
-const STEPS = ['Accueil', 'Le principe', 'Le nom', 'La classe', 'Le pseudo', 'Les caractéristiques', 'L’apparence', 'L’engagement'] as const;
+const STEPS = ['Accueil', 'Le principe', 'Le nom', 'La classe', 'Le pseudo', 'Les caractéristiques', 'L’apparence', 'Tes centres d’intérêt', 'L’engagement'] as const;
 const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a', '#5f9e6e', '#a8c0b0'];
 const DRAFT_KEY = 'lu-onboarding-draft';
 
@@ -43,6 +44,7 @@ interface Draft {
   motto: string;
   oath: string;
   answers: Record<string, number>;
+  interests?: string[];
 }
 
 function loadDraft(): Draft | null {
@@ -55,7 +57,7 @@ function loadDraft(): Draft | null {
 
 @Component({
   selector: 'app-onboarding',
-  imports: [IonContent, IconComponent, AbilityBadgeComponent, BarComponent, PortraitComponent, RadarComponent],
+  imports: [IonContent, IconComponent, InterestsPickerComponent, AbilityBadgeComponent, BarComponent, PortraitComponent, RadarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
@@ -220,6 +222,14 @@ function loadDraft(): Draft | null {
           }
           @case (7) {
             <section class="step fade-in">
+              <h1 class="lu-title s">Qu’est-ce qui t’intéresse ?</h1>
+              <p class="lead">Cuisine, code, dessin, langues… Choisis ce que tu aimerais pratiquer : tes quêtes seront tirées en priorité parmi ces disciplines. Tu pourras changer ça quand tu veux dans les réglages.</p>
+              <lu-interests-picker [(value)]="interests" />
+              <button type="button" class="lu-btn" (click)="next()">{{ interests().length ? 'Continuer' : 'Passer cette étape' }}</button>
+            </section>
+          }
+          @case (8) {
+            <section class="step fade-in">
               <h1 class="lu-title s">Ton engagement</h1>
               <div class="lu-card recap">
                 <lu-portrait [id]="portraitId()" [size]="72" [frame]="frameColor()" />
@@ -344,6 +354,7 @@ export class OnboardingPage {
   readonly frameColor = signal(this.d?.frameColor ?? FRAMES[0]);
   readonly motto = signal(this.d?.motto ?? '');
   readonly oath = signal(this.d?.oath ?? '');
+  readonly interests = signal<string[]>(this.d?.interests ?? []);
   readonly busy = signal(false);
   readonly sealing = signal(false);
   readonly error = signal('');
@@ -358,7 +369,7 @@ export class OnboardingPage {
     effect(() => {
       const draft: Draft = {
         step: this.step(), name: this.name(), classId: this.classId(), username: this.username(), scores: this.scores(),
-        portraitId: this.portraitId(), frameColor: this.frameColor(), motto: this.motto(), oath: this.oath(), answers: this.answers(),
+        portraitId: this.portraitId(), frameColor: this.frameColor(), motto: this.motto(), oath: this.oath(), answers: this.answers(), interests: this.interests(),
       };
       try {
         sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -462,6 +473,7 @@ export class OnboardingPage {
           frameColor: this.frameColor(),
           motto: this.motto().trim(),
           oath: this.oath().trim(),
+          interests: this.interests(),
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris',
         }),
         new Promise((res) => setTimeout(res, 1100)),

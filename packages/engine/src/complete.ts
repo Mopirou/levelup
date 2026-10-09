@@ -1,4 +1,5 @@
 import { isoWeek, startOfIsoWeek, addDays } from './dates';
+import { tuneXpScale } from './interests';
 import {
   AbilityId,
   CharacterCore,
@@ -180,6 +181,7 @@ export function completeQuest(input: CompletionInput): { ok: true; result: Compl
     masteries: input.masteries,
     pathAbility: input.pathAbility,
     doubled: input.useInspiration,
+    scale: tuneXpScale(instance.snapshot),
   });
   const base = input.useInspiration ? { ...character, inspiration: character.inspiration - 1 } : character;
   const applied = applyXpParts(base, splitXp(breakdown.total, instance.snapshot.ability, instance.snapshot.secondary));
@@ -200,6 +202,7 @@ export function expiredPartialXp(inst: QuestInstance, level: number, masteries: 
     level,
     masteries,
     pathAbility,
+    scale: tuneXpScale(inst.snapshot),
   }).total;
   return partialXp(full, inst.progress, v.target);
 }

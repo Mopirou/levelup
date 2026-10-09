@@ -9,6 +9,7 @@ import {
   QuestPreference,
   QuestTemplate,
 } from './types';
+import { interestWeight } from './interests';
 import { TIER4_MIN_LEVEL, tierUnlocked } from './xp';
 
 /** Délai avant qu'une quête tirée puisse revenir (en jours). */
@@ -29,6 +30,8 @@ export interface DrawInput {
   masteries: readonly AbilityId[];
   templates: readonly QuestTemplate[];
   preferences: Record<string, QuestPreference>;
+  /** Centres d'intérêt du joueur (disciplines et activités) : orientent le tirage */
+  interests?: readonly string[];
   /** templateId -> début de la dernière période où elle a été tirée (pour cette période) */
   lastDrawn: Record<string, string>;
   /** Templates à ne pas tirer (déjà dans la période, relance…) */
@@ -149,6 +152,7 @@ export function drawQuests(input: DrawInput): DrawResult {
               else if (input.scores[t.ability] === maxScore) w *= 0.5;
             }
             if (prefs[t.id]?.isFavorite) w *= 3;
+            w *= interestWeight(t, input.interests);
             return w;
           },
           rng,

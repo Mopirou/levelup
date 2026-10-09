@@ -177,6 +177,8 @@ export interface QuestXpInput {
   /** Affinité secondaire de la voie (niveau 3) : +2 XP */
   pathAbility?: AbilityId | null;
   doubled?: boolean;
+  /** Ajustement « trop dur / trop facile » : proportionnel à la cible demandée (1 = quête d'origine) */
+  scale?: number;
 }
 
 export interface QuestXpBreakdown {
@@ -194,7 +196,8 @@ export function questXp(i: QuestXpInput): QuestXpBreakdown {
   const multiplier = PERIOD_MULTIPLIER[i.period];
   const mastery = i.masteries.includes(i.ability) ? xpBonusForMastery(proficiencyBonus(i.level)) : 0;
   const affinity = i.pathAbility && i.pathAbility === i.ability ? 2 : 0;
-  const sub = base * multiplier + mastery + affinity;
+  const core = i.scale && i.scale !== 1 ? Math.max(Math.round(base * multiplier * i.scale), 1) : base * multiplier;
+  const sub = core + mastery + affinity;
   return { base, multiplier, mastery, affinity, doubled: !!i.doubled, total: i.doubled ? sub * 2 : sub };
 }
 

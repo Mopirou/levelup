@@ -192,6 +192,7 @@ export function createCloudBackend(): Backend {
     abandon: (instanceId) => cmd('abandon', { instanceId }),
     progress: (instanceId, patch) => cmd('progress', { instanceId, ...patch }),
     reroll: (instanceId) => cmd('reroll', { instanceId }),
+    tune: (instanceId, direction) => cmd('tune', { instanceId, direction }),
     complete: (req) => cmd('complete', req as any),
     undo: (instanceId) => cmd('undo', { instanceId }),
     choosePath: (pathId) => cmd('choose-path', { pathId }),
@@ -233,6 +234,7 @@ export function createCloudBackend(): Backend {
         is_favorite: !!p.isFavorite,
         is_excluded: !!p.isExcluded,
         is_pinned: !!p.isPinned,
+        tune: p.tune ?? 0,
       });
       if (error) throw error;
     },

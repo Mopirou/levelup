@@ -8,9 +8,14 @@ import {
   canUndo,
   isReadyToComplete,
   lastAcceptDate,
+  baseTargetOf,
+  nextTune,
   progressRatio,
   questXp,
+  tunedTarget,
+  tuneXpScale,
   validationTarget,
+  withTarget,
   type QuestInstance,
 } from '@levelup/engine';
 import { GameService } from '../../core/game.service';
@@ -148,6 +153,16 @@ const timerKey = (id: string) => `lu-timer-${id}`;
                 }
               }
 
+              @if (!done()) {
+                @if (tuneOptions(); as t) {
+                  <div class="tune">
+                    @if (t.easier !== null) { <button type="button" class="lu-btn ghost small" [disabled]="busy()" (click)="tune('easier')">Trop dur ? Passer à {{ t.easier }} {{ tuneUnit() }}</button> }
+                    @if (t.harder !== null) { <button type="button" class="lu-btn ghost small" [disabled]="busy()" (click)="tune('harder')">Trop facile ? Passer à {{ t.harder }} {{ tuneUnit() }}</button> }
+                  </div>
+                  @if (tuneNote(); as n) { <p class="xs muted">{{ n }}</p> }
+                }
+              }
+
               @if (!done() && type() !== 'journal') {
                 <div class="lu-field">
                   <label for="nt">Comment ça s’est passé ? · facultatif</label>
@@ -232,6 +247,7 @@ const timerKey = (id: string) => `lu-timer-${id}`;
     .sec { font-size: 19px; }
     .vhead { display: flex; align-items: center; justify-content: space-between; }
     .vmode { font-size: 12px; }
+    .tune { display: flex; flex-wrap: wrap; gap: 8px; }
     .counter { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
     .rb { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--lu-border-strong); background: var(--lu-surface-2); color: var(--lu-text); display: grid; place-items: center; cursor: pointer; }
     .rb:disabled { opacity: .35; }
@@ -325,12 +341,50 @@ export class QuestDetailPage {
     const c = this.game.character();
     return questXp({
       difficulty: q.snapshot.difficulty, period: q.period, ability: q.snapshot.ability, level: c?.level ?? 1,
-      masteries: this.game.masteries(), pathAbility: this.game.pathAbility(), doubled: this.useInsp(),
+      masteries: this.game.masteries(), pathAbility: this.game.pathAbility(), doubled: this.useInsp(), scale: tuneXpScale(q.snapshot),
     });
   });
+  /** Cibles proposées par « trop dur » / « trop facile » (null = pas possible), pour les quêtes à compteur ou à minuteur. */
+  readonly tuneOptions = computed(() => {
+    const q = this.inst();
+    if (!q || (q.status !== 'proposed' && q.status !== 'accepted')) return null;
+    const v = q.snapshot.validation;
+    const base = baseTargetOf(q.snapshot);
+    if ((v.type !== 'counter' && v.type !== 'timer') || base === null) return null;
+    const baseSpec = withTarget(v, base);
+    const target = (dir: 'easier' | 'harder'): number | null => {
+      const n = nextTune(q.snapshot.tune, baseSpec, dir);
+      return n === null ? null : tunedTarget(base, n);
+    };
+    const options = { easier: target('easier'), harder: target('harder') };
+    return options.easier === null && options.harder === null ? null : options;
+  });
+  readonly tuneUnit = computed(() => {
+    const v = this.inst()?.snapshot.validation;
+    return v?.type === 'counter' ? v.unit : v?.type === 'timer' ? 'min' : '';
+  });
+  readonly tuneNote = computed(() => {
+    const s = this.inst()?.snapshot;
+    if (!s?.tune || !s.baseTarget) return '';
+    return s.tune < 0 ? `Version allégée (au lieu de ${s.baseTarget}) : l’XP est réduite en proportion.` : `Version renforcée (au lieu de ${s.baseTarget}) : l’XP est augmentée en proportion.`;
+  });
+
+  async tune(direction: 'easier' | 'harder'): Promise<void> {
+    const q = this.inst();
+    if (!q || this.busy()) return;
+    this.busy.set(true);
+    try {
+      await this.game.tune(q, direction);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   readonly xpFormula = computed(() => {
     const x = this.xp();
+    const scale = this.inst() ? tuneXpScale(this.inst()!.snapshot) : 1;
     let s = `${x.base} × ${x.multiplier}`;
+    if (scale !== 1) s += ` × ${String(Math.round(scale * 100) / 100).replace('.', ',')}`;
     if (x.mastery) s += ` + maîtrise ${x.mastery}`;
     if (x.affinity) s += ` + voie ${x.affinity}`;
     s = `${s} = ${x.doubled ? x.total / 2 : x.total} XP`;

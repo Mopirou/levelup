@@ -12,6 +12,7 @@ import {
   startOfIsoWeek,
 } from '../dates';
 import { drawQuests, lastDrawnMap } from '../draw';
+import { nextTune, sanitizeInterests, tunableTarget, tunedSnapshot, type TuneDirection, type TuneLevel } from '../interests';
 import {
   AbilityUp,
   OFFLINE_MAX_DELAY_MS,
@@ -152,11 +153,13 @@ function newInstance(
   status: QuestInstance['status'],
   nowIso: string,
   free = false,
+  tune: number | undefined = 0,
 ): QuestInstance {
+  const snapshot = tunedSnapshot(snapshotOf(t), t.validation, (tune ?? 0) as TuneLevel);
   return {
     id,
     templateId: t.id,
-    snapshot: snapshotOf(t),
+    snapshot,
     period,
     periodStart: start,
     periodEnd: end,
@@ -306,6 +309,8 @@ export interface CreateCharacterInput {
   motto?: string;
   oath?: string;
   timezone?: string;
+  /** Centres d'intérêt choisis à la création (orientent le premier tirage) */
+  interests?: string[];
 }
 
 export async function createCharacter(ctx: ServerContext, userId: string, input: CreateCharacterInput): Promise<Result<{ character: CharacterRecord }>> {
@@ -340,7 +345,7 @@ export async function createCharacter(ctx: ServerContext, userId: string, input:
     rerollsUsed: 0,
     createdAt: nowIso,
   };
-  await ctx.store.saveSettings(userId, defaultSettings(input.timezone));
+  await ctx.store.saveSettings(userId, { ...defaultSettings(input.timezone), interests: sanitizeInterests(input.interests) });
   await ctx.store.saveCharacter(userId, character);
   await ensureQuests(ctx, userId);
   return { ok: true, character };
@@ -419,13 +424,14 @@ export async function ensureQuests(ctx: ServerContext, userId: string): Promise<
       masteries,
       templates,
       preferences: prefs,
+      interests: settings.interests,
       lastDrawn: lastDrawnMap(history, period),
     };
     const main = drawQuests({ ...base, count });
     for (const t of main.picks) {
       const pinned = !!prefs[t.id]?.isPinned;
       const status = period === 'daily' || pinned ? 'accepted' : 'proposed';
-      toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, status, nowIso));
+      toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, status, nowIso, false, prefs[t.id]?.tune));
     }
     if (period === 'daily') {
       const free = drawQuests({
@@ -436,7 +442,7 @@ export async function ensureQuests(ctx: ServerContext, userId: string): Promise<
         seedSuffix: 'free',
         skipPinned: true,
       });
-      for (const t of free.picks) toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, 'proposed', nowIso, true));
+      for (const t of free.picks) toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, 'proposed', nowIso, true, prefs[t.id]?.tune));
     }
   }
   if (toInsert.length) await store.insertInstances(userId, toInsert);
@@ -532,6 +538,7 @@ export async function rerollQuest(ctx: ServerContext, userId: string, instanceId
     masteries: masteriesFor(character),
     templates,
     preferences: prefs,
+    interests: env.settings.interests,
     lastDrawn: lastDrawnMap(history, inst.period),
     exclude: same.map((i) => i.templateId),
     difficultyPlan: [inst.snapshot.difficulty],
@@ -540,11 +547,39 @@ export async function rerollQuest(ctx: ServerContext, userId: string, instanceId
   });
   const t = draw.picks[0];
   if (!t) return fail('invalid', 'Aucune autre quête disponible.');
-  const fresh = newInstance(ctx.uuid(), t, inst.period, inst.periodStart, inst.periodEnd, inst.status, new Date(env.nowMs).toISOString(), inst.free);
+  const fresh = newInstance(ctx.uuid(), t, inst.period, inst.periodStart, inst.periodEnd, inst.status, new Date(env.nowMs).toISOString(), inst.free, prefs[t.id]?.tune);
   await ctx.store.deleteInstance(userId, instanceId);
   await ctx.store.insertInstances(userId, [fresh]);
   await ctx.store.saveCharacter(userId, character);
   return { ok: true, instance: fresh, usedInspiration };
+}
+
+/**
+ * « Trop dur » / « trop facile » : réduit ou augmente la cible d'une quête à compteur ou à minuteur.
+ * L'XP suit l'effort demandé, et le choix est mémorisé pour les prochaines fois où la quête sera tirée.
+ */
+export async function tuneQuest(
+  ctx: ServerContext,
+  userId: string,
+  instanceId: string,
+  direction: TuneDirection,
+): Promise<Result<{ instance: QuestInstance }>> {
+  const inst = await ctx.store.getInstance(userId, instanceId);
+  if (!inst) return fail('not-found');
+  if (inst.status !== 'proposed' && inst.status !== 'accepted') return fail('not-accepted');
+  const template = (await ctx.store.listTemplates(userId)).find((t) => t.id === inst.templateId);
+  const base = template?.validation;
+  if (!base || tunableTarget(base) === null) return fail('invalid', 'Cette quête ne peut pas être ajustée.');
+  const next = nextTune(inst.snapshot.tune, base, direction);
+  if (next === null) return fail('invalid', direction === 'easier' ? 'Cette quête est déjà au plus facile.' : 'Cette quête est déjà au plus difficile.');
+  const { tune: _t, baseTarget: _b, ...plain } = inst.snapshot;
+  const snapshot = tunedSnapshot(plain, base, next);
+  const target = tunableTarget(snapshot.validation) ?? 0;
+  const progress = Math.min(inst.progress, target);
+  await ctx.store.updateInstance(userId, instanceId, { snapshot, progress });
+  const prefs = await ctx.store.getPreferences(userId);
+  await ctx.store.savePreference(userId, { ...(prefs[inst.templateId] ?? { templateId: inst.templateId }), tune: next });
+  return { ok: true, instance: { ...inst, snapshot, progress } };
 }
 
 // ───────────────────────── Validation ─────────────────────────

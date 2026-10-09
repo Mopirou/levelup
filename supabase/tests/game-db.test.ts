@@ -18,6 +18,7 @@ import {
   recomputeCharacter,
   rerollQuest,
   undoQuest,
+  tuneQuest,
   updateProgress,
   type QuestInstance,
   type ServerContext,
@@ -84,7 +85,7 @@ const complete = (s: ReturnType<typeof setup>, q: QuestInstance, extra: Record<s
 beforeAll(async () => {
   pg = await PGlite.create({ extensions: { citext, pgcrypto } });
   await pg.exec(PLATFORM);
-  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql', '20261009000002_rescale_base_scores.sql']) await pg.exec(read(`migrations/${f}`));
+  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql', '20261009000002_interests_and_tuning.sql', '20261009000003_rescale_base_scores.sql']) await pg.exec(read(`migrations/${f}`));
   await pg.exec(read('seed.sql'));
   await pg.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'a@ex.fr', '{"username":"aldric","birth_year":1994}')`, [U]);
 }, 120_000);
@@ -231,5 +232,25 @@ describe('logique de jeu sur le vrai schéma (adaptateur SupabaseStore)', () => 
     expect(await s.store.countJournal(U)).toBe(1);
     expect((await s.store.listJournal(U))[0].text).toContain('appris');
     expect(await s.store.socialCounts(U)).toMatchObject({ posts: 1, friends: 0, reactionsGiven: 0 });
+  });
+
+  it('centres d’intérêt et ajustement « trop dur » : écrits et relus dans les vraies colonnes', async () => {
+    const s = setup('2026-10-07T15:00:00+02:00');
+    const settings = await s.store.getSettings(U);
+    expect(settings.interests).toEqual([]);
+    await s.store.saveSettings(U, { ...settings, interests: ['cuisine', 'langues:espagnol'] });
+    expect((await s.store.getSettings(U)).interests).toEqual(['cuisine', 'langues:espagnol']);
+
+    const open = await s.store.listInstances(U, { status: ['proposed', 'accepted'] });
+    const counter = open.find((i: QuestInstance) => i.snapshot.validation.type === 'counter' && i.snapshot.validation.target >= 4);
+    expect(counter).toBeTruthy();
+    const target = (counter!.snapshot.validation as { target: number }).target;
+    const r = await tuneQuest(s.ctx, U, counter!.id, 'easier');
+    expect(r.ok).toBe(true);
+    const reread = await s.store.getInstance(U, counter!.id);
+    expect(reread.snapshot.tune).toBe(-1);
+    expect(reread.snapshot.baseTarget).toBe(target);
+    expect((reread.snapshot.validation as { target: number }).target).toBeLessThan(target);
+    expect((await s.store.getPreferences(U))[counter!.templateId].tune).toBe(-1);
   });
 });

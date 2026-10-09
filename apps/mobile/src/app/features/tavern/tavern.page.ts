@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular';
-import { ACHIEVEMENTS, ABILITIES, ABILITY_LABEL, canDeclareRest, progressRatio, questXp, type AchievementProgress, type QuestInstance } from '@levelup/engine';
+import { ACHIEVEMENTS, ABILITIES, ABILITY_LABEL, canDeclareRest, progressRatio, questXp, tuneXpScale, type AchievementProgress, type QuestInstance } from '@levelup/engine';
 import { BackendService } from '../../core/backend.service';
 import { GameService } from '../../core/game.service';
 import { SocialService } from '../../core/social.service';
@@ -200,7 +200,7 @@ export class TavernPage {
   hasBar = (q: QuestInstance) => ['counter', 'timer', 'steps'].includes(q.snapshot.validation.type);
   xpOf(q: QuestInstance): string {
     const c = this.game.character();
-    return fmt(questXp({ difficulty: q.snapshot.difficulty, period: q.period, ability: q.snapshot.ability, level: c?.level ?? 1, masteries: this.game.masteries(), pathAbility: this.game.pathAbility() }).total);
+    return fmt(questXp({ difficulty: q.snapshot.difficulty, period: q.period, ability: q.snapshot.ability, level: c?.level ?? 1, masteries: this.game.masteries(), pathAbility: this.game.pathAbility(), scale: tuneXpScale(q.snapshot) }).total);
   }
 
   async quick(q: QuestInstance, ev: Event): Promise<void> {

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
-import { DIFFICULTY_LABEL, ABILITY_LABEL, DIFFICULTY_SWORDS, isReadyToComplete, progressRatio, questXp, type QuestInstance } from '@levelup/engine';
+import { DIFFICULTY_LABEL, ABILITY_LABEL, DIFFICULTY_SWORDS, isReadyToComplete, progressRatio, questXp, tuneXpScale, type QuestInstance } from '@levelup/engine';
 import { GameService } from '../core/game.service';
 import { IconComponent } from './icon.component';
 import { AbilityBadgeComponent, BarComponent } from './ui';
@@ -92,7 +92,7 @@ export class QuestCardComponent {
     if (i.status === 'completed' && i.xpAwarded) return fmt(i.xpAwarded);
     const c = this.game.character();
     return fmt(
-      questXp({ difficulty: i.snapshot.difficulty, period: i.period, ability: i.snapshot.ability, level: c?.level ?? 1, masteries: this.game.masteries(), pathAbility: this.game.pathAbility() }).total,
+      questXp({ difficulty: i.snapshot.difficulty, period: i.period, ability: i.snapshot.ability, level: c?.level ?? 1, masteries: this.game.masteries(), pathAbility: this.game.pathAbility(), scale: tuneXpScale(i.snapshot) }).total,
     );
   });
   readonly ratio = computed(() => (this.inst().status === 'completed' ? 1 : progressRatio(this.inst())));

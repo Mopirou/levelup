@@ -64,7 +64,8 @@ beforeAll(async () => {
   await db.exec(read('migrations/20261008000003_cron.sql'));
   await db.exec(read('migrations/20261008000004_friend_code.sql'));
   await db.exec(read('migrations/20261009000001_quest_themes.sql'));
-  await db.exec(read('migrations/20261009000002_rescale_base_scores.sql'));
+  await db.exec(read('migrations/20261009000002_interests_and_tuning.sql'));
+  await db.exec(read('migrations/20261009000003_rescale_base_scores.sql'));
   await db.exec(read('seed.sql'));
   await mkUser(ids.alice, 'alice');
   await mkUser(ids.bob, 'bob');
@@ -402,14 +403,14 @@ describe('migration des scores de départ (échelle 8-15 → 2-5)', () => {
     await admin(`update public.characters set base_scores = '{"FOR":13,"DEX":13,"CON":13,"INT":12,"SAG":12,"CHA":12}' where profile_id = $1`, [legacy]);
     await admin(`update public.characters set base_scores = '{"FOR":5,"DEX":2,"CON":5,"INT":2,"SAG":2,"CHA":2}' where profile_id = $1`, [current]);
 
-    await db.exec(read('migrations/20261009000002_rescale_base_scores.sql'));
+    await db.exec(read('migrations/20261009000003_rescale_base_scores.sql'));
     expect(await scoresOf(legacy)).toEqual({ FOR: 3, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 });
     expect(await scoresOf(current)).toEqual({ FOR: 5, DEX: 2, CON: 5, INT: 2, SAG: 2, CHA: 2 });
     // les personnages créés avec l'ancienne répartition de test (15/8) passent aussi à l'échelle 2-5
     expect(await scoresOf(ids.alice)).toEqual({ FOR: 4, DEX: 2, CON: 4, INT: 2, SAG: 2, CHA: 2 });
 
     // rejouer la migration ne change plus rien
-    await db.exec(read('migrations/20261009000002_rescale_base_scores.sql'));
+    await db.exec(read('migrations/20261009000003_rescale_base_scores.sql'));
     expect(await scoresOf(legacy)).toEqual({ FOR: 3, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 });
     expect(await scoresOf(ids.alice)).toEqual({ FOR: 4, DEX: 2, CON: 4, INT: 2, SAG: 2, CHA: 2 });
   });

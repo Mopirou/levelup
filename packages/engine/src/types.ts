@@ -50,13 +50,20 @@ export interface QuestTemplate {
 export type QuestSnapshot = Pick<
   QuestTemplate,
   'ability' | 'difficulty' | 'title' | 'flavor' | 'objective' | 'tips' | 'validation' | 'tags' | 'theme' | 'secondary'
->;
+> & {
+  /** Ajustement demandé par le joueur : -1 = « trop dur » (cible réduite), 1 = « trop facile » (cible augmentée). */
+  tune?: -1 | 1;
+  /** Cible d'origine avant ajustement (sert à calculer l'XP proportionnelle). */
+  baseTarget?: number;
+};
 
 export interface QuestPreference {
   templateId: string;
   isFavorite?: boolean;
   isExcluded?: boolean;
   isPinned?: boolean;
+  /** Dernier ajustement choisi pour cette quête (-1, 0, 1), réappliqué quand elle revient au tirage. */
+  tune?: number;
 }
 
 export interface QuestInstance {

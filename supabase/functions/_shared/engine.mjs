@@ -152,7 +152,8 @@ function questXp(i) {
   const multiplier = PERIOD_MULTIPLIER[i.period];
   const mastery = i.masteries.includes(i.ability) ? xpBonusForMastery(proficiencyBonus(i.level)) : 0;
   const affinity = i.pathAbility && i.pathAbility === i.ability ? 2 : 0;
-  const sub = base * multiplier + mastery + affinity;
+  const core = i.scale && i.scale !== 1 ? Math.max(Math.round(base * multiplier * i.scale), 1) : base * multiplier;
+  const sub = core + mastery + affinity;
   return { base, multiplier, mastery, affinity, doubled: !!i.doubled, total: i.doubled ? sub * 2 : sub };
 }
 function splitXp(total, primary, secondary) {
@@ -405,6 +406,82 @@ function shuffle(items, rng) {
   return a;
 }
 
+// packages/engine/src/interests.ts
+var slugify = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+var interestKey = (theme, activityName) => activityName ? `${theme}:${slugify(activityName)}` : theme;
+var MAX_INTERESTS = 80;
+function sanitizeInterests(list) {
+  if (!Array.isArray(list)) return [];
+  const out = /* @__PURE__ */ new Set();
+  for (const v of list) {
+    if (typeof v === "string" && /^[a-z0-9-]{1,40}(:[a-z0-9-]{1,60})?$/.test(v)) out.add(v);
+    if (out.size >= MAX_INTERESTS) break;
+  }
+  return [...out];
+}
+function activityOf(t) {
+  if (!t.theme) return null;
+  const prefix = `g-${t.theme}-`;
+  if (!t.id.startsWith(prefix)) return null;
+  return t.id.slice(prefix.length).replace(/-t\d$/, "") || null;
+}
+function interestWeight(t, interests) {
+  if (!t.theme) return 1;
+  if (!interests?.length) return 0.35;
+  const activity = activityOf(t);
+  if (activity && interests.includes(`${t.theme}:${activity}`)) return 6;
+  if (interests.includes(t.theme)) {
+    const precise = interests.some((k) => k.startsWith(`${t.theme}:`));
+    return precise ? 1.2 : 3;
+  }
+  return 0.08;
+}
+var TUNE_FACTOR = { [-1]: 0.5, 0: 1, 1: 1.5 };
+function niceTarget(n) {
+  if (n >= 500) return Math.round(n / 50) * 50;
+  if (n >= 100) return Math.round(n / 10) * 10;
+  if (n >= 30) return Math.round(n / 5) * 5;
+  return Math.max(1, Math.round(n));
+}
+function tunableTarget(v) {
+  if (v.type === "counter") return v.target;
+  if (v.type === "timer") return v.minutes;
+  return null;
+}
+function tunedTarget(base, tune) {
+  return tune === 0 ? base : niceTarget(base * TUNE_FACTOR[tune]);
+}
+function withTarget(v, target) {
+  if (v.type === "counter") return { ...v, target };
+  if (v.type === "timer") return { ...v, minutes: target };
+  return v;
+}
+function baseTargetOf(s) {
+  return s.baseTarget ?? tunableTarget(s.validation);
+}
+function tunedSnapshot(snap, base, tune) {
+  const baseTarget = tunableTarget(base);
+  if (baseTarget === null || tune === 0) return { ...snap, validation: base };
+  const target = tunedTarget(baseTarget, tune);
+  if (target === baseTarget) return { ...snap, validation: base };
+  return { ...snap, validation: withTarget(base, target), tune, baseTarget };
+}
+function nextTune(current, base, dir) {
+  const baseTarget = tunableTarget(base);
+  if (baseTarget === null) return null;
+  const cur = current ?? 0;
+  const next = Math.max(-1, Math.min(1, cur + (dir === "easier" ? -1 : 1)));
+  if (next === cur) return null;
+  if (next !== 0 && tunedTarget(baseTarget, next) === baseTarget) return null;
+  return next;
+}
+function tuneXpScale(s) {
+  const base = s.baseTarget;
+  const now = tunableTarget(s.validation);
+  if (!base || !now) return 1;
+  return Math.min(Math.max(now / base, 0.4), 1.6);
+}
+
 // packages/engine/src/draw.ts
 var ANTI_REPEAT_DAYS = {
   daily: 7,
@@ -496,6 +573,7 @@ function drawQuests(input) {
                 else if (input.scores[t.ability] === maxScore) w *= 0.5;
               }
               if (prefs[t.id]?.isFavorite) w *= 3;
+              w *= interestWeight(t, input.interests);
               return w;
             },
             rng
@@ -634,7 +712,8 @@ function completeQuest(input) {
     level: character.level,
     masteries: input.masteries,
     pathAbility: input.pathAbility,
-    doubled: input.useInspiration
+    doubled: input.useInspiration,
+    scale: tuneXpScale(instance.snapshot)
   });
   const base = input.useInspiration ? { ...character, inspiration: character.inspiration - 1 } : character;
   const applied = applyXpParts(base, splitXp(breakdown.total, instance.snapshot.ability, instance.snapshot.secondary));
@@ -652,7 +731,8 @@ function expiredPartialXp(inst, level, masteries, pathAbility) {
     ability: inst.snapshot.ability,
     level,
     masteries,
-    pathAbility
+    pathAbility,
+    scale: tuneXpScale(inst.snapshot)
   }).total;
   return partialXp(full, inst.progress, v.target);
 }
@@ -1020,7 +1100,8 @@ var defaultSettings = (timezone = "Europe/Paris") => ({
   sounds: true,
   reducedMotion: false,
   lastRecapWeek: null,
-  lastRecapMonth: null
+  lastRecapMonth: null,
+  interests: []
 });
 
 // packages/content/data/classes.fr.json
@@ -1058,7 +1139,7 @@ var classes_fr_default = [
     masteries: ["DEX", "INT"],
     profile: "Bricoleur ing\xE9nieux, apprend par la pratique",
     description: "Pour ceux qui apprennent en pratiquant : bricolage, projets, techniques. Tu progresses surtout en Dext\xE9rit\xE9 et en Intelligence.",
-    favoredQuests: ["Geste pr\xE9cis, 4 s\xE9ances", "Un tutoriel d\u2019une comp\xE9tence", "Programmation, 3 exercices"],
+    favoredQuests: ["Geste pr\xE9cis, 4 s\xE9ances", "Trois raccourcis clavier", "Programmation, 3 exercices"],
     paths: [
       { id: "artisan-inventeur", name: "Voie de l\u2019Inventeur", ability: "INT", title: "Esprit d\u2019atelier", description: "Tu cherches comment les choses fonctionnent. Ta voie ajoute une affinit\xE9 Intelligence." },
       { id: "artisan-maitre", name: "Voie du Ma\xEEtre d\u2019\u0153uvre", ability: "CHA", title: "B\xE2tisseur de guildes", description: "Tu sais faire travailler les autres. Ta voie ajoute une affinit\xE9 Charisme." }
@@ -1084,7 +1165,7 @@ var classes_fr_default = [
     masteries: ["CON", "CHA"],
     profile: "\xC9nergie naturelle, sociable et r\xE9sistant",
     description: "Pour les personnes sociables et pleines d\u2019\xE9nergie. Tu progresses surtout en Constitution et en Charisme.",
-    favoredQuests: ["Un vrai repas partag\xE9", "Voir quatre personnes diff\xE9rentes", "Deux activit\xE9s \xE0 plusieurs"],
+    favoredQuests: ["Un vrai repas partag\xE9", "Voir trois personnes diff\xE9rentes", "Une activit\xE9 \xE0 plusieurs"],
     paths: [
       { id: "rassembleur-feu", name: "Voie du Feu de camp", ability: "DEX", title: "\xC2me des veill\xE9es", description: "Tu cr\xE9es des moments qui comptent. Ta voie ajoute une affinit\xE9 Dext\xE9rit\xE9." },
       { id: "rassembleur-roc", name: "Voie du Roc", ability: "FOR", title: "Pilier de la compagnie", description: "Tu es celui sur qui on s\u2019appuie. Ta voie ajoute une affinit\xE9 Force." }
@@ -1097,7 +1178,7 @@ var classes_fr_default = [
     masteries: ["INT", "SAG"],
     profile: "\xC9tudiant permanent, lecteur, r\xE9fl\xE9chi",
     description: "Pour les \xE9tudiants permanents, les lecteurs et les curieux. Tu progresses surtout en Intelligence et en Sagesse.",
-    favoredQuests: ["Lecture, 20 pages", "Langue \xE9trang\xE8re, une s\xE9ance compl\xE8te", "M\xE9ditation, 15 minutes"],
+    favoredQuests: ["Lecture, 20 pages", "Espagnol, un cours aujourd\u2019hui", "M\xE9ditation, 15 minutes"],
     paths: [
       { id: "erudit-savant", name: "Voie du Savant", ability: "INT", title: "Gardien des savoirs", description: "Tu creuses chaque sujet jusqu\u2019au fond. Ta voie ajoute une affinit\xE9 Intelligence." },
       { id: "erudit-ermite", name: "Voie de l\u2019Ermite", ability: "SAG", title: "Sage de la Tour", description: "Tu cherches le calme autant que le savoir. Ta voie ajoute une affinit\xE9 Sagesse." }
@@ -1110,7 +1191,7 @@ var classes_fr_default = [
     masteries: ["SAG", "CHA"],
     profile: "Bienveillant, tourn\xE9 vers les autres",
     description: "Pour ceux qui prennent soin des autres et d\u2019eux-m\xEAmes. Tu progresses surtout en Sagesse et en Charisme.",
-    favoredQuests: ["M\xE9ditation, 15 minutes", "\xC9coute active, cinq reformulations", "Trois gratitudes"],
+    favoredQuests: ["M\xE9ditation, 15 minutes", "\xC9coute active, trois reformulations", "Trois gratitudes"],
     paths: [
       { id: "gardien-guerisseur", name: "Voie du Gu\xE9risseur", ability: "CON", title: "Main qui apaise", description: "Tu prends soin des corps autant que des c\u0153urs. Ta voie ajoute une affinit\xE9 Constitution." },
       { id: "gardien-protecteur", name: "Voie du Protecteur", ability: "FOR", title: "Bouclier des siens", description: "Tu d\xE9fends ceux que tu aimes. Ta voie ajoute une affinit\xE9 Force." }
@@ -1123,7 +1204,7 @@ var classes_fr_default = [
     masteries: ["CON", "SAG"],
     profile: "Proche de la nature, curieux du vivant",
     description: "Pour les amoureux de nature et de grands espaces. Tu progresses surtout en Constitution et en Sagesse.",
-    favoredQuests: ["Un moment dans la nature, sans \xE9cran", "Grande sortie \xE0 pied ou \xE0 v\xE9lo", "Marcher 5 fois dans la semaine"],
+    favoredQuests: ["Un moment dans la nature, sans \xE9cran", "Grande sortie, 45 minutes", "Marcher 5 fois dans la semaine"],
     paths: [
       { id: "explorateur-druide", name: "Voie du Sentier vert", ability: "INT", title: "Lecteur du vivant", description: "Tu observes, tu notes, tu apprends de la nature. Ta voie ajoute une affinit\xE9 Intelligence." },
       { id: "explorateur-nomade", name: "Voie du Nomade", ability: "FOR", title: "Marcheur d\u2019horizons", description: "Tu vas toujours un peu plus loin. Ta voie ajoute une affinit\xE9 Force." }
@@ -2391,11 +2472,12 @@ function snapshotOf(t) {
     ...t.secondary?.length ? { secondary: t.secondary } : {}
   };
 }
-function newInstance(id, t, period, start, end, status, nowIso, free = false) {
+function newInstance(id, t, period, start, end, status, nowIso, free = false, tune = 0) {
+  const snapshot = tunedSnapshot(snapshotOf(t), t.validation, tune ?? 0);
   return {
     id,
     templateId: t.id,
-    snapshot: snapshotOf(t),
+    snapshot,
     period,
     periodStart: start,
     periodEnd: end,
@@ -2542,7 +2624,7 @@ async function createCharacter(ctx, userId, input) {
     rerollsUsed: 0,
     createdAt: nowIso
   };
-  await ctx.store.saveSettings(userId, defaultSettings(input.timezone));
+  await ctx.store.saveSettings(userId, { ...defaultSettings(input.timezone), interests: sanitizeInterests(input.interests) });
   await ctx.store.saveCharacter(userId, character);
   await ensureQuests(ctx, userId);
   return { ok: true, character };
@@ -2606,13 +2688,14 @@ async function ensureQuests(ctx, userId) {
       masteries,
       templates,
       preferences: prefs,
+      interests: settings.interests,
       lastDrawn: lastDrawnMap(history, period)
     };
     const main = drawQuests({ ...base, count });
     for (const t of main.picks) {
       const pinned = !!prefs[t.id]?.isPinned;
       const status = period === "daily" || pinned ? "accepted" : "proposed";
-      toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, status, nowIso));
+      toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, status, nowIso, false, prefs[t.id]?.tune));
     }
     if (period === "daily") {
       const free = drawQuests({
@@ -2623,7 +2706,7 @@ async function ensureQuests(ctx, userId) {
         seedSuffix: "free",
         skipPinned: true
       });
-      for (const t of free.picks) toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, "proposed", nowIso, true));
+      for (const t of free.picks) toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, "proposed", nowIso, true, prefs[t.id]?.tune));
     }
   }
   if (toInsert.length) await store.insertInstances(userId, toInsert);
@@ -2705,6 +2788,7 @@ async function rerollQuest(ctx, userId, instanceId) {
     masteries: masteriesFor(character),
     templates,
     preferences: prefs,
+    interests: env.settings.interests,
     lastDrawn: lastDrawnMap(history, inst.period),
     exclude: same.map((i) => i.templateId),
     difficultyPlan: [inst.snapshot.difficulty],
@@ -2713,11 +2797,29 @@ async function rerollQuest(ctx, userId, instanceId) {
   });
   const t = draw.picks[0];
   if (!t) return fail("invalid", "Aucune autre qu\xEAte disponible.");
-  const fresh = newInstance(ctx.uuid(), t, inst.period, inst.periodStart, inst.periodEnd, inst.status, new Date(env.nowMs).toISOString(), inst.free);
+  const fresh = newInstance(ctx.uuid(), t, inst.period, inst.periodStart, inst.periodEnd, inst.status, new Date(env.nowMs).toISOString(), inst.free, prefs[t.id]?.tune);
   await ctx.store.deleteInstance(userId, instanceId);
   await ctx.store.insertInstances(userId, [fresh]);
   await ctx.store.saveCharacter(userId, character);
   return { ok: true, instance: fresh, usedInspiration };
+}
+async function tuneQuest(ctx, userId, instanceId, direction) {
+  const inst = await ctx.store.getInstance(userId, instanceId);
+  if (!inst) return fail("not-found");
+  if (inst.status !== "proposed" && inst.status !== "accepted") return fail("not-accepted");
+  const template = (await ctx.store.listTemplates(userId)).find((t) => t.id === inst.templateId);
+  const base = template?.validation;
+  if (!base || tunableTarget(base) === null) return fail("invalid", "Cette qu\xEAte ne peut pas \xEAtre ajust\xE9e.");
+  const next = nextTune(inst.snapshot.tune, base, direction);
+  if (next === null) return fail("invalid", direction === "easier" ? "Cette qu\xEAte est d\xE9j\xE0 au plus facile." : "Cette qu\xEAte est d\xE9j\xE0 au plus difficile.");
+  const { tune: _t, baseTarget: _b, ...plain } = inst.snapshot;
+  const snapshot = tunedSnapshot(plain, base, next);
+  const target = tunableTarget(snapshot.validation) ?? 0;
+  const progress = Math.min(inst.progress, target);
+  await ctx.store.updateInstance(userId, instanceId, { snapshot, progress });
+  const prefs = await ctx.store.getPreferences(userId);
+  await ctx.store.savePreference(userId, { ...prefs[inst.templateId] ?? { templateId: inst.templateId }, tune: next });
+  return { ok: true, instance: { ...inst, snapshot, progress } };
 }
 async function completeQuestAction(ctx, userId, req) {
   const env = await loadEnv(ctx, userId);
@@ -3209,7 +3311,8 @@ var SupabaseStore = class {
         sounds: true,
         reducedMotion: false,
         lastRecapWeek: null,
-        lastRecapMonth: null
+        lastRecapMonth: null,
+        interests: []
       };
     }
     return {
@@ -3226,7 +3329,8 @@ var SupabaseStore = class {
       sounds: data.sounds,
       reducedMotion: data.reduced_motion,
       lastRecapWeek: data.last_recap_week,
-      lastRecapMonth: data.last_recap_month
+      lastRecapMonth: data.last_recap_month,
+      interests: data.interests ?? []
     };
   }
   async saveSettings(userId, s) {
@@ -3246,7 +3350,8 @@ var SupabaseStore = class {
         sounds: s.sounds,
         reduced_motion: s.reducedMotion,
         last_recap_week: s.lastRecapWeek ?? null,
-        last_recap_month: s.lastRecapMonth ?? null
+        last_recap_month: s.lastRecapMonth ?? null,
+        interests: s.interests ?? []
       },
       { onConflict: "profile_id" }
     );
@@ -3278,8 +3383,19 @@ var SupabaseStore = class {
     const { data, error } = await this.db.from("quest_preferences").select("*").eq("profile_id", userId);
     fail2(error, "prefs.select");
     const out = {};
-    for (const p of data ?? []) out[p.template_id] = { templateId: p.template_id, isFavorite: p.is_favorite, isExcluded: p.is_excluded, isPinned: p.is_pinned };
+    for (const p of data ?? []) out[p.template_id] = { templateId: p.template_id, isFavorite: p.is_favorite, isExcluded: p.is_excluded, isPinned: p.is_pinned, tune: p.tune ?? 0 };
     return out;
+  }
+  async savePreference(userId, p) {
+    const { error } = await this.db.from("quest_preferences").upsert({
+      profile_id: userId,
+      template_id: p.templateId,
+      is_favorite: !!p.isFavorite,
+      is_excluded: !!p.isExcluded,
+      is_pinned: !!p.isPinned,
+      tune: p.tune ?? 0
+    }, { onConflict: "profile_id,template_id" });
+    fail2(error, "prefs.upsert");
   }
   // ───── Instances
   toInstance(r) {
@@ -3477,6 +3593,7 @@ export {
   JOURNAL_MIN_CHARS,
   LEVEL_XP,
   MAX_INSPIRATION,
+  MAX_INTERESTS,
   MAX_LEVEL,
   MAX_SCORE,
   MIN_SCORE,
@@ -3498,6 +3615,7 @@ export {
   SupabaseStore,
   TIER3_MIN_SCORE,
   TIER4_MIN_LEVEL,
+  TUNE_FACTOR,
   UNDO_WINDOW_MS,
   UPGRADE_XP_STEP,
   VALIDATION_LABEL,
@@ -3508,10 +3626,12 @@ export {
   abilityUpgradeCost,
   acceptQuest,
   achievementProgress,
+  activityOf,
   addDays,
   applyXp,
   applyXpParts,
   availableAgainOn,
+  baseTargetOf,
   buildRecap,
   canDeclareRest,
   canForge,
@@ -3546,6 +3666,8 @@ export {
   hasLegacyBaseScores,
   hashString,
   inspirationAfterStreak,
+  interestKey,
+  interestWeight,
   interpolate,
   isDateInRange,
   isReadyToComplete,
@@ -3563,6 +3685,7 @@ export {
   masteriesOf,
   msUntilReset,
   newlyUnlocked,
+  nextTune,
   offlineCompletionAllowed,
   parseDateStr,
   partialXp,
@@ -3581,8 +3704,10 @@ export {
   recomputeCharacter,
   rerollQuest,
   rescaleLegacyBaseScores,
+  sanitizeInterests,
   scoresFromAssessment,
   shuffle,
+  slugify,
   splitXp,
   startOfIsoWeek,
   startOfMonth,
@@ -3592,12 +3717,18 @@ export {
   tierUnlocked,
   toDateStr,
   totalAbilityScoreSum,
+  tunableTarget,
+  tuneQuest,
+  tuneXpScale,
+  tunedSnapshot,
+  tunedTarget,
   undoQuest,
   unlocksAt,
   updateProgress,
   validationTarget,
   weekStartOf,
   weightedPick,
+  withTarget,
   xpBonusForMastery,
   xpShares
 };

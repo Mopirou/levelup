@@ -369,6 +369,19 @@ export class GameService {
     return false;
   }
 
+  /** « Trop dur » / « trop facile » : la cible de la quête est ajustée et le choix est mémorisé. */
+  async tune(inst: QuestInstance, direction: 'easier' | 'harder'): Promise<boolean> {
+    const r = await this.be.game.tune(inst.id, direction);
+    if (r.ok) {
+      this.patchInstance(r.instance);
+      this.prefs.update((m) => ({ ...m, [inst.templateId]: { ...(m[inst.templateId] ?? { templateId: inst.templateId }), tune: r.instance.snapshot.tune ?? 0 } }));
+      this.toast(direction === 'easier' ? 'Quête allégée. L’XP suit l’effort demandé.' : 'Quête renforcée. L’XP suit l’effort demandé.', 'success');
+      return true;
+    }
+    this.toast(this.errorMessage(r.error, r.message), 'error');
+    return false;
+  }
+
   async setProgress(inst: QuestInstance, patch: { progress?: number; stepsDone?: boolean[] }): Promise<void> {
     const next = { ...inst, ...(patch.progress !== undefined ? { progress: Math.max(0, patch.progress) } : {}), ...(patch.stepsDone ? { stepsDone: patch.stepsDone } : {}) };
     this.patchInstance(next);
@@ -532,8 +545,9 @@ export class GameService {
   }
 
   async setPreference(p: QuestPreference): Promise<void> {
-    await this.be.game.setPreference(p);
-    this.prefs.update((m) => ({ ...m, [p.templateId]: p }));
+    const full = { ...p, tune: p.tune ?? this.prefs()[p.templateId]?.tune ?? 0 };
+    await this.be.game.setPreference(full);
+    this.prefs.update((m) => ({ ...m, [p.templateId]: full }));
   }
 
   async saveSettings(patch: Partial<SettingsRecord>): Promise<void> {

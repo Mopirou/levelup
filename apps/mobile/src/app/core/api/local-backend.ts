@@ -223,6 +223,7 @@ export async function createLocalBackend(): Promise<Backend> {
     abandon: (id) => wrap(() => engine.abandonQuest(ctx, LOCAL_ID, id)),
     progress: (id, patch) => wrap(() => engine.updateProgress(ctx, LOCAL_ID, id, patch)),
     reroll: (id) => wrap(() => engine.rerollQuest(ctx, LOCAL_ID, id)),
+    tune: (id, direction) => wrap(() => engine.tuneQuest(ctx, LOCAL_ID, id, direction)),
     complete: (req) => wrap(() => engine.completeQuestAction(ctx, LOCAL_ID, req)),
     undo: (id) => wrap(() => engine.undoQuest(ctx, LOCAL_ID, id)),
     choosePath: (id) => wrap(() => engine.choosePath(ctx, LOCAL_ID, id)),

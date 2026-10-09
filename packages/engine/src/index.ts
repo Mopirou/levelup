@@ -3,6 +3,7 @@ export * from './xp';
 export * from './dates';
 export * from './random';
 export * from './draw';
+export * from './interests';
 export * from './complete';
 export * from './achievements';
 export * from './narrative';

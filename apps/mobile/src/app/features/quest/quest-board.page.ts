@@ -14,6 +14,7 @@ import {
   type Difficulty,
   type Period,
   type QuestInstance,
+  tuneXpScale,
 } from '@levelup/engine';
 import { GameService } from '../../core/game.service';
 import { UiService } from '../../core/ui.service';
@@ -235,7 +236,7 @@ export class QuestBoardPage {
   private xpOf(q: QuestInstance): number {
     return questXp({
       difficulty: q.snapshot.difficulty, period: q.period, ability: q.snapshot.ability, level: this.game.level(),
-      masteries: this.game.masteries(), pathAbility: this.game.pathAbility(),
+      masteries: this.game.masteries(), pathAbility: this.game.pathAbility(), scale: tuneXpScale(q.snapshot),
     }).total;
   }
 
