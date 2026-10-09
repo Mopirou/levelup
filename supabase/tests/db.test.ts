@@ -64,6 +64,7 @@ beforeAll(async () => {
   await db.exec(read('migrations/20261008000003_cron.sql'));
   await db.exec(read('migrations/20261008000004_friend_code.sql'));
   await db.exec(read('migrations/20261009000001_quest_themes.sql'));
+  await db.exec(read('migrations/20261009000002_interests_and_tuning.sql'));
   await db.exec(read('seed.sql'));
   await mkUser(ids.alice, 'alice');
   await mkUser(ids.bob, 'bob');

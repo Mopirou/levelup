@@ -2942,24 +2942,27 @@
     ]
   },
   {
-    "id": "int-easy-un-tutoriel-d-une-competence",
+    "id": "int-easy-trois-raccourcis-clavier",
     "ability": "INT",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Un tutoriel d’une compétence",
-    "flavor": "Un tutoriel court suffit pour poser les bases d’une compétence utile.",
-    "objective": "Suivre un tutoriel ou un cours court sur une compétence que tu veux acquérir.",
+    "title": "Trois raccourcis clavier",
+    "flavor": "Quelques raccourcis bien choisis font gagner du temps à chaque utilisation.",
+    "objective": "Apprendre 3 raccourcis clavier utiles (copier-coller, annuler, changer de fenêtre, rechercher) et les utiliser tout de suite.",
     "tips": [
-      "Fais l’exercice en même temps.",
-      "Note ce qui t’a servi."
+      "Colle un pense-bête près de l’écran.",
+      "Utilise-les au lieu de la souris, même si c’est plus lent au début."
     ],
     "validation": {
-      "type": "simple"
+      "type": "counter",
+      "target": 3,
+      "unit": "raccourcis"
     },
     "tags": [
-      "numérique"
+      "numérique",
+      "moins de 10 min"
     ]
   },
   {
@@ -4714,22 +4717,22 @@
     ]
   },
   {
-    "id": "cha-easy-trois-questions-ouvertes",
+    "id": "cha-easy-deux-questions-ouvertes",
     "ability": "CHA",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Trois questions ouvertes",
+    "title": "Deux questions ouvertes",
     "flavor": "Écouter vraiment est la base de tout lien durable.",
-    "objective": "Poser 3 questions ouvertes à quelqu’un (« comment… », « qu’est-ce qui… ») et écouter les réponses sans l’interrompre.",
+    "objective": "Poser 2 questions ouvertes à quelqu’un (« comment… », « qu’est-ce qui… ») et écouter les réponses sans l’interrompre.",
     "tips": [
       "Évite les questions auxquelles on répond par oui ou non.",
       "Rebondis sur ce que l’autre dit."
     ],
     "validation": {
       "type": "counter",
-      "target": 3,
+      "target": 2,
       "unit": "questions"
     },
     "tags": [
@@ -4738,22 +4741,22 @@
     ]
   },
   {
-    "id": "cha-easy-donner-des-nouvelles-a-trois-personnes",
+    "id": "cha-easy-donner-des-nouvelles-a-deux-personnes",
     "ability": "CHA",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Donner des nouvelles à trois personnes",
+    "title": "Donner des nouvelles à deux personnes",
     "flavor": "Un petit message suffit souvent à rouvrir un lien.",
-    "objective": "Écrire à 3 personnes que tu n’as pas contactées depuis longtemps.",
+    "objective": "Écrire à 2 personnes que tu n’as pas contactées depuis longtemps.",
     "tips": [
       "Personnalise chaque message.",
       "Pose une question ouverte."
     ],
     "validation": {
       "type": "counter",
-      "target": 3,
+      "target": 2,
       "unit": "messages"
     },
     "tags": [
@@ -4849,22 +4852,22 @@
     ]
   },
   {
-    "id": "cha-easy-cinq-reponses-en-retard",
+    "id": "cha-easy-trois-reponses-en-retard",
     "ability": "CHA",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Cinq réponses en retard",
+    "title": "Trois réponses en retard",
     "flavor": "Répondre aux messages en attente libère l’esprit et rassure les autres.",
-    "objective": "Répondre à 5 messages ou courriers personnels qui traînent.",
+    "objective": "Répondre à 3 messages ou courriers personnels qui traînent.",
     "tips": [
       "Commence par les plus anciens.",
       "Une réponse courte vaut mieux que pas de réponse."
     ],
     "validation": {
       "type": "counter",
-      "target": 5,
+      "target": 3,
       "unit": "réponses"
     },
     "tags": [
@@ -4962,22 +4965,22 @@
     ]
   },
   {
-    "id": "cha-easy-parler-a-quatre-personnes-differentes",
+    "id": "cha-easy-parler-a-trois-personnes-differentes",
     "ability": "CHA",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Parler à quatre personnes différentes",
+    "title": "Parler à trois personnes différentes",
     "flavor": "Un vrai échange, même court, vaut mieux qu’un bonjour distrait.",
-    "objective": "Échanger avec 4 personnes différentes au-delà d’un simple bonjour : « comment allez-vous ? », une question, une vraie réponse.",
+    "objective": "Échanger avec 3 personnes différentes au-delà d’un simple bonjour : « comment allez-vous ? », une question, une vraie réponse.",
     "tips": [
       "Écoute la réponse et rebondis dessus.",
       "Voisins, commerçants, collègues, famille : tout compte."
     ],
     "validation": {
       "type": "counter",
-      "target": 4,
+      "target": 3,
       "unit": "personnes"
     },
     "tags": [
@@ -5007,22 +5010,22 @@
     ]
   },
   {
-    "id": "cha-medium-trois-rencontres-en-personne",
+    "id": "cha-medium-deux-rencontres-en-personne",
     "ability": "CHA",
     "difficulty": "medium",
     "periods": [
       "weekly"
     ],
-    "title": "Trois rencontres en personne",
+    "title": "Deux rencontres en personne",
     "flavor": "Voir quelqu’un en vrai renforce le lien plus que mille messages.",
-    "objective": "Rencontrer 3 fois un ou plusieurs proches en personne dans la semaine (café, balade, repas, visite).",
+    "objective": "Rencontrer 2 fois un ou plusieurs proches en personne dans la semaine (café, balade, repas, visite).",
     "tips": [
       "Propose un café ou une promenade.",
       "Fixe une date précise dès maintenant."
     ],
     "validation": {
       "type": "counter",
-      "target": 3,
+      "target": 2,
       "unit": "rencontres"
     },
     "tags": [
@@ -5030,22 +5033,22 @@
     ]
   },
   {
-    "id": "cha-medium-retrouver-trois-personnes",
+    "id": "cha-medium-retrouver-deux-personnes",
     "ability": "CHA",
     "difficulty": "medium",
     "periods": [
       "weekly"
     ],
-    "title": "Retrouver trois personnes",
+    "title": "Retrouver deux personnes",
     "flavor": "Rétablir le contact avec des personnes perdues de vue entretient un réseau.",
-    "objective": "Contacter 3 personnes que tu n’as pas vues depuis plus de six mois et proposer un moment ensemble.",
+    "objective": "Contacter 2 personnes que tu n’as pas vues depuis plus de six mois et proposer un moment ensemble.",
     "tips": [
       "Commence par les plus faciles.",
       "Propose une date précise."
     ],
     "validation": {
       "type": "counter",
-      "target": 3,
+      "target": 2,
       "unit": "personnes"
     },
     "tags": [
@@ -5075,23 +5078,23 @@
     ]
   },
   {
-    "id": "cha-medium-ecoute-active-cinq-reformulations",
+    "id": "cha-medium-ecoute-active-trois-reformulations",
     "ability": "CHA",
     "difficulty": "medium",
     "periods": [
       "daily",
       "weekly"
     ],
-    "title": "Écoute active, cinq reformulations",
+    "title": "Écoute active, trois reformulations",
     "flavor": "Reformuler montre à l’autre qu’il est vraiment entendu.",
-    "objective": "Pendant une conversation, reformuler 5 fois ce que dit l’autre (« si je comprends bien… ») sans donner de conseil non demandé.",
+    "objective": "Pendant une conversation, reformuler 3 fois ce que dit l’autre (« si je comprends bien… ») sans donner de conseil non demandé.",
     "tips": [
       "Laisse des silences.",
       "Pose « et ensuite ? » plutôt que de donner un avis."
     ],
     "validation": {
       "type": "counter",
-      "target": 5,
+      "target": 3,
       "unit": "reformulations"
     },
     "tags": [
@@ -5099,23 +5102,23 @@
     ]
   },
   {
-    "id": "cha-medium-deux-activites-a-plusieurs",
+    "id": "cha-medium-une-activite-a-plusieurs",
     "ability": "CHA",
     "difficulty": "medium",
     "periods": [
       "weekly"
     ],
-    "title": "Deux activités à plusieurs",
+    "title": "Une activité à plusieurs",
     "flavor": "Faire quelque chose ensemble rapproche plus que parler.",
-    "objective": "Faire 2 activités à plusieurs dans la semaine : sport, cuisine, jeu, balade, atelier.",
+    "objective": "Faire une activité à plusieurs dans la semaine : sport, cuisine, jeu, balade, atelier.",
     "tips": [
       "Invite quelqu’un à te rejoindre.",
       "Propose une activité simple."
     ],
     "validation": {
       "type": "counter",
-      "target": 2,
-      "unit": "activités"
+      "target": 1,
+      "unit": "activité"
     },
     "tags": [
       "social"
@@ -5170,18 +5173,18 @@
     ]
   },
   {
-    "id": "cha-medium-conversation-de-fond",
+    "id": "cha-medium-une-vraie-question-a-quelqu-un",
     "ability": "CHA",
     "difficulty": "medium",
     "periods": [
       "daily"
     ],
-    "title": "Conversation de fond",
-    "flavor": "Parler de sujets importants, sans se juger, construit une vraie intimité.",
-    "objective": "Avoir une vraie conversation sur un sujet qui compte pour toi ou pour l’autre, sans téléphone.",
+    "title": "Une vraie question à quelqu’un",
+    "flavor": "Une question sincère ouvre plus de portes que dix banalités.",
+    "objective": "Poser à quelqu’un une vraie question sur sa vie, ses projets ou ce qu’il ressent, et l’écouter jusqu’au bout.",
     "tips": [
-      "Pose des questions plutôt que de donner ton avis.",
-      "Reste présent et écoute jusqu’au bout."
+      "Choisis quelqu’un avec qui tu es à l’aise.",
+      "Pose des questions plutôt que de donner ton avis."
     ],
     "validation": {
       "type": "simple"
@@ -5191,22 +5194,22 @@
     ]
   },
   {
-    "id": "cha-medium-trois-nouvelles-tetes",
+    "id": "cha-medium-deux-nouvelles-tetes",
     "ability": "CHA",
     "difficulty": "medium",
     "periods": [
       "weekly"
     ],
-    "title": "Trois nouvelles têtes",
+    "title": "Deux nouvelles têtes",
     "flavor": "Élargir son cercle demande de sortir de ses habitudes.",
-    "objective": "Échanger avec 3 personnes que tu ne connais pas encore dans la semaine : événement, association, cours, voisins.",
+    "objective": "Échanger avec 2 personnes que tu ne connais pas encore dans la semaine : événement, association, cours, voisins.",
     "tips": [
       "Présente-toi simplement.",
       "Retiens un prénom et une information sur chaque personne."
     ],
     "validation": {
       "type": "counter",
-      "target": 3,
+      "target": 2,
       "unit": "personnes"
     },
     "tags": [
@@ -5236,22 +5239,22 @@
     ]
   },
   {
-    "id": "cha-medium-trois-mots-de-remerciement",
+    "id": "cha-medium-deux-mots-de-remerciement",
     "ability": "CHA",
     "difficulty": "medium",
     "periods": [
       "weekly"
     ],
-    "title": "Trois mots de remerciement",
+    "title": "Deux mots de remerciement",
     "flavor": "Remercier fait toujours plaisir, surtout quand c’est inattendu.",
-    "objective": "Écrire 3 messages ou cartes de remerciement à des personnes qui ont compté pour toi.",
+    "objective": "Écrire 2 messages ou cartes de remerciement à des personnes qui ont compté pour toi.",
     "tips": [
       "Cite un souvenir précis.",
       "Poste-les ou envoie-les tout de suite."
     ],
     "validation": {
       "type": "counter",
-      "target": 3,
+      "target": 2,
       "unit": "messages"
     },
     "tags": [
@@ -5259,22 +5262,22 @@
     ]
   },
   {
-    "id": "cha-high-voir-quatre-personnes-differentes",
+    "id": "cha-high-voir-trois-personnes-differentes",
     "ability": "CHA",
     "difficulty": "high",
     "periods": [
       "weekly"
     ],
-    "title": "Voir quatre personnes différentes",
+    "title": "Voir trois personnes différentes",
     "flavor": "Entretenir plusieurs liens en parallèle, c’est ce qui fait un cercle solide.",
-    "objective": "Voir 4 personnes différentes dans la semaine, en personne ou en visio.",
+    "objective": "Voir 3 personnes différentes dans la semaine, en personne ou en visio.",
     "tips": [
       "Prévois deux ou trois moments fixes.",
       "Alterne famille, amis et collègues."
     ],
     "validation": {
       "type": "counter",
-      "target": 4,
+      "target": 3,
       "unit": "personnes"
     },
     "tags": [
@@ -5327,22 +5330,22 @@
     ]
   },
   {
-    "id": "cha-high-prendre-la-parole-trois-fois-en-groupe",
+    "id": "cha-high-prendre-la-parole-deux-fois-en-groupe",
     "ability": "CHA",
     "difficulty": "high",
     "periods": [
       "weekly"
     ],
-    "title": "Prendre la parole trois fois en groupe",
+    "title": "Prendre la parole deux fois en groupe",
     "flavor": "Parler en groupe, c’est la meilleure façon de gagner en assurance.",
-    "objective": "Prendre la parole 3 fois en groupe dans la semaine : réunion, club, impro, présentation, assemblée.",
+    "objective": "Prendre la parole 2 fois en groupe dans la semaine : réunion, club, impro, présentation, assemblée.",
     "tips": [
       "Prépare trois phrases clés.",
       "Parle plus lentement que tu ne le crois nécessaire."
     ],
     "validation": {
       "type": "counter",
-      "target": 3,
+      "target": 2,
       "unit": "interventions"
     },
     "tags": [
@@ -5350,23 +5353,23 @@
     ]
   },
   {
-    "id": "cha-high-six-nouvelles-rencontres",
+    "id": "cha-high-quatre-nouvelles-rencontres",
     "ability": "CHA",
     "difficulty": "high",
     "periods": [
       "weekly",
       "monthly"
     ],
-    "title": "Six nouvelles rencontres",
+    "title": "Quatre nouvelles rencontres",
     "flavor": "Rencontrer de nouvelles personnes de façon régulière élargit le cercle.",
-    "objective": "Faire la connaissance de 6 nouvelles personnes sur la période : associations, cours, événements, voisinage.",
+    "objective": "Faire la connaissance de 4 nouvelles personnes sur la période : associations, cours, événements, voisinage.",
     "tips": [
       "Participe à un événement régulier.",
       "Échange tes coordonnées avec au moins une personne."
     ],
     "validation": {
       "type": "counter",
-      "target": 6,
+      "target": 4,
       "unit": "personnes"
     },
     "tags": [
@@ -5374,22 +5377,22 @@
     ]
   },
   {
-    "id": "cha-high-trois-conversations-de-fond",
+    "id": "cha-high-deux-conversations-de-fond",
     "ability": "CHA",
     "difficulty": "high",
     "periods": [
       "weekly"
     ],
-    "title": "Trois conversations de fond",
+    "title": "Deux conversations de fond",
     "flavor": "Quelques vraies discussions dans la semaine nourrissent les liens.",
-    "objective": "Avoir 3 conversations profondes dans la semaine, en personne ou par téléphone.",
+    "objective": "Avoir 2 conversations profondes dans la semaine, en personne ou par téléphone.",
     "tips": [
       "Choisis des sujets importants.",
       "Garde le téléphone de côté pendant les échanges."
     ],
     "validation": {
       "type": "counter",
-      "target": 3,
+      "target": 2,
       "unit": "conversations"
     },
     "tags": [
@@ -5443,22 +5446,22 @@
     ]
   },
   {
-    "id": "cha-high-quatre-prises-de-parole",
+    "id": "cha-high-trois-prises-de-parole",
     "ability": "CHA",
     "difficulty": "high",
     "periods": [
       "monthly"
     ],
-    "title": "Quatre prises de parole",
+    "title": "Trois prises de parole",
     "flavor": "Quelques prises de parole dans le mois changent l’aisance en public.",
-    "objective": "Prendre la parole en groupe 4 fois dans le mois : club d’éloquence, réunion, présentation, impro, toast.",
+    "objective": "Prendre la parole en groupe 3 fois dans le mois : club d’éloquence, réunion, présentation, impro, toast.",
     "tips": [
       "Rejoins un groupe pour t’entraîner.",
       "Réécoute-toi ou demande un retour après chaque fois."
     ],
     "validation": {
       "type": "counter",
-      "target": 4,
+      "target": 3,
       "unit": "prises de parole"
     },
     "tags": [
@@ -5466,22 +5469,22 @@
     ]
   },
   {
-    "id": "cha-expert-douze-moments-partages-dans-le-mois",
+    "id": "cha-expert-huit-moments-partages-dans-le-mois",
     "ability": "CHA",
     "difficulty": "expert",
     "periods": [
       "monthly"
     ],
-    "title": "Douze moments partagés dans le mois",
-    "flavor": "Douze moments de qualité avec ton entourage, c’est trois par semaine : un vrai engagement.",
-    "objective": "Vivre 12 moments partagés avec des proches dans le mois : repas, appels longs, sorties, activités.",
+    "title": "Huit moments partagés dans le mois",
+    "flavor": "Huit moments de qualité avec ton entourage, c’est deux par semaine : un vrai engagement.",
+    "objective": "Vivre 8 moments partagés avec des proches dans le mois : repas, appels longs, sorties, activités.",
     "tips": [
       "Planifie tes moments à l’avance.",
       "Équilibre famille, amis et nouvelles rencontres."
     ],
     "validation": {
       "type": "counter",
-      "target": 12,
+      "target": 8,
       "unit": "moments"
     },
     "tags": [
@@ -5489,23 +5492,23 @@
     ]
   },
   {
-    "id": "cha-expert-benevolat-20-heures",
+    "id": "cha-expert-benevolat-12-heures",
     "ability": "CHA",
     "difficulty": "expert",
     "periods": [
       "monthly",
       "epic"
     ],
-    "title": "Bénévolat, 20 heures",
-    "flavor": "Vingt heures d’aide aux autres marquent un vrai engagement dans la durée.",
-    "objective": "Cumuler 20 heures de bénévolat, d’entraide ou d’engagement associatif.",
+    "title": "Bénévolat, 12 heures",
+    "flavor": "Douze heures d’aide aux autres marquent un vrai engagement dans la durée.",
+    "objective": "Cumuler 12 heures de bénévolat, d’entraide ou d’engagement associatif.",
     "tips": [
       "Choisis une mission régulière.",
       "Note ce que tu apprends à chaque fois."
     ],
     "validation": {
       "type": "counter",
-      "target": 20,
+      "target": 12,
       "unit": "heures"
     },
     "tags": [
@@ -5541,23 +5544,23 @@
     ]
   },
   {
-    "id": "cha-expert-trente-nouvelles-rencontres",
+    "id": "cha-expert-quinze-nouvelles-rencontres",
     "ability": "CHA",
     "difficulty": "expert",
     "periods": [
       "monthly",
       "epic"
     ],
-    "title": "Trente nouvelles rencontres",
-    "flavor": "Trente nouvelles personnes rencontrées bâtissent un réseau solide.",
-    "objective": "Faire la connaissance de 30 nouvelles personnes : événements, associations, cours, voisinage.",
+    "title": "Quinze nouvelles rencontres",
+    "flavor": "Quinze nouvelles personnes rencontrées bâtissent un réseau solide.",
+    "objective": "Faire la connaissance de 15 nouvelles personnes : événements, associations, cours, voisinage.",
     "tips": [
       "Participe à des événements réguliers.",
       "Entretiens les contacts avec un message de suivi."
     ],
     "validation": {
       "type": "counter",
-      "target": 30,
+      "target": 15,
       "unit": "personnes"
     },
     "tags": [
@@ -5565,22 +5568,22 @@
     ]
   },
   {
-    "id": "cha-expert-douze-appels-dans-le-mois",
+    "id": "cha-expert-huit-appels-dans-le-mois",
     "ability": "CHA",
     "difficulty": "expert",
     "periods": [
       "monthly"
     ],
-    "title": "Douze appels dans le mois",
+    "title": "Huit appels dans le mois",
     "flavor": "Des appels réguliers entretiennent un cercle solide, même à distance.",
-    "objective": "Appeler des proches 12 fois dans le mois, en variant les personnes.",
+    "objective": "Appeler des proches 8 fois dans le mois, en variant les personnes.",
     "tips": [
-      "Planifie trois appels par semaine.",
+      "Planifie deux appels par semaine.",
       "Note qui tu n’as pas appelé depuis longtemps."
     ],
     "validation": {
       "type": "counter",
-      "target": 12,
+      "target": 8,
       "unit": "appels"
     },
     "tags": [

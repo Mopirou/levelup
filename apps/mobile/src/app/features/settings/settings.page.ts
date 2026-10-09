@@ -13,6 +13,7 @@ import { env } from '../../core/env';
 import { authMessage } from '../auth/auth.page';
 import { PageHeaderComponent, PortraitComponent, PORTRAIT_IDS, SwitchComponent } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
+import { InterestsPickerComponent } from '../../shared/interests-picker.component';
 
 const ZONES = ['Europe/Paris', 'Europe/Brussels', 'Europe/Zurich', 'Europe/London', 'Europe/Lisbon', 'Europe/Madrid', 'Europe/Berlin', 'Africa/Casablanca', 'Africa/Algiers', 'Africa/Tunis', 'Africa/Dakar', 'America/Montreal', 'America/New_York', 'America/Martinique', 'America/Guadeloupe', 'Indian/Reunion', 'Pacific/Tahiti', 'Pacific/Noumea'];
 const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a', '#5f9e6e', '#a8c0b0'];
@@ -20,7 +21,7 @@ const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a'
 /** Réglages : compte, personnage, rythme, partage, notifications, confidentialité, apparence, données. */
 @Component({
   selector: 'app-settings',
-  imports: [IonContent, RouterLink, PageHeaderComponent, PortraitComponent, SwitchComponent, IconComponent],
+  imports: [IonContent, RouterLink, InterestsPickerComponent, PageHeaderComponent, PortraitComponent, SwitchComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
@@ -49,6 +50,13 @@ const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a'
             <div class="lu-field"><label for="cm">Devise</label><input id="cm" class="lu-input" maxlength="80" [value]="motto()" (input)="motto.set($any($event.target).value)" (change)="saveAppearance()" /></div>
             <div class="lu-field"><label for="co">Engagement</label><textarea id="co" class="lu-input area" rows="3" [value]="oath()" (input)="oath.set($any($event.target).value)" (change)="saveAppearance()"></textarea><span class="hint">Privé : jamais visible par tes amis.</span></div>
             <p class="xs muted">Classe : {{ className() }} · Les scores ne sont pas modifiables : ils progressent avec tes quêtes.</p>
+          </section>
+
+          <!-- Centres d'intérêt -->
+          <section class="lu-card">
+            <h3>Centres d’intérêt</h3>
+            <p class="xs muted">Tes quêtes sont tirées en priorité parmi ces disciplines. Les quêtes déjà tirées aujourd’hui ne changent pas : relance-les si tu veux en voir de nouvelles.</p>
+            <lu-interests-picker [value]="st.interests ?? []" (valueChange)="setInterests($event)" />
           </section>
 
           <!-- Rythme -->
@@ -194,6 +202,10 @@ export class SettingsPage {
   async update(patch: Partial<SettingsRecord>): Promise<void> {
     await this.game.saveSettings(patch);
     if (patch.dailyQuestCount) this.game.toast('Pris en compte au prochain tirage.', 'info');
+  }
+
+  async setInterests(list: string[]): Promise<void> {
+    await this.game.saveSettings({ interests: list });
   }
 
   async toggleHardcore(on: boolean): Promise<void> {
