@@ -94,14 +94,14 @@ for (const th of themeRows) {
     mk(TIERS[2], {
       title: `${name}, ${sessions[2]} fois ce mois-ci`,
       flavor: `${why} Un mois de pratique régulière installe l’habitude et le niveau.`,
-      objective: `Faire ${sessions[2]} ${unit} sur le mois : ${doing}.`,
+      objective: `Faire ${sessions[2]} ${unit} sur le mois, à raison de quelques-uns par semaine.`,
       tips: [tech, 'Planifie tes créneaux à l’avance et note ta progression chaque semaine.'],
       validation: { type: 'counter', target: sessions[2], unit },
     });
     mk(TIERS[3], {
       title: `${name}, ${sessions[3]} fois au total`,
       flavor: `${why} Un grand objectif, qui demande de la constance sur la durée.`,
-      objective: `Faire ${sessions[3]} ${unit} (${doing}) jusqu’à ${goal}.${th.physical ? PRUDENCE : ''}`,
+      objective: `Faire ${sessions[3]} ${unit} sur la durée, jusqu’à ${goal}.${th.physical ? PRUDENCE : ''}`,
       tips: [tech, 'Fixe-toi un point d’étape toutes les deux semaines pour mesurer ta progression.'],
       validation: { type: 'counter', target: sessions[3], unit },
     });
