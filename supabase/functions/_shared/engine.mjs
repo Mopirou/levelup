@@ -1024,7 +1024,7 @@ var classes_fr_default = [
     masteries: ["FOR", "CON"],
     profile: "Sportif endurant, salle et cardio",
     description: "Pour les sportifs d\u2019endurance : course, salle, cardio. Tu progresses surtout en Force et en Constitution.",
-    favoredQuests: ["Marche rapide, 30 minutes", "Cardio, 150 minutes dans la semaine", "Haut du corps, 20 minutes"],
+    favoredQuests: ["Marche rapide, 30 minutes", "Endurance, 3 s\xE9ances dans la semaine", "Pompes, 40 aujourd\u2019hui"],
     paths: [
       { id: "eclaireur-sentier", name: "Voie du Sentier", ability: "SAG", title: "Marcheur des cimes", description: "Tu cours pour entendre le vent. Ta voie ajoute une affinit\xE9 Sagesse : chaque sortie en nature te rapporte un petit suppl\xE9ment d\u2019XP." },
       { id: "eclaireur-bastion", name: "Voie du Bastion", ability: "INT", title: "Strat\xE8ge de l\u2019effort", description: "Tu planifies, mesures, ajustes. Ta voie ajoute une affinit\xE9 Intelligence : tes plans d\u2019entra\xEEnement t\u2019apportent un petit suppl\xE9ment d\u2019XP." }
@@ -1037,7 +1037,7 @@ var classes_fr_default = [
     masteries: ["FOR", "DEX"],
     profile: "Arts martiaux, yoga, discipline du corps",
     description: "Pour ceux qui aiment les arts martiaux, le yoga ou toute discipline du corps. Tu progresses surtout en Force et en Dext\xE9rit\xE9.",
-    favoredQuests: ["S\xE9ance de force compl\xE8te, 30 minutes", "Activit\xE9 de coordination, 45 minutes", "Parcours d\u2019agilit\xE9, 20 minutes"],
+    favoredQuests: ["S\xE9ances de force, 3 dans la semaine", "Nouvelle activit\xE9 de coordination, 2 s\xE9ances", "Parcours d\u2019agilit\xE9, 5 tours"],
     paths: [
       { id: "aventurier-ombre", name: "Voie de l\u2019Ombre", ability: "SAG", title: "Ma\xEEtre du calme", description: "L\u2019art martial est d\u2019abord un art du souffle. Ta voie ajoute une affinit\xE9 Sagesse." },
       { id: "aventurier-tempete", name: "Voie de la Temp\xEAte", ability: "CON", title: "C\u0153ur d\u2019orage", description: "Tu aimes l\u2019effort qui dure. Ta voie ajoute une affinit\xE9 Constitution." }
@@ -1050,7 +1050,7 @@ var classes_fr_default = [
     masteries: ["DEX", "INT"],
     profile: "Bricoleur ing\xE9nieux, apprend par la pratique",
     description: "Pour ceux qui apprennent en pratiquant : bricolage, projets, techniques. Tu progresses surtout en Dext\xE9rit\xE9 et en Intelligence.",
-    favoredQuests: ["Geste pr\xE9cis, 90 minutes dans la semaine", "Tutoriel d\u2019une comp\xE9tence, 15 minutes", "Programmation, 30 minutes"],
+    favoredQuests: ["Geste pr\xE9cis, 4 s\xE9ances", "Un tutoriel d\u2019une comp\xE9tence", "Programmation, 3 exercices"],
     paths: [
       { id: "artisan-inventeur", name: "Voie de l\u2019Inventeur", ability: "INT", title: "Esprit d\u2019atelier", description: "Tu cherches comment les choses fonctionnent. Ta voie ajoute une affinit\xE9 Intelligence." },
       { id: "artisan-maitre", name: "Voie du Ma\xEEtre d\u2019\u0153uvre", ability: "CHA", title: "B\xE2tisseur de guildes", description: "Tu sais faire travailler les autres. Ta voie ajoute une affinit\xE9 Charisme." }
@@ -1063,7 +1063,7 @@ var classes_fr_default = [
     masteries: ["DEX", "CHA"],
     profile: "Artiste, musicien, aime la sc\xE8ne",
     description: "Pour les artistes et les musiciens qui aiment la sc\xE8ne. Tu progresses surtout en Dext\xE9rit\xE9 et en Charisme.",
-    favoredQuests: ["Habilet\xE9 manuelle, 120 minutes", "Prise de parole, 15 minutes", "Jonglage progressif, 15 minutes"],
+    favoredQuests: ["Habilet\xE9 manuelle, 5 s\xE9ances", "Pr\xE9parer et dire un court expos\xE9", "Jonglage, 10 cascades"],
     paths: [
       { id: "troubadour-conteur", name: "Voie du Conteur", ability: "INT", title: "M\xE9moire vivante", description: "Tu aimes les histoires bien construites. Ta voie ajoute une affinit\xE9 Intelligence." },
       { id: "troubadour-meneur", name: "Voie du Meneur de bal", ability: "CON", title: "C\u0153ur de la f\xEAte", description: "Tu donnes de l\u2019\xE9nergie aux autres. Ta voie ajoute une affinit\xE9 Constitution." }
@@ -1076,7 +1076,7 @@ var classes_fr_default = [
     masteries: ["CON", "CHA"],
     profile: "\xC9nergie naturelle, sociable et r\xE9sistant",
     description: "Pour les personnes sociables et pleines d\u2019\xE9nergie. Tu progresses surtout en Constitution et en Charisme.",
-    favoredQuests: ["Repas partag\xE9, 45 minutes", "Temps social, 180 minutes dans la semaine", "Marche et discussion, 30 minutes"],
+    favoredQuests: ["Un vrai repas partag\xE9", "Voir quatre personnes diff\xE9rentes", "Deux activit\xE9s \xE0 plusieurs"],
     paths: [
       { id: "rassembleur-feu", name: "Voie du Feu de camp", ability: "DEX", title: "\xC2me des veill\xE9es", description: "Tu cr\xE9es des moments qui comptent. Ta voie ajoute une affinit\xE9 Dext\xE9rit\xE9." },
       { id: "rassembleur-roc", name: "Voie du Roc", ability: "FOR", title: "Pilier de la compagnie", description: "Tu es celui sur qui on s\u2019appuie. Ta voie ajoute une affinit\xE9 Force." }
@@ -1089,7 +1089,7 @@ var classes_fr_default = [
     masteries: ["INT", "SAG"],
     profile: "\xC9tudiant permanent, lecteur, r\xE9fl\xE9chi",
     description: "Pour les \xE9tudiants permanents, les lecteurs et les curieux. Tu progresses surtout en Intelligence et en Sagesse.",
-    favoredQuests: ["Lecture, 30 minutes", "Langue \xE9trang\xE8re, 20 minutes", "M\xE9ditation, 15 minutes"],
+    favoredQuests: ["Lecture, 20 pages", "Langue \xE9trang\xE8re, une s\xE9ance compl\xE8te", "M\xE9ditation, 15 minutes"],
     paths: [
       { id: "erudit-savant", name: "Voie du Savant", ability: "INT", title: "Gardien des savoirs", description: "Tu creuses chaque sujet jusqu\u2019au fond. Ta voie ajoute une affinit\xE9 Intelligence." },
       { id: "erudit-ermite", name: "Voie de l\u2019Ermite", ability: "SAG", title: "Sage de la Tour", description: "Tu cherches le calme autant que le savoir. Ta voie ajoute une affinit\xE9 Sagesse." }
@@ -1102,7 +1102,7 @@ var classes_fr_default = [
     masteries: ["SAG", "CHA"],
     profile: "Bienveillant, tourn\xE9 vers les autres",
     description: "Pour ceux qui prennent soin des autres et d\u2019eux-m\xEAmes. Tu progresses surtout en Sagesse et en Charisme.",
-    favoredQuests: ["M\xE9ditation, 15 minutes", "\xC9coute active, 20 minutes", "Gratitude, 5 minutes"],
+    favoredQuests: ["M\xE9ditation, 15 minutes", "\xC9coute active, cinq reformulations", "Trois gratitudes"],
     paths: [
       { id: "gardien-guerisseur", name: "Voie du Gu\xE9risseur", ability: "CON", title: "Main qui apaise", description: "Tu prends soin des corps autant que des c\u0153urs. Ta voie ajoute une affinit\xE9 Constitution." },
       { id: "gardien-protecteur", name: "Voie du Protecteur", ability: "FOR", title: "Bouclier des siens", description: "Tu d\xE9fends ceux que tu aimes. Ta voie ajoute une affinit\xE9 Force." }
@@ -1115,7 +1115,7 @@ var classes_fr_default = [
     masteries: ["CON", "SAG"],
     profile: "Proche de la nature, curieux du vivant",
     description: "Pour les amoureux de nature et de grands espaces. Tu progresses surtout en Constitution et en Sagesse.",
-    favoredQuests: ["Nature sans \xE9cran, 30 minutes", "Sortie en ext\xE9rieur, 45 minutes", "Marche, 150 minutes dans la semaine"],
+    favoredQuests: ["Un moment dans la nature, sans \xE9cran", "Grande sortie \xE0 pied ou \xE0 v\xE9lo", "Marcher 5 fois dans la semaine"],
     paths: [
       { id: "explorateur-druide", name: "Voie du Sentier vert", ability: "INT", title: "Lecteur du vivant", description: "Tu observes, tu notes, tu apprends de la nature. Ta voie ajoute une affinit\xE9 Intelligence." },
       { id: "explorateur-nomade", name: "Voie du Nomade", ability: "FOR", title: "Marcheur d\u2019horizons", description: "Tu vas toujours un peu plus loin. Ta voie ajoute une affinit\xE9 Force." }

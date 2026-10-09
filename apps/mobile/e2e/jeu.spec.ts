@@ -50,7 +50,7 @@ test.describe('Parcours solo', () => {
     await expect(page.getByText('Niveau 11 requis (tu es niveau 1)')).toBeVisible();
     await expect(page.getByRole('button', { name: /Niveau 3 · Mois/ })).toBeDisabled();
     await page.getByRole('button', { name: /Niveau 1 · Journée/ }).click();
-    await expect(page.getByText('Pompes en séries, 5 minutes')).toBeVisible();
+    await expect(page.getByText('Pompes, 20 aujourd’hui')).toBeVisible();
     await page.getByRole('button', { name: 'Toutes les caractéristiques' }).click();
     await expect(page.getByRole('button', { name: /^Dextérité/ })).toBeVisible();
   });
@@ -81,7 +81,7 @@ test.describe('Parcours solo', () => {
     await page.goto('/grimoire');
     await expect(page.getByText('0/100 quêtes essayées').first()).toBeVisible();
     await page.getByPlaceholder('Chercher une quête…').fill('pompes');
-    await expect(page.getByText('Pompes en séries, 5 minutes')).toBeVisible();
+    await expect(page.getByText('Pompes, 20 aujourd’hui')).toBeVisible();
   });
 });
 

@@ -94,12 +94,12 @@ const timerKey = (id: string) => `lu-timer-${id}`;
               @switch (q.snapshot.validation.type) {
                 @case ('counter') {
                   <div class="counter">
-                    <button type="button" class="rb" [disabled]="done() || count() <= 0" (click)="step(-stepSize())" [attr.aria-label]="stepSize() > 1 ? 'Moins ' + stepSize() + ' minutes' : 'Moins'"><lu-icon name="minus" [size]="18" /></button>
+                    <button type="button" class="rb" [disabled]="done() || count() <= 0" (click)="step(-stepSize())" [attr.aria-label]="stepSize() > 1 ? 'Moins ' + stepSize() + ' ' + unit() : 'Moins'"><lu-icon name="minus" [size]="18" /></button>
                     <div class="cv">
                       <span class="num">{{ count() }} / {{ target() }}</span>
                       <span class="unit">{{ unit() }}</span>
                     </div>
-                    <button type="button" class="rb" [disabled]="done()" (click)="step(stepSize())" [attr.aria-label]="stepSize() > 1 ? 'Plus ' + stepSize() + ' minutes' : 'Plus'"><lu-icon name="plus" [size]="18" /></button>
+                    <button type="button" class="rb" [disabled]="done()" (click)="step(stepSize())" [attr.aria-label]="stepSize() > 1 ? 'Plus ' + stepSize() + ' ' + unit() : 'Plus'"><lu-icon name="plus" [size]="18" /></button>
                   </div>
                   <lu-bar [value]="count()" [max]="target()" />
                 }
@@ -443,8 +443,10 @@ export class QuestDetailPage {
   /** Compteurs en minutes : on avance par paliers de 5 (15 pour les gros objectifs) plutôt que d’un seul tap par minute. */
   readonly stepSize = computed(() => {
     const v = this.inst()?.snapshot.validation;
-    if (v?.type !== 'counter' || !v.unit.startsWith('minute')) return 1;
-    return v.target >= 300 ? 15 : 5;
+    if (v?.type !== 'counter') return 1;
+    if (v.unit.startsWith('minute')) return v.target >= 300 ? 15 : 5;
+    // répétitions, pages, mots… : de gros objectifs se saisissent par paliers
+    return v.target >= 1000 ? 100 : v.target >= 400 ? 50 : v.target >= 100 ? 10 : v.target >= 40 ? 5 : 1;
   });
 
   step(delta: number): void {
