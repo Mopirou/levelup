@@ -13,6 +13,7 @@ import type {
   ProfileCard,
   SocialApi,
 } from './types';
+import { uuid } from '../uuid';
 import type { LocalAccount } from './local-backend';
 
 /**
@@ -345,7 +346,7 @@ export async function createLocalSocial(deps: {
     async publish(p: NewPost) {
       const paths: string[] = [];
       for (const m of p.media.slice(0, 4)) {
-        const id = `local:${crypto.randomUUID()}.${m.ext}`;
+        const id = `local:${uuid()}.${m.ext}`;
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const r = new FileReader();
           r.onload = () => resolve(String(r.result));
@@ -393,7 +394,7 @@ export async function createLocalSocial(deps: {
         });
     },
     async comment(postId, text) {
-      const c: LocalComment = { id: crypto.randomUUID(), postId, authorId: myId, text, createdAt: new Date().toISOString() };
+      const c: LocalComment = { id: uuid(), postId, authorId: myId, text, createdAt: new Date().toISOString() };
       state.comments.push(c);
       save();
       const mine = await me();

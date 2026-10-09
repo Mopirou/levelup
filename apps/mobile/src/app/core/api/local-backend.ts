@@ -11,6 +11,7 @@ import {
   type StoredPost,
 } from '@levelup/engine';
 import quests from '@levelup/content/quests.fr.json';
+import { uuid } from '../uuid';
 import { createLocalSocial } from './local-social';
 import type { AuthApi, AuthUser, Backend, CommandResult, GameApi, MyProfile, SignUpInput } from './types';
 
@@ -99,7 +100,7 @@ export interface LocalAccount {
 export async function createLocalBackend(): Promise<Backend> {
   const db = new LocalDb();
   const store = new MemoryStore(catalog);
-  const ctx: ServerContext = { store, now: () => Date.now(), uuid: () => crypto.randomUUID() };
+  const ctx: ServerContext = { store, now: () => Date.now(), uuid };
 
   // ───── chargement
   let account: LocalAccount | null = (await db.kv.get('account').catch(() => undefined))?.value ?? null;
@@ -257,7 +258,7 @@ export async function createLocalBackend(): Promise<Backend> {
       });
     },
     async uploadMedia(blob, ext) {
-      const id = `local:${crypto.randomUUID()}.${ext}`;
+      const id = `local:${uuid()}.${ext}`;
       const dataUrl = await new Promise<string>((resolve, reject) => {
         const r = new FileReader();
         r.onload = () => resolve(String(r.result));

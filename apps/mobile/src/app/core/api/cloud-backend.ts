@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseStore, type QuestPreference, type QuestTemplate, type SettingsRecord, type ReactionKind } from '@levelup/engine';
 import { env } from '../env';
+import { uuid } from '../uuid';
 import type {
   AppNotification,
   AuthApi,
@@ -257,7 +258,7 @@ export function createCloudBackend(): Backend {
     },
     async uploadMedia(blob, ext) {
       const uid = await requireId();
-      const path = `${uid}/${crypto.randomUUID()}.${ext}`;
+      const path = `${uid}/${uuid()}.${ext}`;
       const { error } = await sb.storage.from('post-media').upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: false });
       if (error) throw error;
       return path;

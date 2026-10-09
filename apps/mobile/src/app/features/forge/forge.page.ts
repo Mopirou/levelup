@@ -18,6 +18,7 @@ import {
 } from '@levelup/engine';
 import { GameService } from '../../core/game.service';
 import { UiService } from '../../core/ui.service';
+import { uuid } from '../../core/uuid';
 import { PageHeaderComponent, AbilityBadgeComponent, EmptyComponent } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
 import { QuestCardComponent } from '../../shared/quest-card.component';
@@ -291,7 +292,7 @@ export class ForgePage {
     const tips = [...this.tips().map((t) => t.trim()).filter(Boolean)];
     if (this.difficulty() === 'expert' && this.justification().trim()) tips.unshift(`Justification : ${this.justification().trim()}`);
     const t: QuestTemplate = {
-      id: existing?.id ?? `custom-${crypto.randomUUID()}`,
+      id: existing?.id ?? `custom-${uuid()}`,
       source: 'custom',
       ability: this.ability(),
       difficulty: this.difficulty(),
