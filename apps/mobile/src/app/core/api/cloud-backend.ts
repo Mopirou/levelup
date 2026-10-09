@@ -111,10 +111,6 @@ export function createCloudBackend(): Backend {
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
     },
-    async signInOAuth(provider) {
-      const { error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo: `${env.publicUrl}/auth/callback` } });
-      if (error) throw error;
-    },
     async sendMagicLink(email) {
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: `${env.publicUrl}/auth/callback`, shouldCreateUser: false } });
       if (error) throw error;
@@ -191,6 +187,8 @@ export function createCloudBackend(): Backend {
     accept: (instanceId) => cmd('accept', { instanceId }),
     abandon: (instanceId) => cmd('abandon', { instanceId }),
     progress: (instanceId, patch) => cmd('progress', { instanceId, ...patch }),
+    start: (input) => cmd('start', input as any),
+    redo: (instanceId) => cmd('redo', { instanceId }),
     reroll: (instanceId) => cmd('reroll', { instanceId }),
     complete: (req) => cmd('complete', req as any),
     undo: (instanceId) => cmd('undo', { instanceId }),

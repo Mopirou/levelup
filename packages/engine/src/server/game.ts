@@ -43,13 +43,17 @@ import {
   CharacterCore,
   Difficulty,
   Period,
+  PERIODS,
   QuestInstance,
+  QuestOrigin,
   QuestPreference,
   QuestTemplate,
   emptyAbilityRecord,
 } from '../types';
 import {
   FORGE_LEVEL,
+  MAX_OPEN_EXTRAS,
+  MAX_RUNS,
   SOFT_CAP_SCORE,
   abilityProgressOf,
   abilityScores,
@@ -58,6 +62,7 @@ import {
   pendingImprovements,
   pendingPath,
   questCountFor,
+  questLock,
   unlocksAt,
   PATH_LEVEL,
   splitXp,
@@ -96,6 +101,10 @@ export type GameError =
   | 'nothing-pending'
   | 'rest-unavailable'
   | 'level-too-low'
+  | 'locked'
+  | 'already-active'
+  | 'run-limit'
+  | 'too-many-open'
   | 'forbidden';
 
 export type Result<T> = ({ ok: true } & T) | { ok: false; error: GameError; message?: string };
@@ -152,6 +161,7 @@ function newInstance(
   status: QuestInstance['status'],
   nowIso: string,
   free = false,
+  meta: { origin?: QuestOrigin; run?: number } = {},
 ): QuestInstance {
   return {
     id,
@@ -166,6 +176,8 @@ function newInstance(
     xpAwarded: 0,
     inspirationUsed: false,
     free,
+    run: meta.run ?? 1,
+    origin: meta.origin ?? 'draw',
     acceptedAt: status === 'accepted' ? nowIso : null,
     completedAt: null,
   };
@@ -382,7 +394,7 @@ export async function ensureQuests(ctx: ServerContext, userId: string): Promise<
         const applied = applyXpParts(character, parts);
         character = mergeChar(character, applied.character);
         result.levelUps.push(...applied.levelsGained);
-      } else if (settings.hardcore) {
+      } else if (settings.hardcore && (inst.origin ?? 'draw') === 'draw') {
         const penalty = hardcorePenalty(inst);
         events.push(eventFor(ctx, { instanceId: inst.id, ability: inst.snapshot.ability, amount: -penalty, reason: 'hardcore' }, inst.periodEnd));
         character = mergeChar(character, applyXp(character, inst.snapshot.ability, -penalty).character);
@@ -407,9 +419,11 @@ export async function ensureQuests(ctx: ServerContext, userId: string): Promise<
 
   for (const period of periods) {
     const b = periodBounds(period, today);
-    if (history.some((i) => i.period === period && i.periodStart === b.start)) continue;
+    // Les quêtes choisies ou refaites ne comptent pas comme un tirage : la période est tirée quand même.
+    if (history.some((i) => i.period === period && i.periodStart === b.start && (i.origin ?? 'draw') === 'draw')) continue;
     const count = questCountFor(period, character.level, period === 'daily' ? settings.dailyQuestCount : undefined);
     if (count <= 0) continue;
+    const already = history.filter((i) => i.period === period && i.periodStart === b.start).map((i) => i.templateId);
     const base = {
       characterId: character.id,
       period,
@@ -421,7 +435,7 @@ export async function ensureQuests(ctx: ServerContext, userId: string): Promise<
       preferences: prefs,
       lastDrawn: lastDrawnMap(history, period),
     };
-    const main = drawQuests({ ...base, count });
+    const main = drawQuests({ ...base, count, exclude: already });
     for (const t of main.picks) {
       const pinned = !!prefs[t.id]?.isPinned;
       const status = period === 'daily' || pinned ? 'accepted' : 'proposed';
@@ -432,7 +446,7 @@ export async function ensureQuests(ctx: ServerContext, userId: string): Promise<
         ...base,
         count: FREE_QUESTS_PER_DAY,
         difficultyPlan: ['medium', 'high'] as Difficulty[],
-        exclude: main.picks.map((t) => t.id),
+        exclude: [...already, ...main.picks.map((t) => t.id)],
         seedSuffix: 'free',
         skipPinned: true,
       });
@@ -471,7 +485,7 @@ export async function abandonQuest(ctx: ServerContext, userId: string, instanceI
   const inst = await ctx.store.getInstance(userId, instanceId);
   if (!inst) return fail('not-found');
   if (inst.status !== 'proposed' && inst.status !== 'accepted') return fail('not-accepted');
-  if (env.settings.hardcore && inst.status === 'accepted') {
+  if (env.settings.hardcore && inst.status === 'accepted' && (inst.origin ?? 'draw') === 'draw') {
     const penalty = hardcorePenalty(inst);
     await ctx.store.insertXpEvents(userId, [eventFor(ctx, { instanceId, ability: inst.snapshot.ability, amount: -penalty, reason: 'hardcore' }, env.today)]);
     await ctx.store.saveCharacter(userId, mergeChar(env.character, applyXp(env.character, inst.snapshot.ability, -penalty).character));
@@ -496,6 +510,65 @@ export async function updateProgress(
   return { ok: true, instance: { ...inst, ...next } };
 }
 
+/**
+ * Démarre une quête de la période en cours, hors quota : choisie dans le catalogue ou refaite.
+ * Une même quête peut revenir plusieurs fois dans la période (XP dégressive, voir MAX_RUNS et REPEAT_FACTORS).
+ */
+async function startFromTemplate(env: Env, t: QuestTemplate, period: Period): Promise<Result<{ instance: QuestInstance }>> {
+  const { ctx, userId, character } = env;
+  if (!PERIODS.includes(period) || !t.periods.includes(period)) return fail('invalid', 'Cette quête ne se fait pas sur cette période.');
+  if (period === 'epic' && !unlocksAt(character.level).epic) return fail('level-too-low', 'Les quêtes épiques s’ouvrent au niveau 11.');
+  const lock = questLock(t.difficulty, abilityScores(character)[t.ability], character.level);
+  if (lock.locked) return fail('locked', lock.reason);
+  const b = periodBounds(period, env.today);
+  if (env.today > lastAcceptDate(period, b.start, b.end)) return fail('too-late-to-accept', 'Il est trop tard pour démarrer cette quête.');
+
+  const inPeriod = await ctx.store.listInstances(userId, { period, from: b.start, to: b.start });
+  const same = inPeriod.filter((i) => i.templateId === t.id);
+  if (same.some((i) => i.status === 'accepted')) return fail('already-active', 'Cette quête est déjà en cours.');
+  const nowIso = new Date(env.nowMs).toISOString();
+
+  // Une proposition du tirage : on l'accepte au lieu d'en créer une seconde.
+  const proposed = same.find((i) => i.status === 'proposed');
+  if (proposed) {
+    const patch = { status: 'accepted' as const, acceptedAt: nowIso };
+    await ctx.store.updateInstance(userId, proposed.id, patch);
+    return { ok: true, instance: { ...proposed, ...patch } };
+  }
+
+  if (same.filter((i) => i.status === 'completed').length >= MAX_RUNS[period]) {
+    return fail('run-limit', period === 'daily' ? 'Tu as déjà refait cette quête trois fois aujourd’hui.' : 'Cette quête a déjà été faite le maximum de fois sur cette période.');
+  }
+  const openExtras = inPeriod.filter((i) => i.status === 'accepted' && (i.free || (i.origin ?? 'draw') !== 'draw')).length;
+  if (openExtras >= MAX_OPEN_EXTRAS[period]) return fail('too-many-open', 'Trop de quêtes en cours : termine-en une avant d’en ajouter.');
+
+  const run = same.reduce((n, i) => Math.max(n, i.run ?? 1), 0) + 1;
+  const inst = newInstance(ctx.uuid(), t, period, b.start, b.end, 'accepted', nowIso, true, { origin: same.length ? 'redo' : 'chosen', run });
+  await ctx.store.insertInstances(userId, [inst]);
+  return { ok: true, instance: inst };
+}
+
+/** Ajoute une quête du catalogue (ou perso) aux quêtes de la période, acceptée tout de suite. */
+export async function startQuest(ctx: ServerContext, userId: string, input: { templateId: string; period: Period }): Promise<Result<{ instance: QuestInstance }>> {
+  const env = await loadEnv(ctx, userId);
+  if (!env) return fail('no-character');
+  const t = (await ctx.store.listTemplates(userId)).find((x) => x.id === input.templateId && x.isActive !== false);
+  if (!t) return fail('not-found');
+  return startFromTemplate(env, t, input.period);
+}
+
+/** Refait une quête déjà terminée (ou abandonnée, expirée) dans la période en cours. */
+export async function redoQuest(ctx: ServerContext, userId: string, instanceId: string): Promise<Result<{ instance: QuestInstance }>> {
+  const env = await loadEnv(ctx, userId);
+  if (!env) return fail('no-character');
+  const inst = await ctx.store.getInstance(userId, instanceId);
+  if (!inst) return fail('not-found');
+  if (inst.status === 'proposed' || inst.status === 'accepted') return fail('already-active', 'Cette quête est déjà en cours.');
+  const t = (await ctx.store.listTemplates(userId)).find((x) => x.id === inst.templateId && x.isActive !== false);
+  if (!t) return fail('not-found', 'Cette quête n’existe plus dans le catalogue.');
+  return startFromTemplate(env, t, inst.period);
+}
+
 /** Relance : 1 gratuite par jour de jeu, puis 1 Inspiration. */
 export async function rerollQuest(ctx: ServerContext, userId: string, instanceId: string): Promise<Result<{ instance: QuestInstance; usedInspiration: boolean }>> {
   const env = await loadEnv(ctx, userId);
@@ -504,6 +577,7 @@ export async function rerollQuest(ctx: ServerContext, userId: string, instanceId
   if (!inst) return fail('not-found');
   if (inst.status === 'completed' || inst.status === 'expired' || inst.status === 'abandoned') return fail('not-accepted');
   if (inst.progress > 0) return fail('invalid', 'Une quête déjà entamée ne peut pas être relancée.');
+  if ((inst.origin ?? 'draw') !== 'draw') return fail('invalid', 'Seules les quêtes tirées peuvent être relancées.');
   const character = { ...env.character };
   if (character.rerollsDate !== env.today) {
     character.rerollsDate = env.today;
@@ -570,7 +644,7 @@ export interface UnlockedAchievement {
 
 export interface CompleteResponse {
   xpAwarded: number;
-  breakdown: { base: number; multiplier: number; mastery: number; affinity: number; doubled: boolean; total: number };
+  breakdown: { base: number; multiplier: number; mastery: number; affinity: number; doubled: boolean; repeat?: number; total: number };
   duplicate: boolean;
   character: CharacterRecord;
   levelUps: number[];
@@ -629,6 +703,9 @@ export async function completeQuestAction(ctx: ServerContext, userId: string, re
   const statusOk = inst.status === 'accepted' || (offline && inst.status === 'expired');
   if (!statusOk) return fail('not-accepted');
 
+  // XP dégressive quand la même quête a déjà été accomplie dans la période.
+  const siblings = await store.listInstances(userId, { period: inst.period, from: inst.periodStart, to: inst.periodStart });
+  const repeat = siblings.filter((i) => i.templateId === inst.templateId && i.id !== inst.id && i.status === 'completed').length;
   const masteries = masteriesFor(env.character);
   const check = completeQuest({
     character: env.character,
@@ -636,6 +713,7 @@ export async function completeQuestAction(ctx: ServerContext, userId: string, re
     pathAbility: pathAbilityFor(env.character),
     instance: { ...inst, status: 'accepted' },
     useInspiration: req.useInspiration,
+    repeat,
     progress: req.progress,
     stepsDone: req.stepsDone,
     journalText: req.journalText,

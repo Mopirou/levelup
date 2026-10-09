@@ -68,6 +68,10 @@ Deno.serve(async (req: Request) => {
         return json(await engine.abandonQuest(ctx, userId, p.instanceId));
       case 'progress':
         return json(await engine.updateProgress(ctx, userId, p.instanceId, { progress: p.progress, stepsDone: p.stepsDone }));
+      case 'start':
+        return json(await engine.startQuest(ctx, userId, { templateId: p.templateId, period: p.period }));
+      case 'redo':
+        return json(await engine.redoQuest(ctx, userId, p.instanceId));
       case 'reroll':
         return json(await engine.rerollQuest(ctx, userId, p.instanceId));
       case 'complete':

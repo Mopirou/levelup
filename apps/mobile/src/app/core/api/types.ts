@@ -51,7 +51,6 @@ export interface AuthApi {
   onChange(cb: (u: AuthUser | null) => void): () => void;
   signUp(input: SignUpInput): Promise<{ confirmationRequired: boolean }>;
   signIn(email: string, password: string): Promise<void>;
-  signInOAuth(provider: 'google' | 'apple'): Promise<void>;
   sendMagicLink(email: string): Promise<void>;
   resendConfirmation(email: string): Promise<void>;
   updatePassword(password: string): Promise<void>;
@@ -77,6 +76,10 @@ export interface GameApi {
   accept(instanceId: string): Promise<CommandResult<{ instance: QuestInstance }>>;
   abandon(instanceId: string): Promise<CommandResult<{ instance: QuestInstance }>>;
   progress(instanceId: string, patch: { progress?: number; stepsDone?: boolean[] }): Promise<CommandResult<{ instance: QuestInstance }>>;
+  /** Ajoute une quête du catalogue aux quêtes de la période (acceptée tout de suite, hors quota) */
+  start(input: { templateId: string; period: Period }): Promise<CommandResult<{ instance: QuestInstance }>>;
+  /** Refait une quête terminée dans la période en cours (XP dégressive) */
+  redo(instanceId: string): Promise<CommandResult<{ instance: QuestInstance }>>;
   reroll(instanceId: string): Promise<CommandResult<{ instance: QuestInstance; usedInspiration: boolean }>>;
   complete(req: CompleteRequest): Promise<CommandResult<{ data: CompleteResponse }>>;
   undo(instanceId: string): Promise<CommandResult<{ character: CharacterRecord; instance: QuestInstance }>>;

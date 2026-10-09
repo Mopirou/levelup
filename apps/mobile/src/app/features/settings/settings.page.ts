@@ -60,8 +60,8 @@ const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a'
             <div class="lu-field"><label for="tz">Fuseau horaire</label>
               <select id="tz" class="lu-input" (change)="update({ timezone: $any($event.target).value })">@for (z of zones(); track z) { <option [value]="z" [selected]="z === st.timezone">{{ z }}</option> }</select></div>
             <div class="lu-field"><label for="dq">Quêtes journalières souhaitées</label>
-              <select id="dq" class="lu-input" (change)="update({ dailyQuestCount: +$any($event.target).value })">@for (n of dailyOptions(); track n) { <option [value]="n" [selected]="n === effectiveDaily()">{{ n }}</option> }</select>
-              <span class="hint">Limité par ton niveau. Prend effet au prochain tirage.</span></div>
+              <select id="dq" class="lu-input" (change)="update({ dailyQuestCount: +$any($event.target).value })">@for (n of dailyOptions(); track n) { <option [value]="n" [selected]="n === effectiveDaily()">{{ n === 0 ? '0 — je choisis moi-même' : n }}</option> }</select>
+              <span class="hint">Limité par ton niveau. Prend effet au prochain tirage. À 0, rien n’est tiré : tu composes ta journée depuis le catalogue.</span></div>
             <div class="lu-row"><div class="grow"><span class="label">Mode Hardcore</span><div class="sub">Une quête abandonnée ou expirée retire 10 % de son XP de base.</div></div><lu-switch [checked]="st.hardcore" label="Mode Hardcore" (changed)="toggleHardcore($event)" /></div>
           </section>
 
@@ -164,7 +164,7 @@ export class SettingsPage {
   readonly frames = FRAMES;
   readonly hours = [0, 1, 2, 3, 4, 5, 6];
   readonly contact = env.contactEmail;
-  readonly backendLabel = this.be.mode === 'cloud' ? 'en ligne' : 'mode local (démo)';
+  readonly backendLabel = this.be.mode === 'cloud' ? 'en ligne' : 'mode local (sans amis)';
   readonly name = signal(this.game.character()?.name ?? '');
   readonly portrait = signal(this.game.character()?.portraitId ?? 'p01');
   readonly frame = signal(this.game.character()?.frameColor ?? FRAMES[0]);
@@ -180,7 +180,7 @@ export class SettingsPage {
     return [...set];
   });
   readonly effectiveDaily = computed(() => Math.min(this.s()?.dailyQuestCount ?? 6, this.game.unlocks().dailyQuests));
-  readonly dailyOptions = computed(() => Array.from({ length: this.game.unlocks().dailyQuests }, (_, i) => i + 1));
+  readonly dailyOptions = computed(() => Array.from({ length: this.game.unlocks().dailyQuests + 1 }, (_, i) => i));
 
   constructor() {
     void this.be.auth.linkedProviders().then((p) => this.providers.set(p)).catch(() => undefined);
@@ -193,7 +193,7 @@ export class SettingsPage {
 
   async update(patch: Partial<SettingsRecord>): Promise<void> {
     await this.game.saveSettings(patch);
-    if (patch.dailyQuestCount) this.game.toast('Pris en compte au prochain tirage.', 'info');
+    if (patch.dailyQuestCount !== undefined) this.game.toast('Pris en compte au prochain tirage.', 'info');
   }
 
   async toggleHardcore(on: boolean): Promise<void> {

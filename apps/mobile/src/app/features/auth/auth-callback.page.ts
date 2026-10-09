@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { GameService } from '../../core/game.service';
 
-/** Retour de connexion (lien magique, confirmation d'e-mail, Google/Apple). */
+/** Retour de connexion (lien magique, confirmation d'e-mail). */
 @Component({
   selector: 'app-auth-callback',
   changeDetection: ChangeDetectionStrategy.OnPush,

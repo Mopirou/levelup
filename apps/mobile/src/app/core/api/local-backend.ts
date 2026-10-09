@@ -161,9 +161,6 @@ export async function createLocalBackend(): Promise<Backend> {
       await saveAccount();
       emit();
     },
-    async signInOAuth() {
-      throw new Error('La connexion Google et Apple demande un projet Supabase (mode en ligne).');
-    },
     async sendMagicLink() {
       throw new Error('Le lien magique demande un projet Supabase (mode en ligne).');
     },
@@ -217,6 +214,8 @@ export async function createLocalBackend(): Promise<Backend> {
     accept: (id) => wrap(() => engine.acceptQuest(ctx, LOCAL_ID, id)),
     abandon: (id) => wrap(() => engine.abandonQuest(ctx, LOCAL_ID, id)),
     progress: (id, patch) => wrap(() => engine.updateProgress(ctx, LOCAL_ID, id, patch)),
+    start: (input) => wrap(() => engine.startQuest(ctx, LOCAL_ID, input)),
+    redo: (id) => wrap(() => engine.redoQuest(ctx, LOCAL_ID, id)),
     reroll: (id) => wrap(() => engine.rerollQuest(ctx, LOCAL_ID, id)),
     complete: (req) => wrap(() => engine.completeQuestAction(ctx, LOCAL_ID, req)),
     undo: (id) => wrap(() => engine.undoQuest(ctx, LOCAL_ID, id)),

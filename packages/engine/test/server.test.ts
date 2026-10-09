@@ -16,7 +16,9 @@ import {
   ensureQuests,
   equipTitle,
   recomputeCharacter,
+  redoQuest,
   rerollQuest,
+  startQuest,
   undoQuest,
   updateProgress,
   abilityScores,
@@ -577,5 +579,128 @@ describe('quêtes guidées multi-caractéristiques', () => {
     const events = (await s.store.listXpEvents(U)).filter((e) => e.reason === 'quest' || e.reason === 'undo');
     for (const a of ABILITIES) expect(events.filter((e) => e.ability === a).reduce((n, e) => n + e.amount, 0)).toBe(0);
     expect(events.filter((e) => e.reason === 'undo')).toHaveLength(3);
+  });
+});
+
+describe('quêtes choisies et refaites', () => {
+  const pickEasy = (s: Awaited<ReturnType<typeof started>>, taken: string[]) =>
+    catalog.find((t) => t.difficulty === 'easy' && t.periods.includes('daily') && t.validation.type === 'simple' && !taken.includes(t.id))!;
+  const todayIds = async (s: Awaited<ReturnType<typeof started>>) => (await s.store.listInstances(U, { period: 'daily' })).map((i) => i.templateId);
+  const doneBy = async (s: Awaited<ReturnType<typeof started>>, id: string) => {
+    const q = (await s.store.getInstance(U, id))!;
+    const v = q.snapshot.validation;
+    return completeQuestAction(s.ctx, U, {
+      instanceId: id,
+      useInspiration: false,
+      progress: v.type === 'counter' ? v.target : v.type === 'timer' ? v.minutes : undefined,
+      stepsDone: v.type === 'steps' ? v.steps.map(() => true) : undefined,
+      journalText: v.type === 'journal' ? 'x'.repeat(60) : undefined,
+    });
+  };
+
+  it('ajoute une quête du catalogue, acceptée et hors quota', async () => {
+    const s = await started();
+    const t = pickEasy(s, await todayIds(s));
+    const r = await startQuest(s.ctx, U, { templateId: t.id, period: 'daily' });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.instance).toMatchObject({ status: 'accepted', free: true, origin: 'chosen', run: 1, templateId: t.id });
+    expect(await startQuest(s.ctx, U, { templateId: t.id, period: 'daily' })).toMatchObject({ ok: false, error: 'already-active' });
+    // le tirage du jour n'est pas perturbé
+    expect((await s.store.listInstances(U, { period: 'daily' })).filter((i) => !i.free)).toHaveLength(3);
+  });
+
+  it('refuse une quête verrouillée, inconnue ou hors période', async () => {
+    const s = await started();
+    const locked = catalog.find((t) => t.difficulty === 'high' && t.ability === 'DEX' && t.periods.includes('weekly'))!;
+    expect(await startQuest(s.ctx, U, { templateId: locked.id, period: 'weekly' })).toMatchObject({ ok: false, error: 'locked' });
+    expect(await startQuest(s.ctx, U, { templateId: 'nope', period: 'daily' })).toMatchObject({ ok: false, error: 'not-found' });
+    const t = pickEasy(s, await todayIds(s));
+    const other = (['weekly', 'monthly', 'epic'] as const).find((p) => !t.periods.includes(p))!;
+    expect(await startQuest(s.ctx, U, { templateId: t.id, period: other })).toMatchObject({ ok: false, error: 'invalid' });
+  });
+
+  it('refaire une quête : XP dégressive 100 % → 50 % → 25 %, puis plafond', async () => {
+    const s = await started();
+    const t = pickEasy(s, await todayIds(s));
+    const xps: number[] = [];
+    let last = (await startQuest(s.ctx, U, { templateId: t.id, period: 'daily' })) as { ok: true; instance: QuestInstance };
+    for (let run = 1; run <= 3; run++) {
+      const r = await doneBy(s, last.instance.id);
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      xps.push(r.data.xpAwarded);
+      expect(r.data.breakdown.repeat).toBe([1, 0.5, 0.25][run - 1]);
+      if (run < 3) {
+        last = (await redoQuest(s.ctx, U, last.instance.id)) as typeof last;
+        expect(last.ok).toBe(true);
+        expect(last.instance).toMatchObject({ origin: 'redo', run: run + 1, status: 'accepted', free: true });
+      }
+    }
+    expect(xps[1]).toBe(Math.round(xps[0] / 2));
+    expect(xps[2]).toBe(Math.round(xps[0] / 4));
+    expect(await redoQuest(s.ctx, U, last.instance.id)).toMatchObject({ ok: false, error: 'run-limit' });
+  });
+
+  it('une quête du tirage peut aussi être refaite, et la série compte', async () => {
+    const s = await started();
+    const q = (await s.store.listInstances(U, { period: 'daily', status: 'accepted' }))[0];
+    expect((await doneBy(s, q.id)).ok).toBe(true);
+    const r = await redoQuest(s.ctx, U, q.id);
+    expect(r.ok).toBe(true);
+    expect((await s.store.getCharacter(U))!.streakCurrent).toBe(1);
+  });
+
+  it('le lendemain, « refaire » relance la quête dans la période en cours', async () => {
+    const s = await started();
+    const q = (await s.store.listInstances(U, { period: 'daily', status: 'accepted' }))[0];
+    expect((await doneBy(s, q.id)).ok).toBe(true);
+    s.advanceHours(24);
+    await ensureQuests(s.ctx, U);
+    const r = await redoQuest(s.ctx, U, q.id);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.instance).toMatchObject({ periodStart: '2026-10-06', run: 1, status: 'accepted' });
+  });
+
+  it('une quête proposée par le tirage est acceptée plutôt que dupliquée', async () => {
+    const s = await started();
+    const w = (await s.store.listInstances(U, { period: 'weekly', status: 'proposed' }))[0];
+    const r = await startQuest(s.ctx, U, { templateId: w.templateId, period: 'weekly' });
+    expect(r.ok && r.instance.id).toBe(w.id);
+    expect((await s.store.listInstances(U, { period: 'weekly' })).filter((i) => i.templateId === w.templateId)).toHaveLength(1);
+  });
+
+  it('plafonne les quêtes ajoutées en cours', async () => {
+    const s = await started();
+    const taken = await todayIds(s);
+    const pool = catalog.filter((t) => t.difficulty === 'easy' && t.periods.includes('daily') && !taken.includes(t.id)).slice(0, 9);
+    let refused: string | undefined;
+    for (const t of pool) {
+      const r = await startQuest(s.ctx, U, { templateId: t.id, period: 'daily' });
+      if (!r.ok) refused = r.error;
+    }
+    expect(refused).toBe('too-many-open');
+  });
+
+  it('mode manuel : 0 quête tirée par jour, le choix revient au joueur', async () => {
+    const s = await started();
+    await s.store.saveSettings(U, { ...(await s.store.getSettings(U)), dailyQuestCount: 0 });
+    s.advanceHours(24);
+    await ensureQuests(s.ctx, U);
+    expect(await s.store.listInstances(U, { period: 'daily', from: '2026-10-06' })).toHaveLength(0);
+    const t = pickEasy(s, []);
+    expect((await startQuest(s.ctx, U, { templateId: t.id, period: 'daily' })).ok).toBe(true);
+    await ensureQuests(s.ctx, U);
+    expect(await s.store.listInstances(U, { period: 'daily', from: '2026-10-06' })).toHaveLength(1);
+  });
+
+  it('une quête choisie ne bloque pas le tirage et n’est pas pénalisée en Hardcore', async () => {
+    const s = setup();
+    const t = pickEasy(s as never, []);
+    await createCharacter(s.ctx, U, heroInput);
+    await s.store.saveSettings(U, { ...(await s.store.getSettings(U)), hardcore: true });
+    const r = (await startQuest(s.ctx, U, { templateId: t.id, period: 'daily' })) as { ok: true; instance: QuestInstance };
+    await abandonQuest(s.ctx, U, r.instance.id);
+    expect((await s.store.listXpEvents(U)).some((e) => e.reason === 'hardcore')).toBe(false);
   });
 });

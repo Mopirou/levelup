@@ -28,6 +28,28 @@ test.describe('Parcours solo', () => {
     await expect(page.getByText(/Quête acceptée/)).toBeVisible();
   });
 
+  test('on ajoute une quête depuis le catalogue, on la valide puis on la refait avec moins d’XP', async ({ page }) => {
+    await createHero(page);
+    await page.goto('/grimoire?for=daily');
+    await page.getByRole('button', { name: /^Constitution/ }).click();
+    await page.getByRole('button', { name: /Niveau 1 · Journée/ }).click();
+    // une quête « simple » qui n'est pas déjà dans le tirage du jour
+    const add = page.getByRole('button', { name: /^Commencer : (Coucher avant 23 heures|Écrans coupés 30 minutes avant dormir|Petit-déjeuner dans l’heure du réveil)/ }).first();
+    await add.click();
+    await expect(page.getByText(/ajoutée à tes quêtes/)).toBeVisible();
+
+    await page.waitForTimeout(500); // laisse partir l’enregistrement local avant de recharger
+    await page.goto('/tabs/quests');
+    await expect(page.getByRole('heading', { name: 'Mes ajouts' })).toBeVisible();
+    const extra = page.locator('lu-quest-card').filter({ has: page.getByRole('button', { name: 'Accomplir' }) }).last();
+    await extra.getByRole('button', { name: 'Accomplir' }).click();
+    await expect(page.getByText(/Quête accomplie à/)).toBeVisible();
+
+    await page.getByRole('button', { name: 'Refaire cette quête' }).click();
+    // la seconde tentative rapporte moitié moins d’XP (20 → 10)
+    await expect(page.locator('.chips').getByText('+10 XP')).toBeVisible();
+  });
+
   test('la fiche affiche les six caractéristiques et le radar', async ({ page }) => {
     await createHero(page);
     await page.locator('ion-tab-button', { hasText: 'Profil' }).click();
@@ -85,34 +107,20 @@ test.describe('Parcours solo', () => {
   });
 });
 
-test.describe('Social (mode démo)', () => {
-  test('le Village montre les nouvelles du cercle, on réagit et on commente', async ({ page }) => {
+test.describe('Social (mode local)', () => {
+  test('aucun ami ni demande fictive : le fil, les amis et le classement sont vides', async ({ page }) => {
     await createHero(page);
     await page.locator('ion-tab-button', { hasText: 'Amis' }).click();
     await expect(page.getByRole('heading', { name: 'Fil des amis' })).toBeVisible();
-    await expect(page.getByText('Léa Martin').first()).toBeVisible();
-    await expect(page.locator('app-village').getByText('Courir 3 km', { exact: true })).toBeVisible();
+    await expect(page.getByText('Rien pour le moment')).toBeVisible();
+    for (const fake of ['Léa Martin', 'Sam Diallo', 'Hugo Durand', 'Emma Petit']) await expect(page.getByText(fake)).toHaveCount(0);
 
-    const post = page.locator('lu-post-card').first();
-    await post.getByRole('button', { name: /Bravo/ }).click();
-    await expect(post.getByRole('button', { name: /Bravo/ })).toHaveAttribute('aria-pressed', 'true');
-
-    await post.getByRole('button', { name: /commentaires/ }).click();
-    await page.getByLabel('Ton commentaire').fill('Magnifique, bravo !');
-    await page.getByRole('button', { name: 'Envoyer' }).click();
-    await expect(page.getByText('Magnifique, bravo !')).toBeVisible();
-  });
-
-  test('les demandes d’amis s’acceptent et un ami se trouve par pseudo', async ({ page }) => {
-    await createHero(page);
     await page.goto('/companions');
-    await expect(page.getByText('Demandes d’amis')).toBeVisible();
-    await page.getByRole('button', { name: 'Accepter', exact: true }).first().click();
-    await expect(page.getByText(/est maintenant ton ami/)).toBeVisible();
+    await expect(page.getByText('Pas encore d’amis')).toBeVisible();
+    await expect(page.getByText('Demandes d’amis')).toHaveCount(0);
+    await expect(page.getByText(/demandent le mode en ligne/)).toBeVisible();
     await page.getByLabel('Rechercher par pseudo').fill('theo');
-    await expect(page.getByText('@theo_marin')).toBeVisible();
-    await page.getByRole('button', { name: 'Demander' }).click();
-    await expect(page.getByText('Demande envoyée.')).toBeVisible();
+    await expect(page.getByText('Aucun utilisateur trouvé.')).toBeVisible();
   });
 
   test('on peut préparer une publication', async ({ page }) => {

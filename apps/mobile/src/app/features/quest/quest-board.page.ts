@@ -9,7 +9,6 @@ import {
   daysLeft,
   endOfIsoWeek,
   periodBounds,
-  questXp,
   type AbilityId,
   type Difficulty,
   type Period,
@@ -36,7 +35,7 @@ const PERIODS: Period[] = ['daily', 'weekly', 'monthly'];
 
       <lu-page-header eyebrow="À faire" icon="swords" title="Mes quêtes">
         <div actions>
-          <button type="button" class="lu-icon-btn" aria-label="Catalogue : toutes les quêtes" (click)="ui.go('/grimoire')"><lu-icon name="library" [size]="17" /></button>
+          <button type="button" class="lu-icon-btn" aria-label="Catalogue : ajouter une quête" (click)="catalogue()"><lu-icon name="library" [size]="17" /></button>
           <button type="button" class="lu-icon-btn" aria-label="Créer ma propre quête" (click)="forge()"><lu-icon name="circle-plus" [size]="17" /></button>
         </div>
       </lu-page-header>
@@ -88,7 +87,20 @@ const PERIODS: Period[] = ['daily', 'weekly', 'monthly'];
               <span class="lu-link" style="color: var(--lu-text-2)">{{ main().length }} quête{{ main().length > 1 ? 's' : '' }}</span>
             </div>
             @for (q of main(); track q.id) {
-              <lu-quest-card [inst]="q" [rerollable]="true" (open)="open(q)" (primary)="primary(q)" (reroll)="reroll(q)" />
+              <lu-quest-card [inst]="q" [rerollable]="true" (open)="open(q)" (primary)="primary(q)" (reroll)="reroll(q)" (redo)="redo(q)" />
+            }
+          </section>
+        }
+
+        @if (extras().length) {
+          <section class="lu-section">
+            <div class="lu-section-title">
+              <h2>Mes ajouts</h2>
+              <span class="lu-link" style="color: var(--lu-text-2)">{{ extras().length }} quête{{ extras().length > 1 ? 's' : '' }}</span>
+            </div>
+            <p class="small muted">Choisies dans le catalogue ou refaites : elles s’ajoutent à ton quota, sans pression. L’XP baisse un peu à chaque répétition.</p>
+            @for (q of extras(); track q.id) {
+              <lu-quest-card [inst]="q" (open)="open(q)" (primary)="primary(q)" (redo)="redo(q)" />
             }
           </section>
         }
@@ -112,7 +124,11 @@ const PERIODS: Period[] = ['daily', 'weekly', 'monthly'];
           @if (game.of(period()).length) {
             <lu-empty icon="search" title="Aucune quête ne correspond" text="Essaie d’effacer les filtres ou de modifier ta recherche." />
           } @else {
-            <lu-empty icon="swords" title="Rien pour le moment" text="Les quêtes se renouvellent bientôt. Reviens bientôt !" />
+            @if (manual() && period() === 'daily') {
+              <lu-empty icon="library" title="À toi de choisir" text="Tu as choisi de composer ta journée toi-même. Ouvre le catalogue et ajoute les quêtes qui te font envie." />
+            } @else {
+              <lu-empty icon="swords" title="Rien pour le moment" text="Les quêtes se renouvellent bientôt. Reviens bientôt !" />
+            }
           }
         }
 
@@ -122,7 +138,7 @@ const PERIODS: Period[] = ['daily', 'weekly', 'monthly'];
         </section>
 
         <section class="lu-section">
-          <button type="button" class="lu-btn" (click)="ui.go('/grimoire')"><lu-icon name="library" [size]="18" /> Choisir une quête par caractéristique</button>
+          <button type="button" class="lu-btn" (click)="catalogue()"><lu-icon name="library" [size]="18" /> Ajouter une quête du catalogue</button>
           <button type="button" class="lu-btn light" (click)="forge()"><lu-icon name="plus" [size]="18" /> Créer ma propre quête</button>
           <p class="xs muted center">Simple · Compteur · Chronomètre · Checklist · Journal</p>
           @if (rerollInfo()) {
@@ -201,6 +217,9 @@ export class QuestBoardPage {
       .filter((q) => (this.period() === 'daily' ? !q.free : q.status !== 'proposed'))
       .sort((a, b) => this.order(a) - this.order(b)),
   );
+  /** Quêtes ajoutées à la main ou refaites, hors quota (pour les autres périodes, elles sont déjà dans la liste principale). */
+  readonly extras = computed(() => (this.period() === 'daily' ? this.inPeriod().filter((q) => !!q.free && q.status !== 'proposed').sort((a, b) => this.order(a) - this.order(b)) : []));
+  readonly manual = computed(() => this.game.settings()?.dailyQuestCount === 0);
   readonly optional = computed(() => this.inPeriod().filter((q) => (this.period() === 'daily' ? !!q.free && q.status === 'proposed' : q.status === 'proposed')));
   readonly mainTitle = computed(() => {
     const p = this.period();
@@ -209,7 +228,7 @@ export class QuestBoardPage {
   });
   readonly gained = computed(() => this.game.of(this.period()).filter((q) => q.status === 'completed').reduce((n, q) => n + q.xpAwarded, 0));
   readonly remaining = computed(() =>
-    this.game.of(this.period()).filter((q) => q.status === 'accepted').reduce((n, q) => n + this.xpOf(q), 0),
+    this.game.of(this.period()).filter((q) => q.status === 'accepted').reduce((n, q) => n + this.game.xpOf(q), 0),
   );
   readonly summaryTitle = computed(() => {
     const left = this.game.dailyLeft();
@@ -231,13 +250,6 @@ export class QuestBoardPage {
     const used = c.rerollsDate === this.game.today() ? c.rerollsUsed : 0;
     return used < 1 ? 'Relance : 1 gratuite aujourd’hui, puis 1 Inspiration.' : `Relance : ${c.inspiration} Inspiration disponible${c.inspiration > 1 ? 's' : ''}.`;
   });
-
-  private xpOf(q: QuestInstance): number {
-    return questXp({
-      difficulty: q.snapshot.difficulty, period: q.period, ability: q.snapshot.ability, level: this.game.level(),
-      masteries: this.game.masteries(), pathAbility: this.game.pathAbility(),
-    }).total;
-  }
 
   setPeriod(p: Period): void {
     this.period.set(p);
@@ -290,6 +302,19 @@ export class QuestBoardPage {
       return;
     }
     this.open(q);
+  }
+
+  catalogue(): void {
+    this.ui.go('/grimoire', { queryParams: { for: this.period() } });
+  }
+
+  /** Refait une quête terminée : elle repart dans la période en cours. */
+  async redo(q: QuestInstance): Promise<void> {
+    const next = await this.game.redo(q);
+    if (next) {
+      void haptic('light');
+      this.game.toast(`Quête relancée : ${q.snapshot.title}`, 'success');
+    }
   }
 
   async reroll(q: QuestInstance): Promise<void> {

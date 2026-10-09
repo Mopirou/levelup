@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
-import { DIFFICULTY_LABEL, ABILITY_LABEL, DIFFICULTY_SWORDS, isReadyToComplete, progressRatio, questXp, type QuestInstance } from '@levelup/engine';
+import { DIFFICULTY_LABEL, ABILITY_LABEL, DIFFICULTY_SWORDS, isReadyToComplete, progressRatio, type QuestInstance } from '@levelup/engine';
 import { GameService } from '../core/game.service';
 import { IconComponent } from './icon.component';
 import { AbilityBadgeComponent, BarComponent } from './ui';
@@ -20,7 +20,7 @@ import { themeLabel } from './themes';
         <lu-ability-badge [ability]="inst().snapshot.ability" [size]="44" />
         <div class="meta">
           <h3 class="title">{{ inst().snapshot.title }}</h3>
-          <p class="sub">{{ themeName() ? themeName() + ' · ' : '' }}{{ abilityLabel() }}{{ extra() }} · {{ difficultyLabel() }}</p>
+          <p class="sub">{{ themeName() ? themeName() + ' · ' : '' }}{{ abilityLabel() }}{{ extra() }} · {{ difficultyLabel() }}{{ tryLabel() }}</p>
         </div>
         <span class="xp" [class.prov]="provisional()">+{{ xp() }} XP{{ provisional() ? '*' : '' }}</span>
       </div>
@@ -38,6 +38,11 @@ import { themeLabel } from './themes';
           @if (canReroll()) {
             <button type="button" class="reroll" (click)="reroll.emit()" aria-label="Relancer cette quête" title="Relancer">
               <lu-icon name="dices" [size]="16" />
+            </button>
+          }
+          @if (canRedo()) {
+            <button type="button" class="lu-btn small ghost" (click)="redo.emit()" [attr.aria-label]="'Refaire la quête ' + inst().snapshot.title">
+              <lu-icon name="refresh" [size]="15" /> Refaire
             </button>
           }
           @if (actionLabel(); as label) {
@@ -80,6 +85,7 @@ export class QuestCardComponent {
   readonly open = output<void>();
   readonly primary = output<void>();
   readonly reroll = output<void>();
+  readonly redo = output<void>();
 
   readonly abilityLabel = computed(() => ABILITY_LABEL[this.inst().snapshot.ability]);
   readonly themeName = computed(() => themeLabel(this.inst().snapshot.theme));
@@ -87,14 +93,10 @@ export class QuestCardComponent {
   readonly extra = computed(() => (this.inst().snapshot.secondary?.length ? ` +${this.inst().snapshot.secondary!.length}` : ''));
   readonly difficultyLabel = computed(() => DIFFICULTY_LABEL[this.inst().snapshot.difficulty]);
   readonly provisional = computed(() => this.game.provisional().has(this.inst().id));
-  readonly xp = computed(() => {
-    const i = this.inst();
-    if (i.status === 'completed' && i.xpAwarded) return fmt(i.xpAwarded);
-    const c = this.game.character();
-    return fmt(
-      questXp({ difficulty: i.snapshot.difficulty, period: i.period, ability: i.snapshot.ability, level: c?.level ?? 1, masteries: this.game.masteries(), pathAbility: this.game.pathAbility() }).total,
-    );
-  });
+  readonly xp = computed(() => fmt(this.game.xpOf(this.inst())));
+  /** « · Refaite » quand ce n'est pas la première tentative de la période. */
+  readonly tryLabel = computed(() => ((this.inst().run ?? 1) > 1 ? ' · Refaite' : ''));
+  readonly canRedo = computed(() => this.game.canRedo(this.inst()));
   readonly ratio = computed(() => (this.inst().status === 'completed' ? 1 : progressRatio(this.inst())));
   readonly ready = computed(() => this.inst().status === 'accepted' && ['counter', 'timer', 'steps'].includes(this.inst().snapshot.validation.type) && isReadyToComplete(this.inst()) === null);
   readonly showBar = computed(() => ['counter', 'timer', 'steps'].includes(this.inst().snapshot.validation.type) || this.inst().status === 'completed');
@@ -104,7 +106,7 @@ export class QuestCardComponent {
     if (v === 'simple' || v === 'journal') return statusLabel(i, false);
     return `${progressText(i)} · ${statusLabel(i, this.ready())}`;
   });
-  readonly canReroll = computed(() => this.rerollable() && (this.inst().status === 'proposed' || (this.inst().status === 'accepted' && this.inst().progress === 0 && !(this.inst().stepsDone ?? []).some(Boolean))));
+  readonly canReroll = computed(() => this.rerollable() && (this.inst().origin ?? 'draw') === 'draw' && (this.inst().status === 'proposed' || (this.inst().status === 'accepted' && this.inst().progress === 0 && !(this.inst().stepsDone ?? []).some(Boolean))));
   readonly actionLabel = computed(() => {
     const i = this.inst();
     switch (i.status) {

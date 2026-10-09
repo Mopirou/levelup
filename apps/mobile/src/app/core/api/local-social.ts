@@ -16,8 +16,8 @@ import type {
 import type { LocalAccount } from './local-backend';
 
 /**
- * Social du mode local : quelques amis de démonstration (ceux des maquettes) pour pouvoir tout essayer
- * sans compte en ligne. Rien n'est envoyé nulle part.
+ * Social du mode local : aucun ami, aucune demande, aucune publication d'autres joueurs. Seules les publications
+ * du joueur lui-même (gardées sur l'appareil) apparaissent dans son fil. Le vrai social passe par Supabase.
  */
 interface Person {
   id: string;
@@ -62,6 +62,7 @@ interface LocalComment {
 
 interface State {
   seeded: boolean;
+  version?: number;
   friendIds: string[];
   incoming: string[];
   outgoing: string[];
@@ -74,54 +75,24 @@ interface State {
   edited: Record<string, string>;
 }
 
-const PEOPLE: Person[] = [
-  { id: 'p-lea', username: 'lea_augrandair', name: 'Léa Martin', level: 14, classId: 'eclaireur', portraitId: 'p05', frameColor: '#e0893d', friendCode: 'ELAN-LEAAUGRA-1204', streak: 12, motto: 'Un pas après l’autre', title: 'Marcheur des cimes', weekXp: 710, scores: { FOR: 13, DEX: 10, CON: 17, INT: 11, SAG: 12, CHA: 12 }, trophies: ['premier-pas', 'feu-sacre', 'serie-14'] },
-  { id: 'p-sam', username: 'sam_curieux', name: 'Sam Diallo', level: 11, classId: 'erudit', portraitId: 'p11', frameColor: '#4a82b8', friendCode: 'ELAN-SAMCURIE-3321', streak: 5, motto: 'Toujours une page de plus', title: 'Curieux', weekXp: 480, scores: { FOR: 9, DEX: 11, CON: 10, INT: 18, SAG: 15, CHA: 11 }, trophies: ['premier-pas', 'premier-elan', 'decouvreur-10'] },
-  { id: 'p-ines', username: 'ines_creative', name: 'Inès Robert', level: 9, classId: 'artisan', portraitId: 'p14', frameColor: '#5f9e6e', friendCode: 'ELAN-INESCREA-7788', streak: 9, motto: 'Essayer avant d’être prête', title: null, weekXp: 390, scores: { FOR: 10, DEX: 16, CON: 11, INT: 14, SAG: 11, CHA: 12 }, trophies: ['premier-pas', 'forgeron'] },
-  { id: 'p-noe', username: 'noe_pasapas', name: 'Noé Bernard', level: 8, classId: 'explorateur', portraitId: 'p08', frameColor: '#2f5a47', friendCode: 'ELAN-NOEPASAP-4410', streak: 3, motto: '', title: null, weekXp: 260, scores: { FOR: 11, DEX: 10, CON: 14, INT: 10, SAG: 13, CHA: 11 }, trophies: ['premier-pas'] },
-  { id: 'p-mila', username: 'mila_sereine', name: 'Mila Laurent', level: 13, classId: 'gardien', portraitId: 'p19', frameColor: '#8a6bb8', friendCode: 'ELAN-MILASERE-9052', streak: 21, motto: 'Respirer, simplement', title: 'Gardien du feu', weekXp: 560, scores: { FOR: 9, DEX: 10, CON: 12, INT: 12, SAG: 17, CHA: 15 }, trophies: ['premier-pas', 'feu-sacre', 'serie-14', 'repos-du-sage'] },
-  { id: 'p-jules', username: 'jules_ose', name: 'Jules Perrin', level: 10, classId: 'aventurier', portraitId: 'p03', frameColor: '#c8553d', friendCode: 'ELAN-JULESOSE-1730', streak: 4, motto: 'Oser, juste un peu', title: null, weekXp: 310, scores: { FOR: 15, DEX: 13, CON: 12, INT: 9, SAG: 10, CHA: 12 }, trophies: ['premier-pas', 'audacieux-10'] },
-  { id: 'p-hugo', username: 'hugo_enroute', name: 'Hugo Durand', level: 6, classId: 'troubadour', portraitId: 'p21', frameColor: '#d9ae3a', friendCode: 'ELAN-HUGOENRO-6620', streak: 2, motto: '', title: null, weekXp: 120, scores: { FOR: 10, DEX: 14, CON: 10, INT: 10, SAG: 10, CHA: 13 }, trophies: ['premier-pas'] },
-  { id: 'p-emma', username: 'emma_lentement', name: 'Emma Petit', level: 7, classId: 'gardien', portraitId: 'p17', frameColor: '#8a6bb8', friendCode: 'ELAN-EMMALENT-2849', streak: 6, motto: 'Doucement', title: null, weekXp: 200, scores: { FOR: 9, DEX: 10, CON: 11, INT: 11, SAG: 14, CHA: 13 }, trophies: ['premier-pas'] },
-  { id: 'p-theo', username: 'theo_marin', name: 'Théo Marin', level: 5, classId: 'rassembleur', portraitId: 'p02', frameColor: '#e0893d', friendCode: 'ELAN-THEOMARI-5517', streak: 1, motto: '', title: null, weekXp: 90, scores: { FOR: 11, DEX: 10, CON: 13, INT: 9, SAG: 10, CHA: 14 }, trophies: [] },
-];
+/** Aucun joueur fictif : le mode local n'a pas d'amis. Le social (amis, fil, classement) demande le mode en ligne. */
+const PEOPLE: Person[] = [];
 
+const STATE_VERSION = 2;
 const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
 
 function seed(): State {
-  const posts: LocalPost[] = [
-    { id: 'd1', authorId: 'p-lea', type: 'quest', text: 'Pas le meilleur chrono, mais le plus beau lever de soleil. Et ça, ça compte !', createdAt: ago(25), quest: { ability: 'CON', difficulty: 'medium', title: 'Courir 3 km', period: 'daily', xp: 80 }, mediaPaths: [] },
-    { id: 'd2', authorId: 'p-sam', type: 'achievement', text: '', createdAt: ago(62), payload: { id: 'decouvreur-50', name: 'Curiosité sans fin', description: '10 quêtes de Savoir accomplies. « Un chapitre après l’autre, on finit par voir plus loin. »' }, mediaPaths: [] },
-    { id: 'd3', authorId: 'p-ines', type: 'quest', text: 'J’ai dessiné la plante du salon. Elle ne ressemble pas tout à fait à ça, mais j’ai adoré essayer.', createdAt: ago(130), quest: { ability: 'DEX', difficulty: 'medium', title: 'Dessiner pendant 15 min', period: 'daily', xp: 50 }, mediaPaths: [] },
-    { id: 'd4', authorId: 'p-mila', type: 'streak', text: '', createdAt: ago(60 * 20), payload: { days: 21 }, mediaPaths: [] },
-    { id: 'd5', authorId: 'p-jules', type: 'level_up', text: '', createdAt: ago(60 * 27), payload: { level: 10 }, mediaPaths: [] },
-    { id: 'd6', authorId: 'p-noe', type: 'quest', text: 'Marcher 20 minutes sans écouteurs, juste pour entendre la rue.', createdAt: ago(60 * 30), quest: { ability: 'CON', difficulty: 'easy', title: 'Marcher 20 minutes', period: 'daily', xp: 20 }, mediaPaths: [] },
-  ];
   return {
     seeded: true,
-    friendIds: ['p-lea', 'p-sam', 'p-ines', 'p-noe', 'p-mila', 'p-jules'],
-    incoming: ['p-hugo', 'p-emma'],
+    version: STATE_VERSION,
+    friendIds: [],
+    incoming: [],
     outgoing: [],
     blocked: [],
-    posts,
-    reactions: [
-      { postId: 'd1', profileId: 'p-sam', kind: 'bravo' }, { postId: 'd1', profileId: 'p-mila', kind: 'respect' },
-      { postId: 'd1', profileId: 'p-ines', kind: 'inspirant' }, { postId: 'd1', profileId: 'p-noe', kind: 'bravo' },
-      { postId: 'd1', profileId: 'p-jules', kind: 'bravo' }, { postId: 'd2', profileId: 'p-lea', kind: 'respect' },
-      { postId: 'd2', profileId: 'p-mila', kind: 'inspirant' }, { postId: 'd3', profileId: 'p-lea', kind: 'bravo' },
-      { postId: 'd3', profileId: 'p-sam', kind: 'inspirant' }, { postId: 'd3', profileId: 'p-mila', kind: 'bravo' },
-    ],
-    comments: [
-      { id: 'c1', postId: 'd1', authorId: 'p-mila', text: 'Bravo pour la régularité ! 🌿', createdAt: ago(20) },
-      { id: 'c2', postId: 'd1', authorId: 'p-noe', text: 'Le lever de soleil, ça vaut tous les chronos.', createdAt: ago(12) },
-      { id: 'c3', postId: 'd2', authorId: 'p-jules', text: 'Respect, Sam !', createdAt: ago(50) },
-      { id: 'c4', postId: 'd3', authorId: 'p-sam', text: 'Elle a l’air très bien, cette plante.', createdAt: ago(100) },
-    ],
-    notifications: [
-      { id: 'n1', type: 'friend_request', payload: { from: 'p-hugo', username: 'hugo_enroute', request: 'p-hugo' }, readAt: null, createdAt: ago(180) },
-      { id: 'n2', type: 'friend_request', payload: { from: 'p-emma', username: 'emma_lentement', request: 'p-emma' }, readAt: null, createdAt: ago(175) },
-      { id: 'n3', type: 'friend_level', payload: { from: 'p-jules', username: 'jules_ose', level: 10, post: 'd5' }, readAt: null, createdAt: ago(60 * 27) },
-    ],
+    posts: [],
+    reactions: [],
+    comments: [],
+    notifications: [],
     deleted: [],
     edited: {},
   };
@@ -135,7 +106,9 @@ export async function createLocalSocial(deps: {
 }): Promise<SocialApi> {
   const { db, store, myId } = deps;
   const kv = (db as any).kv;
-  let state: State = (await kv.get('social').catch(() => undefined))?.value ?? seed();
+  // Les anciennes versions contenaient des amis et des demandes fictifs : on repart d'un état vide.
+  const saved: State | undefined = (await kv.get('social').catch(() => undefined))?.value;
+  let state: State = saved && saved.version === STATE_VERSION ? saved : seed();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const save = () => {
     clearTimeout(timer);
@@ -290,16 +263,6 @@ export async function createLocalSocial(deps: {
       if (state.outgoing.includes(profileId)) return 'already_sent';
       state.outgoing.push(profileId);
       save();
-      // en démonstration, certains amis acceptent après quelques secondes
-      setTimeout(() => {
-        if (!state.outgoing.includes(profileId)) return;
-        state.outgoing = state.outgoing.filter((x) => x !== profileId);
-        state.friendIds.push(profileId);
-        state.notifications.unshift({ id: crypto.randomUUID(), type: 'friend_accepted', payload: { from: profileId, username: p.username }, readAt: null, createdAt: new Date().toISOString() });
-        save();
-        ping('onNotification');
-        ping('onRequest');
-      }, 4000);
       return 'sent';
     },
     async sendRequestByCode(code) {

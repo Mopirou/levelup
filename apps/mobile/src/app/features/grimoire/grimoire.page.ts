@@ -20,6 +20,7 @@ import {
   type QuestTemplate,
 } from '@levelup/engine';
 import { BackendService } from '../../core/backend.service';
+import { haptic } from '../../core/feedback';
 import { GameService } from '../../core/game.service';
 import { UiService } from '../../core/ui.service';
 import { PageHeaderComponent, AbilityBadgeComponent, BarComponent } from '../../shared/ui';
@@ -157,6 +158,11 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
             @if (lock(t).locked) { <span class="xs gold">{{ lock(t).reason }}</span> }
           </div>
           <div class="qa" (click)="$event.stopPropagation()">
+            @if (active(t); as cur) {
+              <span class="ib on run" role="img" [attr.aria-label]="'En cours : ' + t.title"><lu-icon name="circle-check" [size]="16" /></span>
+            } @else {
+              <button type="button" class="ib add" [disabled]="lock(t).locked" (click)="begin(t)" [attr.aria-label]="'Commencer : ' + t.title"><lu-icon name="circle-plus" [size]="18" /></button>
+            }
             <button type="button" class="ib" [class.on]="pref(t.id)?.isFavorite" (click)="fav(t)" [attr.aria-label]="pref(t.id)?.isFavorite ? 'Retirer des favorites' : 'Marquer favorite'" [attr.aria-pressed]="!!pref(t.id)?.isFavorite"><lu-icon name="star" [size]="16" /></button>
             <button type="button" class="ib" [class.on]="pref(t.id)?.isExcluded" (click)="exclude(t)" [attr.aria-label]="pref(t.id)?.isExcluded ? 'Ne plus exclure' : 'Exclure du tirage'" [attr.aria-pressed]="!!pref(t.id)?.isExcluded"><lu-icon name="ban" [size]="16" /></button>
           </div>
@@ -170,8 +176,19 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
           <p class="flav">{{ t.flavor }}</p>
           <div class="goal"><span class="lu-eyebrow">OBJECTIF</span><p>{{ t.objective }}</p></div>
           @if (t.tips.length) { <ul class="tips">@for (x of t.tips; track x) { <li>{{ x }}</li> }</ul> }
-          <div class="lu-label">XP selon la période</div>
-          <div class="xps">@for (p of t.periods; track p) { <span class="lu-chip gold">{{ periodName(p) }} · {{ xp(t, p) }} XP</span> }</div>
+          <div class="lu-label">Commencer maintenant</div>
+          <div class="starts">
+            @for (p of t.periods; track p) {
+              @if (activeIn(t, p)) {
+                <span class="lu-chip mint"><lu-icon name="circle-check" [size]="13" /> {{ periodName(p) }} · en cours</span>
+              } @else {
+                <button type="button" class="lu-btn small" [disabled]="lock(t).locked" (click)="begin(t, p)">
+                  <lu-icon name="circle-plus" [size]="16" /> {{ periodName(p) }} · {{ xp(t, p) }} XP
+                </button>
+              }
+            }
+          </div>
+          <p class="xs muted">La quête est ajoutée tout de suite à tes quêtes, en plus de celles du jour. Tu pourras la refaire (l’XP baisse à chaque répétition).</p>
           @if (lock(t).locked) { <p class="small gold"><lu-icon name="lock" [size]="13" /> {{ lock(t).reason }}</p> }
           <div class="row2">
             <button type="button" class="lu-btn ghost small" (click)="fav(t)"><lu-icon name="star" [size]="15" /> {{ pref(t.id)?.isFavorite ? 'Favorite' : 'Favori' }}</button>
@@ -214,6 +231,8 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
     .flav { font-family: var(--lu-font-title); font-style: italic; line-height: 1.6; font-size: 15px; }
     .goal { padding: 12px 14px; border-radius: 12px; background: var(--lu-surface-2); display: flex; flex-direction: column; gap: 4px; } .goal p { font-size: 13px; font-weight: 500; }
     .tips { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.6; color: var(--lu-text-2); }
+    .starts { display: flex; flex-wrap: wrap; gap: 8px; } .starts .lu-btn { width: auto; padding: 0 16px; }
+    .ib.add { color: var(--lu-accent); border-color: var(--lu-accent); } .ib:disabled { opacity: .4; cursor: not-allowed; } .ib.run { cursor: default; }
     .xps { display: flex; flex-wrap: wrap; gap: 8px; } .row2 { display: flex; gap: 10px; } .row2 .lu-btn { flex: 1; }
   `,
 })
@@ -222,6 +241,9 @@ export class GrimoirePage {
   protected ui = inject(UiService);
   private be = inject(BackendService);
   readonly abilityParam = input<string | undefined>(undefined, { alias: 'ability' });
+  /** Période à laquelle le bouton « Commencer » ajoute la quête (l'onglet d'où l'on vient) */
+  readonly forParam = input<string | undefined>(undefined, { alias: 'for' });
+  readonly target = signal<Period>('daily');
   readonly abilities = ABILITIES;
   readonly difficulties = DIFFICULTIES;
   readonly query = signal('');
@@ -324,6 +346,8 @@ export class GrimoirePage {
     queueMicrotask(() => {
       const a = this.abilityParam();
       if (a && (ABILITIES as readonly string[]).includes(a)) this.selected.set(a as AbilityId);
+      const p = this.forParam();
+      if (p && ['daily', 'weekly', 'monthly', 'epic'].includes(p)) this.target.set(p as Period);
     });
     void this.loadHistory();
   }
@@ -382,6 +406,20 @@ export class GrimoirePage {
     const p = this.pref(t.id);
     await this.game.setPreference({ templateId: t.id, isExcluded: !p?.isExcluded, isFavorite: false, isPinned: p?.isPinned });
   }
+  /** Période choisie pour une quête : l'onglet d'origine si la quête s'y prête, sinon sa première période. */
+  startPeriod = (t: QuestTemplate): Period => (t.periods.includes(this.target()) ? this.target() : t.periods[0]);
+  activeIn = (t: QuestTemplate, p: Period) => this.game.activeFor(t.id, p);
+  active = (t: QuestTemplate) => this.activeIn(t, this.startPeriod(t));
+
+  async begin(t: QuestTemplate, p?: Period): Promise<void> {
+    const period = p ?? this.startPeriod(t);
+    const inst = await this.game.start(t, period);
+    if (!inst) return;
+    void haptic('light');
+    this.detail.set(null);
+    this.game.toast(`« ${t.title} » ajoutée à tes quêtes (${this.periodName(period).toLowerCase()}).`, 'success');
+  }
+
   xp(t: QuestTemplate, p: Period): number {
     return questXp({ difficulty: t.difficulty, period: p, ability: t.ability, level: this.game.level(), masteries: this.game.masteries(), pathAbility: this.game.pathAbility() }).total;
   }

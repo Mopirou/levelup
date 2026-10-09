@@ -9,6 +9,8 @@ export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'medium', 'high', 'e
 export type Period = 'daily' | 'weekly' | 'monthly' | 'epic';
 export const PERIODS: readonly Period[] = ['daily', 'weekly', 'monthly', 'epic'] as const;
 
+export type QuestOrigin = 'draw' | 'chosen' | 'redo';
+
 export type QuestStatus = 'proposed' | 'accepted' | 'completed' | 'abandoned' | 'expired';
 
 export type ValidationSpec =
@@ -73,8 +75,12 @@ export interface QuestInstance {
   stepsDone?: boolean[];
   xpAwarded: number;
   inspirationUsed: boolean;
-  /** Quête « libre » : proposition facultative hors quota */
+  /** Quête « libre » : hors quota (proposition facultative, quête choisie ou refaite) */
   free?: boolean;
+  /** Rang parmi les quêtes du même modèle dans la période (1 = première, 2+ = refaite) */
+  run?: number;
+  /** D'où vient la quête : tirage (quota), choix dans le catalogue, ou refaite après une validation */
+  origin?: QuestOrigin;
   acceptedAt?: string | null;
   completedAt?: string | null;
 }
@@ -100,6 +106,7 @@ export interface CharacterCore {
 export interface SettingsCore {
   resetHour: number;
   timezone: string;
+  /** Quêtes journalières tirées chaque jour ; 0 = mode manuel (le joueur choisit dans le catalogue) */
   dailyQuestCount: number;
   hardcore: boolean;
 }
