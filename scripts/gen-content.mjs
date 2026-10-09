@@ -45,6 +45,7 @@ for (const a of ABILITIES) {
   }
 }
 // ───────────── Quêtes guidées par discipline (4 paliers : jour, semaine, mois, épique) ─────────────
+const { default: guidedTasks } = await import(pathToFileURL(join(root, 'src', 'guided-tasks.mjs')).href);
 const { default: themeRows } = await import(pathToFileURL(join(root, 'src', 'guided.mjs')).href);
 const TIERS = [
   { n: 1, difficulty: 'easy', period: 'daily' },
@@ -65,6 +66,9 @@ for (const th of themeRows) {
   const sessions = [1, perWeek, perWeek * 3, perWeek * 10];
   themes.push({ id: th.id, label: th.label, blurb: th.blurb, ability: th.primary, secondary, activities: th.activities.map((a) => a[0]) });
   for (const [name, doing, why, flow, tech, goal] of th.activities) {
+    const task = guidedTasks[th.id]?.[name];
+    if (!task) throw new Error(`${th.id}/${name}: tâches précises manquantes (guided-tasks.mjs)`);
+    const [dayTitle, dayObjective, dayVal, weekTitle, weekObjective, weekVal, unit] = task;
     const tags = ['guidé', th.id, ...(th.physical ? ['sport'] : [])];
     const mk = (tier, extra) => {
       quests.push({
@@ -74,32 +78,32 @@ for (const th of themeRows) {
       guidedCount++;
     };
     mk(TIERS[0], {
-      title: `${name}, 1 séance guidée`,
+      title: dayTitle,
       flavor: why,
-      objective: `Faire une séance guidée : ${doing}, en suivant un cours (vidéo, application ou professeur).`,
+      objective: dayObjective,
       tips: [flow, tech],
-      validation: { type: 'simple' },
+      validation: parseValidation(dayVal),
     });
     mk(TIERS[1], {
-      title: `${name}, ${sessions[1]} séances cette semaine`,
+      title: weekTitle,
       flavor: `${why} Quelques séances par semaine donnent des progrès visibles.`,
-      objective: `Faire ${sessions[1]} séances guidées sur la semaine : ${doing}.`,
-      tips: [tech, 'Répartis tes séances sur plusieurs jours et ajoute-les une à une.'],
-      validation: { type: 'counter', target: sessions[1], unit: 'séances' },
+      objective: weekObjective,
+      tips: [tech, 'Répartis tes séances sur plusieurs jours et coche-les au fur et à mesure.'],
+      validation: parseValidation(weekVal),
     });
     mk(TIERS[2], {
-      title: `${name}, ${sessions[2]} séances ce mois-ci`,
+      title: `${name}, ${sessions[2]} fois ce mois-ci`,
       flavor: `${why} Un mois de pratique régulière installe l’habitude et le niveau.`,
-      objective: `Faire ${sessions[2]} séances guidées sur le mois : ${doing}, avec un cours ou un programme.`,
-      tips: [tech, 'Planifie tes séances à l’avance et note ta progression chaque semaine.'],
-      validation: { type: 'counter', target: sessions[2], unit: 'séances' },
+      objective: `Faire ${sessions[2]} ${unit} sur le mois : ${doing}.`,
+      tips: [tech, 'Planifie tes créneaux à l’avance et note ta progression chaque semaine.'],
+      validation: { type: 'counter', target: sessions[2], unit },
     });
     mk(TIERS[3], {
-      title: `${name}, ${sessions[3]} séances de pratique`,
+      title: `${name}, ${sessions[3]} fois au total`,
       flavor: `${why} Un grand objectif, qui demande de la constance sur la durée.`,
-      objective: `Faire ${sessions[3]} séances guidées (${doing}) jusqu’à ${goal}.${th.physical ? PRUDENCE : ''}`,
+      objective: `Faire ${sessions[3]} ${unit} (${doing}) jusqu’à ${goal}.${th.physical ? PRUDENCE : ''}`,
       tips: [tech, 'Fixe-toi un point d’étape toutes les deux semaines pour mesurer ta progression.'],
-      validation: { type: 'counter', target: sessions[3], unit: 'séances' },
+      validation: { type: 'counter', target: sessions[3], unit },
     });
   }
 }

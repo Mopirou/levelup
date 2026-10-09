@@ -1089,7 +1089,7 @@ var classes_fr_default = [
     masteries: ["INT", "SAG"],
     profile: "\xC9tudiant permanent, lecteur, r\xE9fl\xE9chi",
     description: "Pour les \xE9tudiants permanents, les lecteurs et les curieux. Tu progresses surtout en Intelligence et en Sagesse.",
-    favoredQuests: ["Lecture, 20 pages", "Langue \xE9trang\xE8re, une s\xE9ance compl\xE8te", "M\xE9ditation, 15 minutes"],
+    favoredQuests: ["Lecture, 20 pages", "Espagnol, un cours aujourd\u2019hui", "M\xE9ditation, 15 minutes"],
     paths: [
       { id: "erudit-savant", name: "Voie du Savant", ability: "INT", title: "Gardien des savoirs", description: "Tu creuses chaque sujet jusqu\u2019au fond. Ta voie ajoute une affinit\xE9 Intelligence." },
       { id: "erudit-ermite", name: "Voie de l\u2019Ermite", ability: "SAG", title: "Sage de la Tour", description: "Tu cherches le calme autant que le savoir. Ta voie ajoute une affinit\xE9 Sagesse." }
@@ -1115,7 +1115,7 @@ var classes_fr_default = [
     masteries: ["CON", "SAG"],
     profile: "Proche de la nature, curieux du vivant",
     description: "Pour les amoureux de nature et de grands espaces. Tu progresses surtout en Constitution et en Sagesse.",
-    favoredQuests: ["Un moment dans la nature, sans \xE9cran", "Grande sortie \xE0 pied ou \xE0 v\xE9lo", "Marcher 5 fois dans la semaine"],
+    favoredQuests: ["Un moment dans la nature, sans \xE9cran", "Grande sortie, 45 minutes", "Marcher 5 fois dans la semaine"],
     paths: [
       { id: "explorateur-druide", name: "Voie du Sentier vert", ability: "INT", title: "Lecteur du vivant", description: "Tu observes, tu notes, tu apprends de la nature. Ta voie ajoute une affinit\xE9 Intelligence." },
       { id: "explorateur-nomade", name: "Voie du Nomade", ability: "FOR", title: "Marcheur d\u2019horizons", description: "Tu vas toujours un peu plus loin. Ta voie ajoute une affinit\xE9 Force." }

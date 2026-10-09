@@ -71,7 +71,7 @@
     "masteries": ["INT", "SAG"],
     "profile": "Étudiant permanent, lecteur, réfléchi",
     "description": "Pour les étudiants permanents, les lecteurs et les curieux. Tu progresses surtout en Intelligence et en Sagesse.",
-    "favoredQuests": ["Lecture, 20 pages", "Un cours de langue complet", "Méditation, 15 minutes"],
+    "favoredQuests": ["Lecture, 20 pages", "Espagnol, un cours aujourd’hui", "Méditation, 15 minutes"],
     "paths": [
       { "id": "erudit-savant", "name": "Voie du Savant", "ability": "INT", "title": "Gardien des savoirs", "description": "Tu creuses chaque sujet jusqu’au fond. Ta voie ajoute une affinité Intelligence." },
       { "id": "erudit-ermite", "name": "Voie de l’Ermite", "ability": "SAG", "title": "Sage de la Tour", "description": "Tu cherches le calme autant que le savoir. Ta voie ajoute une affinité Sagesse." }
