@@ -6,7 +6,7 @@
     "masteries": ["FOR", "CON"],
     "profile": "Sportif endurant, salle et cardio",
     "description": "Pour les sportifs d’endurance : course, salle, cardio. Tu progresses surtout en Force et en Constitution.",
-    "favoredQuests": ["Marche rapide, 30 minutes", "Endurance, 3 séances dans la semaine", "Pompes, 40 aujourd’hui"],
+    "favoredQuests": ["Marcher 4 kilomètres", "Endurance, 3 séances dans la semaine", "Pompes, 40 aujourd’hui"],
     "paths": [
       { "id": "eclaireur-sentier", "name": "Voie du Sentier", "ability": "SAG", "title": "Marcheur des cimes", "description": "Tu cours pour entendre le vent. Ta voie ajoute une affinité Sagesse : chaque sortie en nature te rapporte un petit supplément d’XP." },
       { "id": "eclaireur-bastion", "name": "Voie du Bastion", "ability": "INT", "title": "Stratège de l’effort", "description": "Tu planifies, mesures, ajustes. Ta voie ajoute une affinité Intelligence : tes plans d’entraînement t’apportent un petit supplément d’XP." }
@@ -71,7 +71,7 @@
     "masteries": ["INT", "SAG"],
     "profile": "Étudiant permanent, lecteur, réfléchi",
     "description": "Pour les étudiants permanents, les lecteurs et les curieux. Tu progresses surtout en Intelligence et en Sagesse.",
-    "favoredQuests": ["Lecture, 20 pages", "Langue étrangère, une séance complète", "Méditation, 15 minutes"],
+    "favoredQuests": ["Lecture, 20 pages", "Langue étrangère, une séance complète", "Méditation complète"],
     "paths": [
       { "id": "erudit-savant", "name": "Voie du Savant", "ability": "INT", "title": "Gardien des savoirs", "description": "Tu creuses chaque sujet jusqu’au fond. Ta voie ajoute une affinité Intelligence." },
       { "id": "erudit-ermite", "name": "Voie de l’Ermite", "ability": "SAG", "title": "Sage de la Tour", "description": "Tu cherches le calme autant que le savoir. Ta voie ajoute une affinité Sagesse." }
@@ -84,7 +84,7 @@
     "masteries": ["SAG", "CHA"],
     "profile": "Bienveillant, tourné vers les autres",
     "description": "Pour ceux qui prennent soin des autres et d’eux-mêmes. Tu progresses surtout en Sagesse et en Charisme.",
-    "favoredQuests": ["Méditation, 15 minutes", "Écoute active, cinq reformulations", "Trois gratitudes"],
+    "favoredQuests": ["Méditation complète", "Écoute active, cinq reformulations", "Trois gratitudes"],
     "paths": [
       { "id": "gardien-guerisseur", "name": "Voie du Guérisseur", "ability": "CON", "title": "Main qui apaise", "description": "Tu prends soin des corps autant que des cœurs. Ta voie ajoute une affinité Constitution." },
       { "id": "gardien-protecteur", "name": "Voie du Protecteur", "ability": "FOR", "title": "Bouclier des siens", "description": "Tu défends ceux que tu aimes. Ta voie ajoute une affinité Force." }

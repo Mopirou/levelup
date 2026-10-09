@@ -1024,7 +1024,7 @@ var classes_fr_default = [
     masteries: ["FOR", "CON"],
     profile: "Sportif endurant, salle et cardio",
     description: "Pour les sportifs d\u2019endurance : course, salle, cardio. Tu progresses surtout en Force et en Constitution.",
-    favoredQuests: ["Marche rapide, 30 minutes", "Endurance, 3 s\xE9ances dans la semaine", "Pompes, 40 aujourd\u2019hui"],
+    favoredQuests: ["Marcher 4 kilom\xE8tres", "Endurance, 3 s\xE9ances dans la semaine", "Pompes, 40 aujourd\u2019hui"],
     paths: [
       { id: "eclaireur-sentier", name: "Voie du Sentier", ability: "SAG", title: "Marcheur des cimes", description: "Tu cours pour entendre le vent. Ta voie ajoute une affinit\xE9 Sagesse : chaque sortie en nature te rapporte un petit suppl\xE9ment d\u2019XP." },
       { id: "eclaireur-bastion", name: "Voie du Bastion", ability: "INT", title: "Strat\xE8ge de l\u2019effort", description: "Tu planifies, mesures, ajustes. Ta voie ajoute une affinit\xE9 Intelligence : tes plans d\u2019entra\xEEnement t\u2019apportent un petit suppl\xE9ment d\u2019XP." }

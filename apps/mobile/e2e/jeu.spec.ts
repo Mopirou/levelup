@@ -72,7 +72,7 @@ test.describe('Parcours solo', () => {
     for (const n of ['Niveau 1 · Journée', 'Niveau 2 · Semaine', 'Niveau 3 · Mois', 'Niveau 4 · Épique']) {
       await expect(page.getByText(n)).toBeVisible();
     }
-    await expect(page.getByText('Salsa, 20 minutes guidées')).toBeVisible();
+    await expect(page.getByText('Salsa, 1 séance guidée')).toBeVisible();
     await expect(page.getByText(/Répartition de l’XP : Dextérité 60 %/)).toBeVisible();
   });
 
