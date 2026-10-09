@@ -39,7 +39,7 @@ const PROMPTS: Record<AbilityId | 'any', string[]> = {
           </div>
         </section>
 
-        <lu-share-form #form placeholder="Raconte en quelques mots…" (change)="draft.set($event)" />
+        <lu-share-form #form placeholder="Raconte en quelques mots…" (draftChange)="draft.set($event)" />
 
         <section class="lu-section">
           <div class="lu-section-title"><h2>Rattacher une quête</h2><span class="xs muted">facultatif</span></div>

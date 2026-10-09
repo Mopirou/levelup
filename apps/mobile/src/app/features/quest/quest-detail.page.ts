@@ -216,7 +216,7 @@ const timerKey = (id: string) => `lu-timer-${id}`;
             @if (!shared()) {
               <section class="lu-section">
                 <div class="lu-section-title"><h2>Partager avec tes amis</h2></div>
-                <lu-share-form [initialText]="shareSeed()" (change)="draft.set($event)" />
+                <lu-share-form [initialText]="shareSeed()" (draftChange)="draft.set($event)" />
                 <button type="button" class="lu-btn light" [disabled]="busy()" (click)="share()"><lu-icon name="send" [size]="17" /> Partager avec tes amis</button>
                 <button type="button" class="lu-btn text" (click)="finish()">Garder pour moi et revenir aux quêtes</button>
               </section>

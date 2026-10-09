@@ -23,6 +23,7 @@ export async function createHero(page: Page, name = 'Aldric', username = 'aldric
   await page.getByRole('button', { name: 'Répartition équilibrée' }).click();
   await page.getByRole('button', { name: 'Continuer' }).click();
   await page.getByRole('button', { name: 'Continuer' }).click();
+  await page.getByRole('button', { name: 'Passer cette étape' }).click();
   await page.getByRole('button', { name: /^Commencer$/ }).click();
   await expect(page.getByRole('heading', { name: 'Aujourd’hui' })).toBeVisible({ timeout: 15_000 });
 }

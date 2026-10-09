@@ -129,6 +129,24 @@ test.describe('Social (mode local)', () => {
     await page.getByLabel(/Ton message/).fill('Une publication toute simple');
     await expect(page.getByRole('button', { name: 'Publier' })).toBeEnabled();
   });
+
+  test('photo + message : la publication part même après avoir quitté le champ de texte', async ({ page }) => {
+    await createHero(page);
+    await page.goto('/publish');
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Galerie' }).click();
+    await (await chooser).setFiles({
+      name: 'photo.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'),
+    });
+    await expect(page.getByAltText('Photo à partager')).toBeVisible();
+    await page.getByLabel(/Ton message/).fill('Ma première victoire');
+    // le clic sur « Publier » fait perdre le focus au textarea : son `change` natif remonte jusqu'au formulaire
+    await page.getByRole('button', { name: 'Publier' }).click();
+    await expect(page.getByText('Publié pour tes amis !')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Fil des amis' })).toBeVisible();
+  });
 });
 
 test.describe('Réglages et documents', () => {
