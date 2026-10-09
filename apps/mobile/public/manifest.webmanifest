@@ -3,6 +3,7 @@
   "short_name": "Level Up",
   "description": "Développement personnel gamifié et social : transforme tes habitudes en aventure.",
   "lang": "fr",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
