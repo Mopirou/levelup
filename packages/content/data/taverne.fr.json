@@ -168,42 +168,42 @@
   },
   {
     "id": "tav-023",
-    "text": "Ta {weakest} s’endort. Une quête t’attend de ce côté-là.",
+    "text": "Ta Sagesse s’endort. Une quête t’attend de ce côté-là.",
     "when": {
       "weakest": "SAG"
     }
   },
   {
     "id": "tav-024",
-    "text": "Ton {weakest}… eh bien, il attend son tour avec patience. Aujourd’hui, peut-être ?",
+    "text": "Ton Intelligence attend son tour avec patience. Aujourd’hui, peut-être ?",
     "when": {
       "weakest": "INT"
     }
   },
   {
     "id": "tav-025",
-    "text": "Les Liens se tissent lentement. Un message à quelqu’un te ferait du bien aujourd’hui.",
+    "text": "Ton Charisme s’endort un peu. Un message à quelqu’un te ferait du bien aujourd’hui.",
     "when": {
       "weakest": "CHA"
     }
   },
   {
     "id": "tav-026",
-    "text": "Ta Vitalité demande un peu d’air : une marche, un verre d’eau, un coucher tôt.",
+    "text": "Ta Constitution demande un peu d’air : une marche, un verre d’eau, un coucher tôt.",
     "when": {
       "weakest": "CON"
     }
   },
   {
     "id": "tav-027",
-    "text": "Ta Créativité est restée sur l’établi. Un croquis, quelques lignes, et elle se réveille.",
+    "text": "Ta Dextérité est restée au repos. Dix minutes de souplesse ou d’adresse, et elle se réveille.",
     "when": {
       "weakest": "DEX"
     }
   },
   {
     "id": "tav-028",
-    "text": "Ton Courage attend sa petite audace du jour. Rien de grand : juste un pas de côté.",
+    "text": "Ta Force attend sa petite séance du jour. Rien de grand : dix minutes suffisent.",
     "when": {
       "weakest": "FOR"
     }
@@ -217,14 +217,14 @@
   },
   {
     "id": "tav-030",
-    "text": "Le Tableau d’Affichage a quelques idées pour ta {weakest}. Va jeter un œil.",
+    "text": "Le Tableau d’Affichage a quelques idées pour {weakest}. Va jeter un œil.",
     "when": {
       "streakMin": 0
     }
   },
   {
     "id": "tav-031",
-    "text": "Tes autres caractéristiques te remercient. {weakest}, elle, aimerait un peu d’attention.",
+    "text": "Tes autres caractéristiques te remercient. La caractéristique {weakest} aimerait un peu d’attention.",
     "when": {
       "streakMin": 0
     }
@@ -252,21 +252,21 @@
   },
   {
     "id": "tav-035",
-    "text": "{strongest} te porte depuis un moment. Donne un coup de pouce à {weakest}, elle te le rendra.",
+    "text": "{strongest} te porte depuis un moment. Donne un coup de pouce à {weakest}, ça te le rendra.",
     "when": {
       "streakMin": 0
     }
   },
   {
     "id": "tav-036",
-    "text": "Équilibre ton royaume : quand une caractéristique dort, les autres portent la charge.",
+    "text": "Répartis ton effort : quand une caractéristique dort, les autres portent la charge.",
     "when": {
       "streakMin": 0
     }
   },
   {
     "id": "tav-037",
-    "text": "Le tavernier a remarqué que ta {weakest} ne s’est pas montrée depuis un moment.",
+    "text": "Le tavernier a remarqué que ta caractéristique {weakest} ne s’est pas montrée depuis un moment.",
     "when": {
       "streakMin": 0
     }
@@ -316,7 +316,7 @@
   },
   {
     "id": "tav-044",
-    "text": "Un livre qui attend sur la table, un mot nouveau à apprendre : ton Savoir fait la sieste.",
+    "text": "Un livre qui attend sur la table, un mot nouveau à apprendre : ton Intelligence fait la sieste.",
     "when": {
       "weakest": "INT",
       "daily": "none"
@@ -324,7 +324,7 @@
   },
   {
     "id": "tav-045",
-    "text": "Appeler quelqu’un, remercier, écouter : tes Liens aiment les petits gestes.",
+    "text": "Appeler quelqu’un, remercier, écouter : ton Charisme aime les petits gestes.",
     "when": {
       "weakest": "CHA",
       "daily": "none"
@@ -332,7 +332,7 @@
   },
   {
     "id": "tav-046",
-    "text": "Marche, eau, sommeil : trois mots qui font beaucoup pour ta Vitalité.",
+    "text": "Marche, eau, sommeil : trois mots qui font beaucoup pour ta Constitution.",
     "when": {
       "weakest": "CON",
       "daily": "none"
@@ -340,7 +340,7 @@
   },
   {
     "id": "tav-047",
-    "text": "Un trait de crayon, une note, un geste de la main : ta Créativité n’en demande pas plus.",
+    "text": "Un étirement, un équilibre sur un pied, un geste précis : ta Dextérité n’en demande pas plus.",
     "when": {
       "weakest": "DEX",
       "daily": "none"
@@ -348,7 +348,7 @@
   },
   {
     "id": "tav-048",
-    "text": "Quelques pompes, une porte à pousser, un oui ou un non franc : ton Courage se réveille vite.",
+    "text": "Quelques pompes, un sac à porter, une minute de gainage : ta Force se réveille vite.",
     "when": {
       "weakest": "FOR",
       "daily": "none"
@@ -364,14 +364,14 @@
   },
   {
     "id": "tav-050",
-    "text": "Il te reste une quête à faire, et c’est peut-être celle qui comptera le plus pour ton {weakest}.",
+    "text": "Il te reste une quête à faire, et c’est peut-être celle qui comptera le plus pour ta caractéristique {weakest}.",
     "when": {
       "daily": "some"
     }
   },
   {
     "id": "tav-051",
-    "text": "Même les héros les plus forts ont une faiblesse. La tienne s’appelle {weakest}, et elle est adorable.",
+    "text": "Même les héros les plus forts ont une faiblesse. La tienne s’appelle {weakest}, et c’est adorable.",
     "when": {
       "streakMin": 0
     }

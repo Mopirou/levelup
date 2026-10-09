@@ -63,6 +63,7 @@ beforeAll(async () => {
   await db.exec(read('migrations/20261008000002_security.sql'));
   await db.exec(read('migrations/20261008000003_cron.sql'));
   await db.exec(read('migrations/20261008000004_friend_code.sql'));
+  await db.exec(read('migrations/20261009000001_quest_themes.sql'));
   await db.exec(read('seed.sql'));
   await mkUser(ids.alice, 'alice');
   await mkUser(ids.bob, 'bob');
@@ -75,8 +76,9 @@ afterAll(async () => {
 });
 
 describe('schéma et contenu', () => {
-  it('contient 240 quêtes, 80 trophées et la liste de mots interdits', async () => {
-    expect((await admin(`select count(*)::int n from quest_templates where source = 'catalog'`))[0].n).toBe(240);
+  it('contient 740 quêtes, 80 trophées et la liste de mots interdits', async () => {
+    expect((await admin(`select count(*)::int n from quest_templates where source = 'catalog'`))[0].n).toBe(740);
+    expect((await admin(`select count(*)::int n from quest_templates where theme is not null and jsonb_array_length(secondary) > 0`))[0].n).toBe(500);
     expect((await admin(`select count(*)::int n from achievements`))[0].n).toBe(80);
     expect((await admin(`select count(*)::int n from banned_words`))[0].n).toBeGreaterThan(10);
   });
@@ -143,7 +145,7 @@ describe('RLS : un non-ami ne lit rien (critère d’acceptation)', () => {
       values ('custom-a', 'custom', $1, 'FOR', 'easy', '{daily}', 'Ma quête', 'Faire un truc simple', '{"type":"simple"}')`, [ids.alice]);
     expect((await as(ids.bob, `select id from quest_templates where id = 'custom-a'`)).length).toBe(0);
     expect((await as(ids.alice, `select id from quest_templates where id = 'custom-a'`)).length).toBe(1);
-    expect((await as(ids.bob, `select count(*)::int n from quest_templates where source = 'catalog'`))[0].n).toBe(240);
+    expect((await as(ids.bob, `select count(*)::int n from quest_templates where source = 'catalog'`))[0].n).toBe(740);
     await expect(as(ids.bob, `insert into quest_templates (id, source, owner_id, ability, difficulty, periods, title, objective, validation)
       values ('custom-evil', 'custom', $1, 'FOR', 'easy', '{daily}', 'x', 'y', '{"type":"simple"}')`, [ids.alice])).rejects.toThrow();
   });

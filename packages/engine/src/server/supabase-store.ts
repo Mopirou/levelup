@@ -153,6 +153,7 @@ export class SupabaseStore {
     return (data ?? []).map((t: any) => ({
       id: t.id, source: t.source, ownerId: t.owner_id, ability: t.ability, difficulty: t.difficulty, periods: t.periods,
       title: t.title, flavor: t.flavor, objective: t.objective, tips: t.tips, validation: t.validation, tags: t.tags, isActive: t.is_active,
+      ...(t.theme ? { theme: t.theme } : {}), ...(t.secondary?.length ? { secondary: t.secondary } : {}),
     }));
   }
 

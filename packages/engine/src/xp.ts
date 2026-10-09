@@ -177,6 +177,33 @@ export function questXp(i: QuestXpInput): QuestXpBreakdown {
   return { base, multiplier, mastery, affinity, doubled: !!i.doubled, total: i.doubled ? sub * 2 : sub };
 }
 
+export interface XpPart {
+  ability: AbilityId;
+  amount: number;
+}
+
+/**
+ * Répartit l'XP d'une quête entre sa caractéristique principale et ses secondaires.
+ * Chaque secondaire reçoit son pourcentage (arrondi inférieur), la principale garde le reste : la somme est toujours égale au total.
+ * Fonctionne aussi pour un retrait (total négatif), de façon symétrique.
+ */
+export function splitXp(total: number, primary: AbilityId, secondary?: readonly { ability: AbilityId; pct: number }[]): XpPart[] {
+  const sign = total < 0 ? -1 : 1;
+  const abs = Math.abs(Math.round(total));
+  const parts: XpPart[] = [];
+  let given = 0;
+  for (const s of secondary ?? []) {
+    if (s.ability === primary) continue;
+    const amount = Math.floor((abs * s.pct) / 100);
+    if (amount > 0) {
+      parts.push({ ability: s.ability, amount: amount * sign });
+      given += amount;
+    }
+  }
+  parts.unshift({ ability: primary, amount: (abs - given) * sign });
+  return parts.filter((p) => p.amount !== 0);
+}
+
 /** XP au prorata pour un compteur expiré (>= 50 %), sinon 0. */
 export function partialXp(fullXp: number, progress: number, target: number): number {
   if (target <= 0) return 0;
@@ -258,4 +285,11 @@ export function questLock(difficulty: Difficulty, score: number, level: number, 
     return { locked: true, reason: `Score de ${abilityLabel} 14 requis, ou niveau 5` };
   }
   return { locked: false };
+}
+
+/** Répartition en % de l'XP d'une quête (principale en tête), pour l'affichage. */
+export function xpShares(primary: AbilityId, secondary?: readonly { ability: AbilityId; pct: number }[]): { ability: AbilityId; pct: number }[] {
+  const others = (secondary ?? []).filter((s) => s.ability !== primary && s.pct > 0);
+  const rest = 100 - others.reduce((n, s) => n + s.pct, 0);
+  return [{ ability: primary, pct: rest }, ...others];
 }

@@ -147,6 +147,22 @@ function questXp(i) {
   const sub = base * multiplier + mastery + affinity;
   return { base, multiplier, mastery, affinity, doubled: !!i.doubled, total: i.doubled ? sub * 2 : sub };
 }
+function splitXp(total, primary, secondary) {
+  const sign = total < 0 ? -1 : 1;
+  const abs = Math.abs(Math.round(total));
+  const parts = [];
+  let given = 0;
+  for (const s of secondary ?? []) {
+    if (s.ability === primary) continue;
+    const amount = Math.floor(abs * s.pct / 100);
+    if (amount > 0) {
+      parts.push({ ability: s.ability, amount: amount * sign });
+      given += amount;
+    }
+  }
+  parts.unshift({ ability: primary, amount: (abs - given) * sign });
+  return parts.filter((p) => p.amount !== 0);
+}
 function partialXp(fullXp, progress, target) {
   if (target <= 0) return 0;
   const ratio = progress / target;
@@ -553,6 +569,27 @@ function applyXp(character, ability, amount) {
     pendingPath: pendingPath(level, before.pathId)
   };
 }
+function applyXpParts(character, parts) {
+  let current = character;
+  const levelsGained = [];
+  const levelsLost = [];
+  const abilityUps = [];
+  for (const p of parts) {
+    const r = applyXp(current, p.ability, p.amount);
+    current = r.character;
+    levelsGained.push(...r.levelsGained);
+    levelsLost.push(...r.levelsLost);
+    abilityUps.push(...r.abilityUps);
+  }
+  return {
+    character: current,
+    levelsGained,
+    levelsLost,
+    abilityUps,
+    pendingImprovements: pendingImprovements(current.level, character.improvementsChosen),
+    pendingPath: pendingPath(current.level, character.pathId)
+  };
+}
 function completeQuest(input) {
   const { character, instance } = input;
   if (instance.status === "completed") return { ok: false, error: "already-completed" };
@@ -575,7 +612,7 @@ function completeQuest(input) {
     doubled: input.useInspiration
   });
   const base = input.useInspiration ? { ...character, inspiration: character.inspiration - 1 } : character;
-  const applied = applyXp(base, instance.snapshot.ability, breakdown.total);
+  const applied = applyXpParts(base, splitXp(breakdown.total, instance.snapshot.ability, instance.snapshot.secondary));
   return {
     ok: true,
     result: { ...applied, xpAwarded: breakdown.total, breakdown, inspirationSpent: input.useInspiration }
@@ -759,12 +796,12 @@ function emptyStats() {
 
 // packages/engine/src/labels.ts
 var ABILITY_LABEL = {
-  FOR: "Courage",
-  DEX: "Cr\xE9ativit\xE9",
-  CON: "Vitalit\xE9",
-  INT: "Savoir",
-  SAG: "\xC9quilibre",
-  CHA: "Liens"
+  FOR: "Force",
+  DEX: "Dext\xE9rit\xE9",
+  CON: "Constitution",
+  INT: "Intelligence",
+  SAG: "Sagesse",
+  CHA: "Charisme"
 };
 var ABILITY_DND_NAME = {
   FOR: "Force",
@@ -791,12 +828,12 @@ var ABILITY_COLOR = {
   CHA: "#d9ae3a"
 };
 var ABILITY_TAGLINE = {
-  FOR: "Oser, soulever, tenir. La puissance du geste franc.",
-  DEX: "Cr\xE9er, bricoler, jouer. La pr\xE9cision et la souplesse.",
-  CON: "Bouger, dormir, durer. L\u2019endurance du quotidien.",
-  INT: "Lire, apprendre, comprendre. La m\xE9moire et la curiosit\xE9.",
-  SAG: "Respirer, se poser, voir clair. L\u2019attention \xE0 soi.",
-  CHA: "Parler, \xE9couter, donner. La force du lien."
+  FOR: "Le physique pur : pousser, porter, tenir.",
+  DEX: "L\u2019agilit\xE9 sous toutes ses formes : souplesse, coordination, r\xE9flexes, adresse, esprit vif.",
+  CON: "La sant\xE9 du corps : sommeil, repas, eau, marche.",
+  INT: "Apprendre, informations ou comp\xE9tences : lire, \xE9tudier, pratiquer.",
+  SAG: "Prendre soin de soi \xE0 l\u2019int\xE9rieur : calme, \xE9motions, attention.",
+  CHA: "Le social : \xE9couter, parler, donner des nouvelles."
 };
 var DIFFICULTY_LABEL = {
   easy: "Facile",
@@ -970,10 +1007,10 @@ var classes_fr_default = [
     masteries: ["FOR", "CON"],
     profile: "Sportif endurant, salle et cardio",
     description: "L\u2019\xC9claireur avance devant, l\xE9ger et r\xE9sistant. Il aime le souffle court, la sueur propre et les chemins qu\u2019il n\u2019a pas encore parcourus. Pour lui, chaque s\xE9ance est une carte qu\u2019il remplit, et son corps est sa meilleure boussole.",
-    favoredQuests: ["La Course du H\xE9ros", "Le Si\xE8ge de la Tour", "La Marche du P\xE8lerin"],
+    favoredQuests: ["Marche rapide, 30 minutes", "Cardio, 150 minutes dans la semaine", "Haut du corps, 20 minutes"],
     paths: [
-      { id: "eclaireur-sentier", name: "Voie du Sentier", ability: "SAG", title: "Marcheur des cimes", description: "Tu cours pour entendre le vent. Ta voie ajoute une affinit\xE9 \xC9quilibre : chaque sortie en nature te rapporte un petit suppl\xE9ment d\u2019XP." },
-      { id: "eclaireur-bastion", name: "Voie du Bastion", ability: "INT", title: "Strat\xE8ge de l\u2019effort", description: "Tu planifies, mesures, ajustes. Ta voie ajoute une affinit\xE9 Savoir : tes plans d\u2019entra\xEEnement t\u2019apportent un petit suppl\xE9ment d\u2019XP." }
+      { id: "eclaireur-sentier", name: "Voie du Sentier", ability: "SAG", title: "Marcheur des cimes", description: "Tu cours pour entendre le vent. Ta voie ajoute une affinit\xE9 Sagesse : chaque sortie en nature te rapporte un petit suppl\xE9ment d\u2019XP." },
+      { id: "eclaireur-bastion", name: "Voie du Bastion", ability: "INT", title: "Strat\xE8ge de l\u2019effort", description: "Tu planifies, mesures, ajustes. Ta voie ajoute une affinit\xE9 Intelligence : tes plans d\u2019entra\xEEnement t\u2019apportent un petit suppl\xE9ment d\u2019XP." }
     ]
   },
   {
@@ -983,10 +1020,10 @@ var classes_fr_default = [
     masteries: ["FOR", "DEX"],
     profile: "Arts martiaux, yoga, discipline du corps",
     description: "L\u2019Aventurier ose. Il apprend un nouveau sport comme on ouvre une porte, avec un sourire et un peu de peur. Son corps est un instrument qu\u2019il accorde par la discipline, la souplesse et le geste pr\xE9cis.",
-    favoredQuests: ["La Danse des Lames", "L\u2019Audace du Voyageur", "Le Nouveau Sentier"],
+    favoredQuests: ["S\xE9ance de force compl\xE8te, 30 minutes", "Activit\xE9 de coordination, 45 minutes", "Parcours d\u2019agilit\xE9, 20 minutes"],
     paths: [
-      { id: "aventurier-ombre", name: "Voie de l\u2019Ombre", ability: "SAG", title: "Ma\xEEtre du calme", description: "L\u2019art martial est d\u2019abord un art du souffle. Ta voie ajoute une affinit\xE9 \xC9quilibre." },
-      { id: "aventurier-tempete", name: "Voie de la Temp\xEAte", ability: "CON", title: "C\u0153ur d\u2019orage", description: "Tu aimes l\u2019effort qui dure. Ta voie ajoute une affinit\xE9 Vitalit\xE9." }
+      { id: "aventurier-ombre", name: "Voie de l\u2019Ombre", ability: "SAG", title: "Ma\xEEtre du calme", description: "L\u2019art martial est d\u2019abord un art du souffle. Ta voie ajoute une affinit\xE9 Sagesse." },
+      { id: "aventurier-tempete", name: "Voie de la Temp\xEAte", ability: "CON", title: "C\u0153ur d\u2019orage", description: "Tu aimes l\u2019effort qui dure. Ta voie ajoute une affinit\xE9 Constitution." }
     ]
   },
   {
@@ -996,10 +1033,10 @@ var classes_fr_default = [
     masteries: ["DEX", "INT"],
     profile: "Bricoleur ing\xE9nieux, apprend par la pratique",
     description: "L\u2019Artisan comprend avec ses mains. Il d\xE9monte, r\xE9pare, invente, recommence. Pour lui, un projet vaut mieux qu\u2019un cours : on apprend en faisant, en se trompant, en finissant.",
-    favoredQuests: ["Le Chef-d\u2019\u0153uvre de l\u2019Artisan", "L\u2019Atelier du Bricoleur", "L\u2019Apprenti du Code"],
+    favoredQuests: ["Geste pr\xE9cis, 90 minutes dans la semaine", "Tutoriel d\u2019une comp\xE9tence, 15 minutes", "Programmation, 30 minutes"],
     paths: [
-      { id: "artisan-inventeur", name: "Voie de l\u2019Inventeur", ability: "INT", title: "Esprit d\u2019atelier", description: "Tu cherches comment les choses fonctionnent. Ta voie ajoute une affinit\xE9 Savoir." },
-      { id: "artisan-maitre", name: "Voie du Ma\xEEtre d\u2019\u0153uvre", ability: "CHA", title: "B\xE2tisseur de guildes", description: "Tu sais faire travailler les autres. Ta voie ajoute une affinit\xE9 Liens." }
+      { id: "artisan-inventeur", name: "Voie de l\u2019Inventeur", ability: "INT", title: "Esprit d\u2019atelier", description: "Tu cherches comment les choses fonctionnent. Ta voie ajoute une affinit\xE9 Intelligence." },
+      { id: "artisan-maitre", name: "Voie du Ma\xEEtre d\u2019\u0153uvre", ability: "CHA", title: "B\xE2tisseur de guildes", description: "Tu sais faire travailler les autres. Ta voie ajoute une affinit\xE9 Charisme." }
     ]
   },
   {
@@ -1009,10 +1046,10 @@ var classes_fr_default = [
     masteries: ["DEX", "CHA"],
     profile: "Artiste, musicien, aime la sc\xE8ne",
     description: "Le Troubadour transforme ce qu\u2019il vit en chansons, dessins ou histoires. Il a besoin de public autant que de silence, et sait que la cr\xE9ation se partage.",
-    favoredQuests: ["Le R\xE9cital du Barde", "La Sc\xE8ne Ouverte", "Le Manuscrit en Cours"],
+    favoredQuests: ["Habilet\xE9 manuelle, 120 minutes", "Prise de parole, 15 minutes", "Jonglage progressif, 15 minutes"],
     paths: [
-      { id: "troubadour-conteur", name: "Voie du Conteur", ability: "INT", title: "M\xE9moire vivante", description: "Tu aimes les histoires bien construites. Ta voie ajoute une affinit\xE9 Savoir." },
-      { id: "troubadour-meneur", name: "Voie du Meneur de bal", ability: "CON", title: "C\u0153ur de la f\xEAte", description: "Tu donnes de l\u2019\xE9nergie aux autres. Ta voie ajoute une affinit\xE9 Vitalit\xE9." }
+      { id: "troubadour-conteur", name: "Voie du Conteur", ability: "INT", title: "M\xE9moire vivante", description: "Tu aimes les histoires bien construites. Ta voie ajoute une affinit\xE9 Intelligence." },
+      { id: "troubadour-meneur", name: "Voie du Meneur de bal", ability: "CON", title: "C\u0153ur de la f\xEAte", description: "Tu donnes de l\u2019\xE9nergie aux autres. Ta voie ajoute une affinit\xE9 Constitution." }
     ]
   },
   {
@@ -1022,10 +1059,10 @@ var classes_fr_default = [
     masteries: ["CON", "CHA"],
     profile: "\xC9nergie naturelle, sociable et r\xE9sistant",
     description: "Le Rassembleur a de l\u2019\xE9nergie pour deux et ne s\u2019en sert pas qu\u2019\xE0 son profit. Il aime les tabl\xE9es pleines, les randonn\xE9es en groupe et les d\xE9fis qu\u2019on rel\xE8ve \xE0 plusieurs.",
-    favoredQuests: ["Le D\xEEner des Compagnons", "Le Grand Rassemblement", "La Longue Marche"],
+    favoredQuests: ["Repas partag\xE9, 45 minutes", "Temps social, 180 minutes dans la semaine", "Marche et discussion, 30 minutes"],
     paths: [
-      { id: "rassembleur-feu", name: "Voie du Feu de camp", ability: "DEX", title: "\xC2me des veill\xE9es", description: "Tu cr\xE9es des moments qui comptent. Ta voie ajoute une affinit\xE9 Cr\xE9ativit\xE9." },
-      { id: "rassembleur-roc", name: "Voie du Roc", ability: "FOR", title: "Pilier de la compagnie", description: "Tu es celui sur qui on s\u2019appuie. Ta voie ajoute une affinit\xE9 Courage." }
+      { id: "rassembleur-feu", name: "Voie du Feu de camp", ability: "DEX", title: "\xC2me des veill\xE9es", description: "Tu cr\xE9es des moments qui comptent. Ta voie ajoute une affinit\xE9 Dext\xE9rit\xE9." },
+      { id: "rassembleur-roc", name: "Voie du Roc", ability: "FOR", title: "Pilier de la compagnie", description: "Tu es celui sur qui on s\u2019appuie. Ta voie ajoute une affinit\xE9 Force." }
     ]
   },
   {
@@ -1035,10 +1072,10 @@ var classes_fr_default = [
     masteries: ["INT", "SAG"],
     profile: "\xC9tudiant permanent, lecteur, r\xE9fl\xE9chi",
     description: "L\u2019\xC9rudit lit, note, relie. Il avance par la compr\xE9hension et croit que chaque question ouvre un royaume. Son d\xE9fi est de mettre ce qu\u2019il sait en pratique, pas seulement en m\xE9moire.",
-    favoredQuests: ["Le Codex Achev\xE9", "Les Runes Oubli\xE9es", "Le Grand \u0152uvre de l\u2019Alchimiste"],
+    favoredQuests: ["Lecture, 30 minutes", "Langue \xE9trang\xE8re, 20 minutes", "M\xE9ditation, 15 minutes"],
     paths: [
-      { id: "erudit-savant", name: "Voie du Savant", ability: "INT", title: "Gardien des savoirs", description: "Tu creuses chaque sujet jusqu\u2019au fond. Ta voie ajoute une affinit\xE9 Savoir." },
-      { id: "erudit-ermite", name: "Voie de l\u2019Ermite", ability: "SAG", title: "Sage de la Tour", description: "Tu cherches le calme autant que le savoir. Ta voie ajoute une affinit\xE9 \xC9quilibre." }
+      { id: "erudit-savant", name: "Voie du Savant", ability: "INT", title: "Gardien des savoirs", description: "Tu creuses chaque sujet jusqu\u2019au fond. Ta voie ajoute une affinit\xE9 Intelligence." },
+      { id: "erudit-ermite", name: "Voie de l\u2019Ermite", ability: "SAG", title: "Sage de la Tour", description: "Tu cherches le calme autant que le savoir. Ta voie ajoute une affinit\xE9 Sagesse." }
     ]
   },
   {
@@ -1048,10 +1085,10 @@ var classes_fr_default = [
     masteries: ["SAG", "CHA"],
     profile: "Bienveillant, tourn\xE9 vers les autres",
     description: "Le Gardien veille : sur lui-m\xEAme, sur ses proches, sur l\u2019\xE9quilibre fragile des jours. Il \xE9coute plus qu\u2019il ne parle, et sait que la douceur est une force.",
-    favoredQuests: ["Le Souffle du Moine", "La Journ\xE9e de la Gratitude", "L\u2019Oreille du Confident"],
+    favoredQuests: ["M\xE9ditation, 15 minutes", "\xC9coute active, 20 minutes", "Gratitude, 5 minutes"],
     paths: [
-      { id: "gardien-guerisseur", name: "Voie du Gu\xE9risseur", ability: "CON", title: "Main qui apaise", description: "Tu prends soin des corps autant que des c\u0153urs. Ta voie ajoute une affinit\xE9 Vitalit\xE9." },
-      { id: "gardien-protecteur", name: "Voie du Protecteur", ability: "FOR", title: "Bouclier des siens", description: "Tu d\xE9fends ceux que tu aimes. Ta voie ajoute une affinit\xE9 Courage." }
+      { id: "gardien-guerisseur", name: "Voie du Gu\xE9risseur", ability: "CON", title: "Main qui apaise", description: "Tu prends soin des corps autant que des c\u0153urs. Ta voie ajoute une affinit\xE9 Constitution." },
+      { id: "gardien-protecteur", name: "Voie du Protecteur", ability: "FOR", title: "Bouclier des siens", description: "Tu d\xE9fends ceux que tu aimes. Ta voie ajoute une affinit\xE9 Force." }
     ]
   },
   {
@@ -1061,10 +1098,10 @@ var classes_fr_default = [
     masteries: ["CON", "SAG"],
     profile: "Proche de la nature, curieux du vivant",
     description: "L\u2019Explorateur du quotidien trouve de l\u2019aventure dans une marche, un jardin, un ciel. Il cultive la r\xE9gularit\xE9 et le souffle, et progresse sans bruit, un pas apr\xE8s l\u2019autre.",
-    favoredQuests: ["La Promenade du Contemplatif", "Le Cycle du Moine", "Le Mois des Mille Pas"],
+    favoredQuests: ["Nature sans \xE9cran, 30 minutes", "Sortie en ext\xE9rieur, 45 minutes", "Marche, 150 minutes dans la semaine"],
     paths: [
-      { id: "explorateur-druide", name: "Voie du Sentier vert", ability: "INT", title: "Lecteur du vivant", description: "Tu observes, tu notes, tu apprends de la nature. Ta voie ajoute une affinit\xE9 Savoir." },
-      { id: "explorateur-nomade", name: "Voie du Nomade", ability: "FOR", title: "Marcheur d\u2019horizons", description: "Tu vas toujours un peu plus loin. Ta voie ajoute une affinit\xE9 Courage." }
+      { id: "explorateur-druide", name: "Voie du Sentier vert", ability: "INT", title: "Lecteur du vivant", description: "Tu observes, tu notes, tu apprends de la nature. Ta voie ajoute une affinit\xE9 Intelligence." },
+      { id: "explorateur-nomade", name: "Voie du Nomade", ability: "FOR", title: "Marcheur d\u2019horizons", description: "Tu vas toujours un peu plus loin. Ta voie ajoute une affinit\xE9 Force." }
     ]
   }
 ];
@@ -1326,8 +1363,8 @@ var achievements_fr_default = [
   {
     id: "for-16",
     category: "maitrise",
-    name: "Courage aguerri",
-    description: "Atteindre un score de Courage de 16.",
+    name: "Force aguerrie",
+    description: "Atteindre un score de Force de 16.",
     condition: {
       kind: "ability_score",
       ability: "FOR",
@@ -1339,8 +1376,8 @@ var achievements_fr_default = [
   {
     id: "for-18",
     category: "maitrise",
-    name: "Courage remarquable",
-    description: "Atteindre un score de Courage de 18.",
+    name: "Force remarquable",
+    description: "Atteindre un score de Force de 18.",
     condition: {
       kind: "ability_score",
       ability: "FOR",
@@ -1352,8 +1389,8 @@ var achievements_fr_default = [
   {
     id: "dex-16",
     category: "maitrise",
-    name: "Cr\xE9ativit\xE9 aguerri",
-    description: "Atteindre un score de Cr\xE9ativit\xE9 de 16.",
+    name: "Dext\xE9rit\xE9 aguerrie",
+    description: "Atteindre un score de Dext\xE9rit\xE9 de 16.",
     condition: {
       kind: "ability_score",
       ability: "DEX",
@@ -1365,8 +1402,8 @@ var achievements_fr_default = [
   {
     id: "dex-18",
     category: "maitrise",
-    name: "Cr\xE9ativit\xE9 remarquable",
-    description: "Atteindre un score de Cr\xE9ativit\xE9 de 18.",
+    name: "Dext\xE9rit\xE9 remarquable",
+    description: "Atteindre un score de Dext\xE9rit\xE9 de 18.",
     condition: {
       kind: "ability_score",
       ability: "DEX",
@@ -1378,8 +1415,8 @@ var achievements_fr_default = [
   {
     id: "con-16",
     category: "maitrise",
-    name: "Vitalit\xE9 aguerri",
-    description: "Atteindre un score de Vitalit\xE9 de 16.",
+    name: "Constitution aguerrie",
+    description: "Atteindre un score de Constitution de 16.",
     condition: {
       kind: "ability_score",
       ability: "CON",
@@ -1391,8 +1428,8 @@ var achievements_fr_default = [
   {
     id: "con-18",
     category: "maitrise",
-    name: "Vitalit\xE9 remarquable",
-    description: "Atteindre un score de Vitalit\xE9 de 18.",
+    name: "Constitution remarquable",
+    description: "Atteindre un score de Constitution de 18.",
     condition: {
       kind: "ability_score",
       ability: "CON",
@@ -1404,8 +1441,8 @@ var achievements_fr_default = [
   {
     id: "int-16",
     category: "maitrise",
-    name: "Savoir aguerri",
-    description: "Atteindre un score de Savoir de 16.",
+    name: "Intelligence aguerrie",
+    description: "Atteindre un score de Intelligence de 16.",
     condition: {
       kind: "ability_score",
       ability: "INT",
@@ -1417,8 +1454,8 @@ var achievements_fr_default = [
   {
     id: "int-18",
     category: "maitrise",
-    name: "Savoir remarquable",
-    description: "Atteindre un score de Savoir de 18.",
+    name: "Intelligence remarquable",
+    description: "Atteindre un score de Intelligence de 18.",
     condition: {
       kind: "ability_score",
       ability: "INT",
@@ -1430,8 +1467,8 @@ var achievements_fr_default = [
   {
     id: "sag-16",
     category: "maitrise",
-    name: "\xC9quilibre aguerri",
-    description: "Atteindre un score de \xC9quilibre de 16.",
+    name: "Sagesse aguerrie",
+    description: "Atteindre un score de Sagesse de 16.",
     condition: {
       kind: "ability_score",
       ability: "SAG",
@@ -1443,8 +1480,8 @@ var achievements_fr_default = [
   {
     id: "sag-18",
     category: "maitrise",
-    name: "\xC9quilibre remarquable",
-    description: "Atteindre un score de \xC9quilibre de 18.",
+    name: "Sagesse remarquable",
+    description: "Atteindre un score de Sagesse de 18.",
     condition: {
       kind: "ability_score",
       ability: "SAG",
@@ -1456,8 +1493,8 @@ var achievements_fr_default = [
   {
     id: "cha-16",
     category: "maitrise",
-    name: "Liens aguerri",
-    description: "Atteindre un score de Liens de 16.",
+    name: "Charisme aguerri",
+    description: "Atteindre un score de Charisme de 16.",
     condition: {
       kind: "ability_score",
       ability: "CHA",
@@ -1469,8 +1506,8 @@ var achievements_fr_default = [
   {
     id: "cha-18",
     category: "maitrise",
-    name: "Liens remarquable",
-    description: "Atteindre un score de Liens de 18.",
+    name: "Charisme remarquable",
+    description: "Atteindre un score de Charisme de 18.",
     condition: {
       kind: "ability_score",
       ability: "CHA",
@@ -2090,7 +2127,9 @@ function snapshotOf(t) {
     objective: t.objective,
     tips: t.tips,
     validation: t.validation,
-    tags: t.tags
+    tags: t.tags,
+    ...t.theme ? { theme: t.theme } : {},
+    ...t.secondary?.length ? { secondary: t.secondary } : {}
   };
 }
 function newInstance(id, t, period, start, end, status, nowIso, free = false) {
@@ -2269,8 +2308,9 @@ async function ensureQuests(ctx, userId) {
     if (inst.status === "accepted") {
       xp = expiredPartialXp(inst, character.level, masteries, pathAbility);
       if (xp > 0) {
-        events.push(eventFor(ctx, { instanceId: inst.id, ability: inst.snapshot.ability, amount: xp, reason: "partial", custom: customIds.has(inst.templateId) }, inst.periodEnd));
-        const applied = applyXp(character, inst.snapshot.ability, xp);
+        const parts = splitXp(xp, inst.snapshot.ability, inst.snapshot.secondary);
+        for (const p of parts) events.push(eventFor(ctx, { instanceId: inst.id, ability: p.ability, amount: p.amount, reason: "partial", custom: customIds.has(inst.templateId) }, inst.periodEnd));
+        const applied = applyXpParts(character, parts);
         character = mergeChar(character, applied.character);
         result.levelUps.push(...applied.levelsGained);
       } else if (settings.hardcore) {
@@ -2478,9 +2518,9 @@ async function completeQuestAction(ctx, userId, req) {
   const abilityUps = [...res.abilityUps];
   let character = mergeChar(env.character, res.character);
   const custom = (await store.listTemplates(userId)).some((t) => t.id === inst.templateId && t.source === "custom");
-  const events = [
-    eventFor(ctx, { instanceId: inst.id, ability: inst.snapshot.ability, amount: res.xpAwarded, reason: "quest", custom }, completedDay)
-  ];
+  const events = splitXp(res.xpAwarded, inst.snapshot.ability, inst.snapshot.secondary).map(
+    (p) => eventFor(ctx, { instanceId: inst.id, ability: p.ability, amount: p.amount, reason: "quest", custom }, completedDay)
+  );
   await store.updateInstance(userId, inst.id, {
     status: "completed",
     progress: req.progress ?? inst.progress,
@@ -2579,9 +2619,12 @@ async function undoQuest(ctx, userId, instanceId) {
   const inst = await ctx.store.getInstance(userId, instanceId);
   if (!inst) return fail("not-found");
   if (inst.status !== "completed" || !canUndo(inst.completedAt, env.nowMs)) return fail("cannot-undo", "Cette qu\xEAte ne peut plus \xEAtre annul\xE9e (24 h maximum).");
-  await ctx.store.insertXpEvents(userId, [
-    eventFor(ctx, { instanceId, ability: inst.snapshot.ability, amount: -inst.xpAwarded, reason: "undo" }, env.today)
-  ]);
+  await ctx.store.insertXpEvents(
+    userId,
+    splitXp(inst.xpAwarded, inst.snapshot.ability, inst.snapshot.secondary).map(
+      (p) => eventFor(ctx, { instanceId, ability: p.ability, amount: -p.amount, reason: "undo" }, env.today)
+    )
+  );
   const patch = { status: "accepted", xpAwarded: 0, inspirationUsed: false, completedAt: null };
   await ctx.store.updateInstance(userId, instanceId, patch);
   await ctx.store.detachPostsFromInstance(userId, instanceId);
@@ -2967,7 +3010,9 @@ var SupabaseStore = class {
       tips: t.tips,
       validation: t.validation,
       tags: t.tags,
-      isActive: t.is_active
+      isActive: t.is_active,
+      ...t.theme ? { theme: t.theme } : {},
+      ...t.secondary?.length ? { secondary: t.secondary } : {}
     }));
   }
   async getPreferences(userId) {
@@ -3204,6 +3249,7 @@ export {
   achievementProgress,
   addDays,
   applyXp,
+  applyXpParts,
   availableAgainOn,
   buildRecap,
   canDeclareRest,
@@ -3275,6 +3321,7 @@ export {
   rerollQuest,
   scoresFromAssessment,
   shuffle,
+  splitXp,
   startOfIsoWeek,
   startOfMonth,
   startOfQuarter,

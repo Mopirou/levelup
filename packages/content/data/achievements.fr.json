@@ -254,8 +254,8 @@
   {
     "id": "for-16",
     "category": "maitrise",
-    "name": "Courage aguerri",
-    "description": "Atteindre un score de Courage de 16.",
+    "name": "Force aguerrie",
+    "description": "Atteindre un score de Force de 16.",
     "condition": {
       "kind": "ability_score",
       "ability": "FOR",
@@ -267,8 +267,8 @@
   {
     "id": "for-18",
     "category": "maitrise",
-    "name": "Courage remarquable",
-    "description": "Atteindre un score de Courage de 18.",
+    "name": "Force remarquable",
+    "description": "Atteindre un score de Force de 18.",
     "condition": {
       "kind": "ability_score",
       "ability": "FOR",
@@ -280,8 +280,8 @@
   {
     "id": "dex-16",
     "category": "maitrise",
-    "name": "Créativité aguerri",
-    "description": "Atteindre un score de Créativité de 16.",
+    "name": "Dextérité aguerrie",
+    "description": "Atteindre un score de Dextérité de 16.",
     "condition": {
       "kind": "ability_score",
       "ability": "DEX",
@@ -293,8 +293,8 @@
   {
     "id": "dex-18",
     "category": "maitrise",
-    "name": "Créativité remarquable",
-    "description": "Atteindre un score de Créativité de 18.",
+    "name": "Dextérité remarquable",
+    "description": "Atteindre un score de Dextérité de 18.",
     "condition": {
       "kind": "ability_score",
       "ability": "DEX",
@@ -306,8 +306,8 @@
   {
     "id": "con-16",
     "category": "maitrise",
-    "name": "Vitalité aguerri",
-    "description": "Atteindre un score de Vitalité de 16.",
+    "name": "Constitution aguerrie",
+    "description": "Atteindre un score de Constitution de 16.",
     "condition": {
       "kind": "ability_score",
       "ability": "CON",
@@ -319,8 +319,8 @@
   {
     "id": "con-18",
     "category": "maitrise",
-    "name": "Vitalité remarquable",
-    "description": "Atteindre un score de Vitalité de 18.",
+    "name": "Constitution remarquable",
+    "description": "Atteindre un score de Constitution de 18.",
     "condition": {
       "kind": "ability_score",
       "ability": "CON",
@@ -332,8 +332,8 @@
   {
     "id": "int-16",
     "category": "maitrise",
-    "name": "Savoir aguerri",
-    "description": "Atteindre un score de Savoir de 16.",
+    "name": "Intelligence aguerrie",
+    "description": "Atteindre un score de Intelligence de 16.",
     "condition": {
       "kind": "ability_score",
       "ability": "INT",
@@ -345,8 +345,8 @@
   {
     "id": "int-18",
     "category": "maitrise",
-    "name": "Savoir remarquable",
-    "description": "Atteindre un score de Savoir de 18.",
+    "name": "Intelligence remarquable",
+    "description": "Atteindre un score de Intelligence de 18.",
     "condition": {
       "kind": "ability_score",
       "ability": "INT",
@@ -358,8 +358,8 @@
   {
     "id": "sag-16",
     "category": "maitrise",
-    "name": "Équilibre aguerri",
-    "description": "Atteindre un score de Équilibre de 16.",
+    "name": "Sagesse aguerrie",
+    "description": "Atteindre un score de Sagesse de 16.",
     "condition": {
       "kind": "ability_score",
       "ability": "SAG",
@@ -371,8 +371,8 @@
   {
     "id": "sag-18",
     "category": "maitrise",
-    "name": "Équilibre remarquable",
-    "description": "Atteindre un score de Équilibre de 18.",
+    "name": "Sagesse remarquable",
+    "description": "Atteindre un score de Sagesse de 18.",
     "condition": {
       "kind": "ability_score",
       "ability": "SAG",
@@ -384,8 +384,8 @@
   {
     "id": "cha-16",
     "category": "maitrise",
-    "name": "Liens aguerri",
-    "description": "Atteindre un score de Liens de 16.",
+    "name": "Charisme aguerri",
+    "description": "Atteindre un score de Charisme de 16.",
     "condition": {
       "kind": "ability_score",
       "ability": "CHA",
@@ -397,8 +397,8 @@
   {
     "id": "cha-18",
     "category": "maitrise",
-    "name": "Liens remarquable",
-    "description": "Atteindre un score de Liens de 18.",
+    "name": "Charisme remarquable",
+    "description": "Atteindre un score de Charisme de 18.",
     "condition": {
       "kind": "ability_score",
       "ability": "CHA",

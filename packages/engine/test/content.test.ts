@@ -36,24 +36,48 @@ const assessment = load<SelfAssessmentQuestion[]>('self-assessment.fr.json');
 const levels = load<{ level: number; text: string }[]>('levels.fr.json');
 
 describe('catalogue de quêtes', () => {
-  it('240 quêtes : 40 par caractéristique, 14/12/9/5 par difficulté', () => {
-    expect(quests).toHaveLength(240);
+  const general = quests.filter((q) => !q.theme);
+  const guided = quests.filter((q) => q.theme);
+  it('240 quêtes générales : 40 par caractéristique, 14/12/9/5 par difficulté', () => {
+    expect(general).toHaveLength(240);
     for (const a of ABILITIES) {
-      const own = quests.filter((q) => q.ability === a);
+      const own = general.filter((q) => q.ability === a);
       expect(own).toHaveLength(40);
       const by = (d: Difficulty) => own.filter((q) => q.difficulty === d).length;
       expect([by('easy'), by('medium'), by('high'), by('expert')]).toEqual([14, 12, 9, 5]);
     }
   });
   it('identifiants uniques, textes complets, objectifs mesurables', () => {
-    expect(new Set(quests.map((q) => q.id)).size).toBe(240);
+    expect(new Set(quests.map((q) => q.id)).size).toBe(quests.length);
     for (const q of quests) {
       expect(q.title.length).toBeGreaterThanOrEqual(8);
       expect(q.flavor.length).toBeGreaterThan(30);
       expect(q.objective.length).toBeGreaterThanOrEqual(10);
       expect(q.tips.length).toBeGreaterThanOrEqual(2);
       expect(q.periods.length).toBeGreaterThan(0);
-      expect(q.title.split(' ').length).toBeLessThanOrEqual(7);
+      expect(q.title.split(' ').length).toBeLessThanOrEqual(9);
+    }
+  });
+  it('500 quêtes guidées : 25 disciplines × 5 activités × 4 paliers (jour, semaine, mois, épique)', () => {
+    expect(guided).toHaveLength(500);
+    const themes = new Set(guided.map((q) => q.theme));
+    expect(themes.size).toBe(25);
+    const tiers = { easy: 'daily', medium: 'weekly', high: 'monthly', expert: 'epic' } as const;
+    for (const th of themes) {
+      const own = guided.filter((q) => q.theme === th);
+      expect(own).toHaveLength(20);
+      for (const d of Object.keys(tiers) as Difficulty[]) {
+        const tier = own.filter((q) => q.difficulty === d);
+        expect(tier).toHaveLength(5);
+        for (const q of tier) expect(q.periods).toEqual([tiers[d]]);
+      }
+    }
+    for (const q of guided) {
+      expect(q.tags).toContain('guidé');
+      const total = (q.secondary ?? []).reduce((n, s) => n + s.pct, 0);
+      expect(total).toBeGreaterThan(0);
+      expect(total).toBeLessThan(100);
+      expect((q.secondary ?? []).every((s) => s.ability !== q.ability)).toBe(true);
     }
   });
   it('les quêtes physiques Légendaires portent la mention de prudence', () => {

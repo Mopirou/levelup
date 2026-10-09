@@ -6,10 +6,10 @@
     "masteries": ["FOR", "CON"],
     "profile": "Sportif endurant, salle et cardio",
     "description": "L’Éclaireur avance devant, léger et résistant. Il aime le souffle court, la sueur propre et les chemins qu’il n’a pas encore parcourus. Pour lui, chaque séance est une carte qu’il remplit, et son corps est sa meilleure boussole.",
-    "favoredQuests": ["La Course du Héros", "Le Siège de la Tour", "La Marche du Pèlerin"],
+    "favoredQuests": ["Marche rapide, 30 minutes", "Cardio, 150 minutes dans la semaine", "Haut du corps, 20 minutes"],
     "paths": [
-      { "id": "eclaireur-sentier", "name": "Voie du Sentier", "ability": "SAG", "title": "Marcheur des cimes", "description": "Tu cours pour entendre le vent. Ta voie ajoute une affinité Équilibre : chaque sortie en nature te rapporte un petit supplément d’XP." },
-      { "id": "eclaireur-bastion", "name": "Voie du Bastion", "ability": "INT", "title": "Stratège de l’effort", "description": "Tu planifies, mesures, ajustes. Ta voie ajoute une affinité Savoir : tes plans d’entraînement t’apportent un petit supplément d’XP." }
+      { "id": "eclaireur-sentier", "name": "Voie du Sentier", "ability": "SAG", "title": "Marcheur des cimes", "description": "Tu cours pour entendre le vent. Ta voie ajoute une affinité Sagesse : chaque sortie en nature te rapporte un petit supplément d’XP." },
+      { "id": "eclaireur-bastion", "name": "Voie du Bastion", "ability": "INT", "title": "Stratège de l’effort", "description": "Tu planifies, mesures, ajustes. Ta voie ajoute une affinité Intelligence : tes plans d’entraînement t’apportent un petit supplément d’XP." }
     ]
   },
   {
@@ -19,10 +19,10 @@
     "masteries": ["FOR", "DEX"],
     "profile": "Arts martiaux, yoga, discipline du corps",
     "description": "L’Aventurier ose. Il apprend un nouveau sport comme on ouvre une porte, avec un sourire et un peu de peur. Son corps est un instrument qu’il accorde par la discipline, la souplesse et le geste précis.",
-    "favoredQuests": ["La Danse des Lames", "L’Audace du Voyageur", "Le Nouveau Sentier"],
+    "favoredQuests": ["Séance de force complète, 30 minutes", "Activité de coordination, 45 minutes", "Parcours d’agilité, 20 minutes"],
     "paths": [
-      { "id": "aventurier-ombre", "name": "Voie de l’Ombre", "ability": "SAG", "title": "Maître du calme", "description": "L’art martial est d’abord un art du souffle. Ta voie ajoute une affinité Équilibre." },
-      { "id": "aventurier-tempete", "name": "Voie de la Tempête", "ability": "CON", "title": "Cœur d’orage", "description": "Tu aimes l’effort qui dure. Ta voie ajoute une affinité Vitalité." }
+      { "id": "aventurier-ombre", "name": "Voie de l’Ombre", "ability": "SAG", "title": "Maître du calme", "description": "L’art martial est d’abord un art du souffle. Ta voie ajoute une affinité Sagesse." },
+      { "id": "aventurier-tempete", "name": "Voie de la Tempête", "ability": "CON", "title": "Cœur d’orage", "description": "Tu aimes l’effort qui dure. Ta voie ajoute une affinité Constitution." }
     ]
   },
   {
@@ -32,10 +32,10 @@
     "masteries": ["DEX", "INT"],
     "profile": "Bricoleur ingénieux, apprend par la pratique",
     "description": "L’Artisan comprend avec ses mains. Il démonte, répare, invente, recommence. Pour lui, un projet vaut mieux qu’un cours : on apprend en faisant, en se trompant, en finissant.",
-    "favoredQuests": ["Le Chef-d’œuvre de l’Artisan", "L’Atelier du Bricoleur", "L’Apprenti du Code"],
+    "favoredQuests": ["Geste précis, 90 minutes dans la semaine", "Tutoriel d’une compétence, 15 minutes", "Programmation, 30 minutes"],
     "paths": [
-      { "id": "artisan-inventeur", "name": "Voie de l’Inventeur", "ability": "INT", "title": "Esprit d’atelier", "description": "Tu cherches comment les choses fonctionnent. Ta voie ajoute une affinité Savoir." },
-      { "id": "artisan-maitre", "name": "Voie du Maître d’œuvre", "ability": "CHA", "title": "Bâtisseur de guildes", "description": "Tu sais faire travailler les autres. Ta voie ajoute une affinité Liens." }
+      { "id": "artisan-inventeur", "name": "Voie de l’Inventeur", "ability": "INT", "title": "Esprit d’atelier", "description": "Tu cherches comment les choses fonctionnent. Ta voie ajoute une affinité Intelligence." },
+      { "id": "artisan-maitre", "name": "Voie du Maître d’œuvre", "ability": "CHA", "title": "Bâtisseur de guildes", "description": "Tu sais faire travailler les autres. Ta voie ajoute une affinité Charisme." }
     ]
   },
   {
@@ -45,10 +45,10 @@
     "masteries": ["DEX", "CHA"],
     "profile": "Artiste, musicien, aime la scène",
     "description": "Le Troubadour transforme ce qu’il vit en chansons, dessins ou histoires. Il a besoin de public autant que de silence, et sait que la création se partage.",
-    "favoredQuests": ["Le Récital du Barde", "La Scène Ouverte", "Le Manuscrit en Cours"],
+    "favoredQuests": ["Habileté manuelle, 120 minutes", "Prise de parole, 15 minutes", "Jonglage progressif, 15 minutes"],
     "paths": [
-      { "id": "troubadour-conteur", "name": "Voie du Conteur", "ability": "INT", "title": "Mémoire vivante", "description": "Tu aimes les histoires bien construites. Ta voie ajoute une affinité Savoir." },
-      { "id": "troubadour-meneur", "name": "Voie du Meneur de bal", "ability": "CON", "title": "Cœur de la fête", "description": "Tu donnes de l’énergie aux autres. Ta voie ajoute une affinité Vitalité." }
+      { "id": "troubadour-conteur", "name": "Voie du Conteur", "ability": "INT", "title": "Mémoire vivante", "description": "Tu aimes les histoires bien construites. Ta voie ajoute une affinité Intelligence." },
+      { "id": "troubadour-meneur", "name": "Voie du Meneur de bal", "ability": "CON", "title": "Cœur de la fête", "description": "Tu donnes de l’énergie aux autres. Ta voie ajoute une affinité Constitution." }
     ]
   },
   {
@@ -58,10 +58,10 @@
     "masteries": ["CON", "CHA"],
     "profile": "Énergie naturelle, sociable et résistant",
     "description": "Le Rassembleur a de l’énergie pour deux et ne s’en sert pas qu’à son profit. Il aime les tablées pleines, les randonnées en groupe et les défis qu’on relève à plusieurs.",
-    "favoredQuests": ["Le Dîner des Compagnons", "Le Grand Rassemblement", "La Longue Marche"],
+    "favoredQuests": ["Repas partagé, 45 minutes", "Temps social, 180 minutes dans la semaine", "Marche et discussion, 30 minutes"],
     "paths": [
-      { "id": "rassembleur-feu", "name": "Voie du Feu de camp", "ability": "DEX", "title": "Âme des veillées", "description": "Tu crées des moments qui comptent. Ta voie ajoute une affinité Créativité." },
-      { "id": "rassembleur-roc", "name": "Voie du Roc", "ability": "FOR", "title": "Pilier de la compagnie", "description": "Tu es celui sur qui on s’appuie. Ta voie ajoute une affinité Courage." }
+      { "id": "rassembleur-feu", "name": "Voie du Feu de camp", "ability": "DEX", "title": "Âme des veillées", "description": "Tu crées des moments qui comptent. Ta voie ajoute une affinité Dextérité." },
+      { "id": "rassembleur-roc", "name": "Voie du Roc", "ability": "FOR", "title": "Pilier de la compagnie", "description": "Tu es celui sur qui on s’appuie. Ta voie ajoute une affinité Force." }
     ]
   },
   {
@@ -71,10 +71,10 @@
     "masteries": ["INT", "SAG"],
     "profile": "Étudiant permanent, lecteur, réfléchi",
     "description": "L’Érudit lit, note, relie. Il avance par la compréhension et croit que chaque question ouvre un royaume. Son défi est de mettre ce qu’il sait en pratique, pas seulement en mémoire.",
-    "favoredQuests": ["Le Codex Achevé", "Les Runes Oubliées", "Le Grand Œuvre de l’Alchimiste"],
+    "favoredQuests": ["Lecture, 30 minutes", "Langue étrangère, 20 minutes", "Méditation, 15 minutes"],
     "paths": [
-      { "id": "erudit-savant", "name": "Voie du Savant", "ability": "INT", "title": "Gardien des savoirs", "description": "Tu creuses chaque sujet jusqu’au fond. Ta voie ajoute une affinité Savoir." },
-      { "id": "erudit-ermite", "name": "Voie de l’Ermite", "ability": "SAG", "title": "Sage de la Tour", "description": "Tu cherches le calme autant que le savoir. Ta voie ajoute une affinité Équilibre." }
+      { "id": "erudit-savant", "name": "Voie du Savant", "ability": "INT", "title": "Gardien des savoirs", "description": "Tu creuses chaque sujet jusqu’au fond. Ta voie ajoute une affinité Intelligence." },
+      { "id": "erudit-ermite", "name": "Voie de l’Ermite", "ability": "SAG", "title": "Sage de la Tour", "description": "Tu cherches le calme autant que le savoir. Ta voie ajoute une affinité Sagesse." }
     ]
   },
   {
@@ -84,10 +84,10 @@
     "masteries": ["SAG", "CHA"],
     "profile": "Bienveillant, tourné vers les autres",
     "description": "Le Gardien veille : sur lui-même, sur ses proches, sur l’équilibre fragile des jours. Il écoute plus qu’il ne parle, et sait que la douceur est une force.",
-    "favoredQuests": ["Le Souffle du Moine", "La Journée de la Gratitude", "L’Oreille du Confident"],
+    "favoredQuests": ["Méditation, 15 minutes", "Écoute active, 20 minutes", "Gratitude, 5 minutes"],
     "paths": [
-      { "id": "gardien-guerisseur", "name": "Voie du Guérisseur", "ability": "CON", "title": "Main qui apaise", "description": "Tu prends soin des corps autant que des cœurs. Ta voie ajoute une affinité Vitalité." },
-      { "id": "gardien-protecteur", "name": "Voie du Protecteur", "ability": "FOR", "title": "Bouclier des siens", "description": "Tu défends ceux que tu aimes. Ta voie ajoute une affinité Courage." }
+      { "id": "gardien-guerisseur", "name": "Voie du Guérisseur", "ability": "CON", "title": "Main qui apaise", "description": "Tu prends soin des corps autant que des cœurs. Ta voie ajoute une affinité Constitution." },
+      { "id": "gardien-protecteur", "name": "Voie du Protecteur", "ability": "FOR", "title": "Bouclier des siens", "description": "Tu défends ceux que tu aimes. Ta voie ajoute une affinité Force." }
     ]
   },
   {
@@ -97,10 +97,10 @@
     "masteries": ["CON", "SAG"],
     "profile": "Proche de la nature, curieux du vivant",
     "description": "L’Explorateur du quotidien trouve de l’aventure dans une marche, un jardin, un ciel. Il cultive la régularité et le souffle, et progresse sans bruit, un pas après l’autre.",
-    "favoredQuests": ["La Promenade du Contemplatif", "Le Cycle du Moine", "Le Mois des Mille Pas"],
+    "favoredQuests": ["Nature sans écran, 30 minutes", "Sortie en extérieur, 45 minutes", "Marche, 150 minutes dans la semaine"],
     "paths": [
-      { "id": "explorateur-druide", "name": "Voie du Sentier vert", "ability": "INT", "title": "Lecteur du vivant", "description": "Tu observes, tu notes, tu apprends de la nature. Ta voie ajoute une affinité Savoir." },
-      { "id": "explorateur-nomade", "name": "Voie du Nomade", "ability": "FOR", "title": "Marcheur d’horizons", "description": "Tu vas toujours un peu plus loin. Ta voie ajoute une affinité Courage." }
+      { "id": "explorateur-druide", "name": "Voie du Sentier vert", "ability": "INT", "title": "Lecteur du vivant", "description": "Tu observes, tu notes, tu apprends de la nature. Ta voie ajoute une affinité Intelligence." },
+      { "id": "explorateur-nomade", "name": "Voie du Nomade", "ability": "FOR", "title": "Marcheur d’horizons", "description": "Tu vas toujours un peu plus loin. Ta voie ajoute une affinité Force." }
     ]
   }
 ]

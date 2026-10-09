@@ -33,18 +33,31 @@ test.describe('Parcours solo', () => {
     await createHero(page);
     await page.locator('ion-tab-button', { hasText: 'Héros' }).click();
     await expect(page.getByText('Six façons de grandir')).toBeVisible();
-    for (const n of ['Vitalité', 'Savoir', 'Créativité', 'Courage', 'Liens', 'Équilibre']) {
+    for (const n of ['Constitution', 'Intelligence', 'Dextérité', 'Force', 'Charisme', 'Sagesse']) {
       await expect(page.locator('app-hero').getByText(n, { exact: true }).first()).toBeVisible();
     }
     await expect(page.locator('app-hero').getByRole('img', { name: /Radar/ })).toBeVisible();
   });
 
+  test('le Grimoire se classe aussi par disciplines, avec quatre niveaux par quête guidée', async ({ page }) => {
+    await createHero(page);
+    await page.goto('/grimoire');
+    await page.getByRole('button', { name: 'Disciplines' }).click();
+    await expect(page.getByText('0 / 20 quêtes découvertes').first()).toBeVisible();
+    await page.getByRole('button', { name: /^Danse/ }).click();
+    for (const n of ['Niveau 1 · Journée', 'Niveau 2 · Semaine', 'Niveau 3 · Mois', 'Niveau 4 · Épique']) {
+      await expect(page.getByText(n)).toBeVisible();
+    }
+    await expect(page.getByText('Salsa, 20 minutes guidées')).toBeVisible();
+    await expect(page.getByText(/Répartition de l’XP : Dextérité 60 %/)).toBeVisible();
+  });
+
   test('le Grimoire liste les quêtes par chapitre et se filtre', async ({ page }) => {
     await createHero(page);
     await page.goto('/grimoire');
-    await expect(page.getByText('0 / 40 quêtes découvertes').first()).toBeVisible();
-    await page.getByPlaceholder('Chercher dans le Grimoire…').fill('forgeron');
-    await expect(page.getByText('Le Salut du Forgeron')).toBeVisible();
+    await expect(page.getByText('0 / 100 quêtes découvertes').first()).toBeVisible();
+    await page.getByPlaceholder('Chercher dans le Grimoire…').fill('pompes');
+    await expect(page.getByText('Pompes en séries, 5 minutes')).toBeVisible();
   });
 });
 

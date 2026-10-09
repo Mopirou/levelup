@@ -1,0 +1,537 @@
+[
+  {
+    "id": "danse",
+    "label": "Danse",
+    "blurb": "Coordination, rythme et plaisir de bouger avec les autres.",
+    "ability": "DEX",
+    "secondary": [
+      {
+        "ability": "CHA",
+        "pct": 30
+      },
+      {
+        "ability": "FOR",
+        "pct": 10
+      }
+    ],
+    "activities": [
+      "Salsa",
+      "Hip-hop",
+      "Valse",
+      "Danse contemporaine",
+      "Zumba"
+    ]
+  },
+  {
+    "id": "musculation",
+    "label": "Musculation",
+    "blurb": "Gagner en force avec des séances structurées.",
+    "ability": "FOR",
+    "secondary": [
+      {
+        "ability": "CON",
+        "pct": 20
+      }
+    ],
+    "activities": [
+      "Muscu haut du corps",
+      "Jambes et fessiers",
+      "Dos et tirage",
+      "Corps entier haltères",
+      "Kettlebell"
+    ]
+  },
+  {
+    "id": "pilates",
+    "label": "Pilates",
+    "blurb": "Gainage, contrôle et souplesse du centre du corps.",
+    "ability": "DEX",
+    "secondary": [
+      {
+        "ability": "FOR",
+        "pct": 30
+      },
+      {
+        "ability": "SAG",
+        "pct": 20
+      }
+    ],
+    "activities": [
+      "Pilates débutant",
+      "Pilates gainage",
+      "Pilates dos et posture",
+      "Pilates jambes et fessiers",
+      "Pilates avec ballon"
+    ]
+  },
+  {
+    "id": "yoga",
+    "label": "Yoga",
+    "blurb": "Souplesse, équilibre et respiration.",
+    "ability": "DEX",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 40
+      },
+      {
+        "ability": "CON",
+        "pct": 10
+      }
+    ],
+    "activities": [
+      "Yoga doux",
+      "Yoga vinyasa",
+      "Yoga du dos",
+      "Yin yoga",
+      "Yoga équilibres"
+    ]
+  },
+  {
+    "id": "cuisine",
+    "label": "Cuisine",
+    "blurb": "Apprendre à cuisiner pour mieux manger et partager.",
+    "ability": "CON",
+    "secondary": [
+      {
+        "ability": "INT",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ],
+    "activities": [
+      "Pâtes fraîches",
+      "Pain maison",
+      "Cuisine du monde",
+      "Batch cooking",
+      "Pâtisserie"
+    ]
+  },
+  {
+    "id": "botanique",
+    "label": "Botanique",
+    "blurb": "Apprendre à connaître et à cultiver les plantes.",
+    "ability": "INT",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CON",
+        "pct": 20
+      }
+    ],
+    "activities": [
+      "Plantes d’intérieur",
+      "Potager",
+      "Herbes aromatiques",
+      "Reconnaître les arbres",
+      "Compost et sol"
+    ]
+  },
+  {
+    "id": "course",
+    "label": "Course à pied",
+    "blurb": "Construire son souffle et son endurance.",
+    "ability": "CON",
+    "secondary": [
+      {
+        "ability": "FOR",
+        "pct": 20
+      },
+      {
+        "ability": "SAG",
+        "pct": 10
+      }
+    ],
+    "activities": [
+      "Footing facile",
+      "Fractionné",
+      "Préparation 10 km",
+      "Côtes et dénivelé",
+      "Marche-course"
+    ]
+  },
+  {
+    "id": "natation",
+    "label": "Natation",
+    "blurb": "Un sport complet et sans impact.",
+    "ability": "CON",
+    "secondary": [
+      {
+        "ability": "FOR",
+        "pct": 25
+      },
+      {
+        "ability": "DEX",
+        "pct": 15
+      }
+    ],
+    "activities": [
+      "Crawl",
+      "Brasse",
+      "Dos crawlé",
+      "Endurance en piscine",
+      "Aquagym"
+    ]
+  },
+  {
+    "id": "arts-martiaux",
+    "label": "Arts martiaux",
+    "blurb": "Force, précision du geste et maîtrise de soi.",
+    "ability": "FOR",
+    "secondary": [
+      {
+        "ability": "DEX",
+        "pct": 40
+      },
+      {
+        "ability": "SAG",
+        "pct": 20
+      }
+    ],
+    "activities": [
+      "Boxe",
+      "Judo",
+      "Karaté",
+      "Taï-chi",
+      "Self-défense"
+    ]
+  },
+  {
+    "id": "escalade",
+    "label": "Escalade",
+    "blurb": "Force du corps, précision des appuis et lecture de voie.",
+    "ability": "FOR",
+    "secondary": [
+      {
+        "ability": "DEX",
+        "pct": 40
+      },
+      {
+        "ability": "SAG",
+        "pct": 15
+      }
+    ],
+    "activities": [
+      "Bloc débutant",
+      "Escalade technique",
+      "Grimpe en voie",
+      "Renfo pour grimpeurs",
+      "Souplesse du grimpeur"
+    ]
+  },
+  {
+    "id": "musique",
+    "label": "Musique",
+    "blurb": "Apprendre un instrument, de l’oreille aux doigts.",
+    "ability": "DEX",
+    "secondary": [
+      {
+        "ability": "INT",
+        "pct": 40
+      },
+      {
+        "ability": "SAG",
+        "pct": 10
+      }
+    ],
+    "activities": [
+      "Guitare",
+      "Piano",
+      "Ukulélé",
+      "Batterie ou percussions",
+      "Chant et solfège"
+    ]
+  },
+  {
+    "id": "theatre",
+    "label": "Théâtre et prise de parole",
+    "blurb": "S’exprimer avec aisance et présence.",
+    "ability": "CHA",
+    "secondary": [
+      {
+        "ability": "DEX",
+        "pct": 20
+      },
+      {
+        "ability": "SAG",
+        "pct": 20
+      }
+    ],
+    "activities": [
+      "Improvisation",
+      "Éloquence",
+      "Chant",
+      "Lecture à voix haute",
+      "Théâtre"
+    ]
+  },
+  {
+    "id": "dessin",
+    "label": "Dessin et peinture",
+    "blurb": "Observer, composer et exprimer.",
+    "ability": "DEX",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "INT",
+        "pct": 20
+      }
+    ],
+    "activities": [
+      "Dessin d’observation",
+      "Aquarelle",
+      "Croquis urbain",
+      "Peinture acrylique",
+      "Calligraphie"
+    ]
+  },
+  {
+    "id": "langues",
+    "label": "Langues",
+    "blurb": "Apprendre à comprendre et à parler une autre langue.",
+    "ability": "INT",
+    "secondary": [
+      {
+        "ability": "CHA",
+        "pct": 30
+      }
+    ],
+    "activities": [
+      "Anglais",
+      "Espagnol",
+      "Italien",
+      "Allemand",
+      "Langue des signes"
+    ]
+  },
+  {
+    "id": "programmation",
+    "label": "Programmation",
+    "blurb": "Apprendre à créer avec du code.",
+    "ability": "INT",
+    "secondary": [
+      {
+        "ability": "DEX",
+        "pct": 20
+      }
+    ],
+    "activities": [
+      "Python débutant",
+      "HTML et CSS",
+      "JavaScript",
+      "Algorithmique",
+      "Automatiser avec un script"
+    ]
+  },
+  {
+    "id": "lecture-ecriture",
+    "label": "Lecture et écriture",
+    "blurb": "Nourrir son esprit et mettre ses idées en mots.",
+    "ability": "INT",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 40
+      }
+    ],
+    "activities": [
+      "Roman",
+      "Essai ou documentaire",
+      "Écriture créative",
+      "Journal de bord",
+      "Poésie"
+    ]
+  },
+  {
+    "id": "meditation",
+    "label": "Méditation et respiration",
+    "blurb": "Apaiser l’esprit et apprendre à rester présent.",
+    "ability": "SAG",
+    "secondary": [
+      {
+        "ability": "CON",
+        "pct": 20
+      }
+    ],
+    "activities": [
+      "Méditation de pleine conscience",
+      "Cohérence cardiaque",
+      "Scan corporel",
+      "Méditation de bienveillance",
+      "Respiration profonde"
+    ]
+  },
+  {
+    "id": "bricolage",
+    "label": "Bricolage et artisanat",
+    "blurb": "Fabriquer, réparer et créer de ses mains.",
+    "ability": "DEX",
+    "secondary": [
+      {
+        "ability": "INT",
+        "pct": 30
+      },
+      {
+        "ability": "FOR",
+        "pct": 10
+      }
+    ],
+    "activities": [
+      "Menuiserie simple",
+      "Couture",
+      "Réparation",
+      "Modélisme",
+      "Tricot ou crochet"
+    ]
+  },
+  {
+    "id": "randonnee",
+    "label": "Randonnée",
+    "blurb": "Marcher longtemps, dehors, à son rythme.",
+    "ability": "CON",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "FOR",
+        "pct": 20
+      }
+    ],
+    "activities": [
+      "Rando facile",
+      "Marche en dénivelé",
+      "Randonnée en forêt",
+      "Marche nordique",
+      "Randonnée à la journée"
+    ]
+  },
+  {
+    "id": "cyclisme",
+    "label": "Cyclisme",
+    "blurb": "Endurance et plaisir de rouler.",
+    "ability": "CON",
+    "secondary": [
+      {
+        "ability": "FOR",
+        "pct": 30
+      },
+      {
+        "ability": "SAG",
+        "pct": 10
+      }
+    ],
+    "activities": [
+      "Vélo de route",
+      "VTT",
+      "Vélo d’appartement",
+      "Vélo au quotidien",
+      "Sortie longue à vélo"
+    ]
+  },
+  {
+    "id": "strategie",
+    "label": "Jeux de stratégie",
+    "blurb": "Réfléchir vite, anticiper et décider.",
+    "ability": "INT",
+    "secondary": [
+      {
+        "ability": "DEX",
+        "pct": 40
+      }
+    ],
+    "activities": [
+      "Échecs",
+      "Go",
+      "Jeux de société stratégiques",
+      "Sudoku et logique",
+      "Jeux de réflexes"
+    ]
+  },
+  {
+    "id": "sommeil",
+    "label": "Sommeil et récupération",
+    "blurb": "Dormir mieux et mieux récupérer.",
+    "ability": "CON",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      }
+    ],
+    "activities": [
+      "Rituel du soir",
+      "Sieste récupératrice",
+      "Respiration pour dormir",
+      "Étirements du soir",
+      "Chambre propice au sommeil"
+    ]
+  },
+  {
+    "id": "nutrition",
+    "label": "Nutrition et santé",
+    "blurb": "Comprendre ce qu’on mange et mieux manger.",
+    "ability": "CON",
+    "secondary": [
+      {
+        "ability": "INT",
+        "pct": 40
+      }
+    ],
+    "activities": [
+      "Lire les étiquettes",
+      "Planifier ses repas",
+      "Assiette équilibrée",
+      "Hydratation",
+      "Manger en pleine conscience"
+    ]
+  },
+  {
+    "id": "entraide",
+    "label": "Entraide et bénévolat",
+    "blurb": "Donner du temps et créer des liens.",
+    "ability": "CHA",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      }
+    ],
+    "activities": [
+      "Aide à un voisin",
+      "Bénévolat associatif",
+      "Cuisine solidaire",
+      "Soutien scolaire",
+      "Visite et écoute"
+    ]
+  },
+  {
+    "id": "mobilite",
+    "label": "Mobilité et stretching",
+    "blurb": "Gagner en souplesse et en liberté de mouvement.",
+    "ability": "DEX",
+    "secondary": [
+      {
+        "ability": "CON",
+        "pct": 40
+      }
+    ],
+    "activities": [
+      "Étirements complets",
+      "Mobilité des hanches",
+      "Mobilité des épaules",
+      "Mobilité du dos",
+      "Grand écart"
+    ]
+  }
+]

@@ -15,6 +15,8 @@ import {
   pendingImprovements,
   pendingPath,
   questXp,
+  splitXp,
+  type XpPart,
 } from './xp';
 
 export const MAX_INSPIRATION = 3;
@@ -127,6 +129,29 @@ export function applyXp(character: CharacterCore, ability: AbilityId, amount: nu
   };
 }
 
+/** Applique plusieurs gains d'XP d'un coup (quête répartie sur plusieurs caractéristiques). */
+export function applyXpParts(character: CharacterCore, parts: readonly XpPart[]): XpApplication {
+  let current = character;
+  const levelsGained: number[] = [];
+  const levelsLost: number[] = [];
+  const abilityUps: AbilityUp[] = [];
+  for (const p of parts) {
+    const r = applyXp(current, p.ability, p.amount);
+    current = r.character;
+    levelsGained.push(...r.levelsGained);
+    levelsLost.push(...r.levelsLost);
+    abilityUps.push(...r.abilityUps);
+  }
+  return {
+    character: current,
+    levelsGained,
+    levelsLost,
+    abilityUps,
+    pendingImprovements: pendingImprovements(current.level, character.improvementsChosen),
+    pendingPath: pendingPath(current.level, character.pathId),
+  };
+}
+
 export interface CompletionResult extends XpApplication {
   xpAwarded: number;
   breakdown: QuestXpBreakdown;
@@ -157,7 +182,7 @@ export function completeQuest(input: CompletionInput): { ok: true; result: Compl
     doubled: input.useInspiration,
   });
   const base = input.useInspiration ? { ...character, inspiration: character.inspiration - 1 } : character;
-  const applied = applyXp(base, instance.snapshot.ability, breakdown.total);
+  const applied = applyXpParts(base, splitXp(breakdown.total, instance.snapshot.ability, instance.snapshot.secondary));
   return {
     ok: true,
     result: { ...applied, xpAwarded: breakdown.total, breakdown, inspirationSpent: input.useInspiration },

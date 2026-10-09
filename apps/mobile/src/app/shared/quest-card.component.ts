@@ -4,6 +4,7 @@ import { GameService } from '../core/game.service';
 import { IconComponent } from './icon.component';
 import { AbilityBadgeComponent, BarComponent } from './ui';
 import { fmt, progressText, statusLabel } from './format';
+import { themeLabel } from './themes';
 
 /** « Carte de quête » des maquettes : identité, XP, avancement, statut et action. */
 @Component({
@@ -19,7 +20,7 @@ import { fmt, progressText, statusLabel } from './format';
         <lu-ability-badge [ability]="inst().snapshot.ability" [size]="44" />
         <div class="meta">
           <h3 class="title">{{ inst().snapshot.title }}</h3>
-          <p class="sub">{{ abilityLabel() }} · {{ difficultyLabel() }}</p>
+          <p class="sub">{{ themeName() ? themeName() + ' · ' : '' }}{{ abilityLabel() }}{{ extra() }} · {{ difficultyLabel() }}</p>
         </div>
         <span class="xp" [class.prov]="provisional()">+{{ xp() }} XP{{ provisional() ? '*' : '' }}</span>
       </div>
@@ -81,6 +82,9 @@ export class QuestCardComponent {
   readonly reroll = output<void>();
 
   readonly abilityLabel = computed(() => ABILITY_LABEL[this.inst().snapshot.ability]);
+  readonly themeName = computed(() => themeLabel(this.inst().snapshot.theme));
+  /** « +2 » quand la quête rapporte aussi de l'XP à d'autres caractéristiques. */
+  readonly extra = computed(() => (this.inst().snapshot.secondary?.length ? ` +${this.inst().snapshot.secondary!.length}` : ''));
   readonly difficultyLabel = computed(() => DIFFICULTY_LABEL[this.inst().snapshot.difficulty]);
   readonly provisional = computed(() => this.game.provisional().has(this.inst().id));
   readonly xp = computed(() => {

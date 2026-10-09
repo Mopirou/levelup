@@ -1,16 +1,13 @@
 import { AbilityId, Difficulty, Period, ValidationType } from './types';
 
-/**
- * Vocabulaire de l'interface (maquettes Figma). Les identifiants internes restent ceux de D&D (FOR, DEX…),
- * seul l'affichage change : Courage = Force, Vitalité = Constitution, etc.
- */
+/** Les six caractéristiques de D&D, avec leur sens dans Level Up (voir ABILITY_TAGLINE). */
 export const ABILITY_LABEL: Record<AbilityId, string> = {
-  FOR: 'Courage',
-  DEX: 'Créativité',
-  CON: 'Vitalité',
-  INT: 'Savoir',
-  SAG: 'Équilibre',
-  CHA: 'Liens',
+  FOR: 'Force',
+  DEX: 'Dextérité',
+  CON: 'Constitution',
+  INT: 'Intelligence',
+  SAG: 'Sagesse',
+  CHA: 'Charisme',
 };
 
 export const ABILITY_DND_NAME: Record<AbilityId, string> = {
@@ -42,12 +39,12 @@ export const ABILITY_COLOR: Record<AbilityId, string> = {
 };
 
 export const ABILITY_TAGLINE: Record<AbilityId, string> = {
-  FOR: 'Oser, soulever, tenir. La puissance du geste franc.',
-  DEX: 'Créer, bricoler, jouer. La précision et la souplesse.',
-  CON: 'Bouger, dormir, durer. L’endurance du quotidien.',
-  INT: 'Lire, apprendre, comprendre. La mémoire et la curiosité.',
-  SAG: 'Respirer, se poser, voir clair. L’attention à soi.',
-  CHA: 'Parler, écouter, donner. La force du lien.',
+  FOR: 'Le physique pur : pousser, porter, tenir.',
+  DEX: 'L’agilité sous toutes ses formes : souplesse, coordination, réflexes, adresse, esprit vif.',
+  CON: 'La santé du corps : sommeil, repas, eau, marche.',
+  INT: 'Apprendre, informations ou compétences : lire, étudier, pratiquer.',
+  SAG: 'Prendre soin de soi à l’intérieur : calme, émotions, attention.',
+  CHA: 'Le social : écouter, parler, donner des nouvelles.',
 };
 
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = {

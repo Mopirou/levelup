@@ -1,8 +1,8 @@
 [
   { "id": "FOR1", "ability": "FOR", "text": "Combien de pompes peux-tu enchaîner d’une traite ?", "low": "Moins de 5", "high": "Plus de 30" },
-  { "id": "FOR2", "ability": "FOR", "text": "À quel point oses-tu faire une chose qui te fait un peu peur ?", "low": "Presque jamais", "high": "Régulièrement" },
-  { "id": "DEX1", "ability": "DEX", "text": "À quelle fréquence pratiques-tu une activité créative ou manuelle (dessin, musique, bricolage, écriture) ?", "low": "Jamais", "high": "Presque tous les jours" },
-  { "id": "DEX2", "ability": "DEX", "text": "Comment te sens-tu en termes de souplesse et de coordination ?", "low": "Très raide", "high": "Très à l’aise" },
+  { "id": "FOR2", "ability": "FOR", "text": "À quelle fréquence fais-tu du renforcement musculaire (pompes, gainage, charges) ?", "low": "Jamais", "high": "Plusieurs fois par semaine" },
+  { "id": "DEX1", "ability": "DEX", "text": "À quelle fréquence travailles-tu ta souplesse, ton équilibre ou ta coordination (étirements, danse, jonglage, sport de balle) ?", "low": "Jamais", "high": "Presque tous les jours" },
+  { "id": "DEX2", "ability": "DEX", "text": "Comment te sens-tu en agilité : souplesse, réflexes, adresse des mains, vivacité d’esprit ?", "low": "Plutôt raide", "high": "Très à l’aise" },
   { "id": "CON1", "ability": "CON", "text": "Quand as-tu marché ou couru 30 minutes d’affilée pour la dernière fois ?", "low": "Il y a des mois", "high": "Cette semaine" },
   { "id": "CON2", "ability": "CON", "text": "Comment sont ton sommeil et ton alimentation en ce moment ?", "low": "Désordonnés", "high": "Réguliers et sains" },
   { "id": "INT1", "ability": "INT", "text": "Quand as-tu lu un livre en entier pour la dernière fois ?", "low": "Il y a des années", "high": "Ce mois-ci" },

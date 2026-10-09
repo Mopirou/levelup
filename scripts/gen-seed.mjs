@@ -23,16 +23,16 @@ const banned = [
 let sql = '-- Fichier généré par scripts/gen-seed.mjs — ne pas modifier à la main.\n\n';
 
 sql += '-- ═══ Catalogue de quêtes ═══\n';
-sql += 'insert into public.quest_templates (id, source, ability, difficulty, periods, title, flavor, objective, tips, validation, tags, is_active) values\n';
+sql += 'insert into public.quest_templates (id, source, ability, difficulty, periods, title, flavor, objective, tips, validation, tags, theme, secondary, is_active) values\n';
 sql += quests
   .map(
     (t) =>
-      `(${q(t.id)}, 'catalog', ${q(t.ability)}, ${q(t.difficulty)}, ${arr(t.periods)}, ${q(t.title)}, ${q(t.flavor)}, ${q(t.objective)}, ${arr(t.tips)}, ${json(t.validation)}, ${arr(t.tags)}, true)`,
+      `(${q(t.id)}, 'catalog', ${q(t.ability)}, ${q(t.difficulty)}, ${arr(t.periods)}, ${q(t.title)}, ${q(t.flavor)}, ${q(t.objective)}, ${arr(t.tips)}, ${json(t.validation)}, ${arr(t.tags)}, ${t.theme ? q(t.theme) : 'null'}, ${json(t.secondary ?? [])}, true)`,
   )
   .join(',\n');
 sql += `\non conflict (id) do update set ability = excluded.ability, difficulty = excluded.difficulty, periods = excluded.periods,
   title = excluded.title, flavor = excluded.flavor, objective = excluded.objective, tips = excluded.tips,
-  validation = excluded.validation, tags = excluded.tags;\n\n`;
+  validation = excluded.validation, tags = excluded.tags, theme = excluded.theme, secondary = excluded.secondary;\n\n`;
 
 sql += '-- ═══ Trophées ═══\n';
 sql += 'insert into public.achievements (id, category, name, description, hint, condition, xp_bonus, title_unlocked, is_secret) values\n';

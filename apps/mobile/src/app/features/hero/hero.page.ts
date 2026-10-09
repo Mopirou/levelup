@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { IonContent } from '@ionic/angular';
 import {
   ABILITIES,
-  ABILITY_DND_NAME,
   ABILITY_LABEL,
   ABILITY_TAGLINE,
   ACHIEVEMENTS,
@@ -152,7 +151,7 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
       @if (detail(); as a) {
         <lu-modal [label]="label(a)" (close)="detail.set(null)">
-          <div class="dh"><lu-ability-badge [ability]="a" [size]="52" /><div><h2>{{ label(a) }}</h2><p class="xs muted">{{ dnd(a) }} · {{ tagline(a) }}</p></div></div>
+          <div class="dh"><lu-ability-badge [ability]="a" [size]="52" /><div><h2>{{ label(a) }}</h2><p class="xs muted">{{ tagline(a) }}</p></div></div>
           <div class="dstat">
             <div><strong>{{ game.scores()[a] }}</strong><span>Score</span></div>
             <div><strong>{{ mod(game.scores()[a]) }}</strong><span>Modificateur</span></div>
@@ -239,7 +238,6 @@ export class HeroPage {
   readonly oath = signal('');
 
   label = (a: AbilityId) => ABILITY_LABEL[a];
-  dnd = (a: AbilityId) => ABILITY_DND_NAME[a];
   tagline = (a: AbilityId) => ABILITY_TAGLINE[a];
   mod = (s: number) => (abilityModifier(s) >= 0 ? '+' : '') + abilityModifier(s);
   info = (a: AbilityId) => abilityProgressOf(this.game.character()!, a);

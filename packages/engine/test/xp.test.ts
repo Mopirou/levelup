@@ -15,6 +15,7 @@ import {
   questCountFor,
   questLock,
   questXp,
+  splitXp,
   tierAt,
   unlocksAt,
   BALANCED_SCORES,
@@ -149,5 +150,25 @@ describe('verrous', () => {
     expect(pendingPath(2, null)).toBe(false);
     expect(pendingPath(3, null)).toBe(true);
     expect(pendingPath(3, 'x')).toBe(false);
+  });
+});
+
+describe('répartition de l’XP entre caractéristiques', () => {
+  const sec = [{ ability: 'CHA' as const, pct: 30 }, { ability: 'FOR' as const, pct: 10 }];
+  it('donne à chaque secondaire sa part et le reste à la principale', () => {
+    expect(splitXp(25, 'DEX', sec)).toEqual([
+      { ability: 'DEX', amount: 16 },
+      { ability: 'CHA', amount: 7 },
+      { ability: 'FOR', amount: 2 },
+    ]);
+  });
+  it('conserve toujours le total, y compris pour un retrait', () => {
+    for (const total of [1, 10, 25, 75, 160, 999]) {
+      expect(splitXp(total, 'DEX', sec).reduce((n, p) => n + p.amount, 0)).toBe(total);
+      expect(splitXp(-total, 'DEX', sec).reduce((n, p) => n + p.amount, 0)).toBe(-total);
+    }
+  });
+  it('sans secondaire, tout va à la principale', () => {
+    expect(splitXp(50, 'FOR')).toEqual([{ ability: 'FOR', amount: 50 }]);
   });
 });

@@ -23,6 +23,7 @@ import { IconComponent } from '../../shared/icon.component';
 import { SceneComponent } from '../../shared/scene.component';
 import { ShareFormComponent, type ShareDraft } from '../../shared/share-card.component';
 import { fmt, longDate, timeOfDay } from '../../shared/format';
+import { sharesText, themeLabel } from '../../shared/themes';
 import { PostQueue } from '../../core/post-queue';
 
 interface TimerState {
@@ -51,7 +52,9 @@ const timerKey = (id: string) => `lu-timer-${id}`;
             <span class="lu-chip">{{ difficultyLabel() }}</span>
             <span class="lu-chip gold">{{ q.status === 'completed' ? '+' + fmt(q.xpAwarded) : '+' + fmt(xp().total) }} XP</span>
             <span class="lu-chip">{{ periodLabel() }}</span>
+            @if (themeName()) { <span class="lu-chip">{{ themeName() }}</span> }
           </div>
+          @if (shares()) { <p class="xs muted shares">XP répartie : {{ shares() }}</p> }
 
           <div class="scene lu-card flat">
             <lu-scene [seed]="q.templateId" [ability]="q.snapshot.ability" />
@@ -95,12 +98,12 @@ const timerKey = (id: string) => `lu-timer-${id}`;
               @switch (q.snapshot.validation.type) {
                 @case ('counter') {
                   <div class="counter">
-                    <button type="button" class="rb" [disabled]="done() || count() <= 0" (click)="step(-1)" aria-label="Moins"><lu-icon name="minus" [size]="18" /></button>
+                    <button type="button" class="rb" [disabled]="done() || count() <= 0" (click)="step(-stepSize())" [attr.aria-label]="stepSize() > 1 ? 'Moins ' + stepSize() + ' minutes' : 'Moins'"><lu-icon name="minus" [size]="18" /></button>
                     <div class="cv">
                       <span class="num">{{ count() }} / {{ target() }}</span>
                       <span class="unit">{{ unit() }}</span>
                     </div>
-                    <button type="button" class="rb" [disabled]="done()" (click)="step(1)" aria-label="Plus"><lu-icon name="plus" [size]="18" /></button>
+                    <button type="button" class="rb" [disabled]="done()" (click)="step(stepSize())" [attr.aria-label]="stepSize() > 1 ? 'Plus ' + stepSize() + ' minutes' : 'Plus'"><lu-icon name="plus" [size]="18" /></button>
                   </div>
                   <lu-bar [value]="count()" [max]="target()" />
                 }
@@ -287,6 +290,11 @@ export class QuestDetailPage {
   readonly periodNoun = computed(() => ({ daily: 'du jour', weekly: 'de la semaine', monthly: 'du mois', epic: 'épique' })[this.inst()?.period ?? 'daily']);
   readonly abilityLabel = computed(() => ABILITY_LABEL[this.inst()!.snapshot.ability]);
   readonly difficultyLabel = computed(() => DIFFICULTY_LABEL[this.inst()!.snapshot.difficulty]);
+  readonly themeName = computed(() => themeLabel(this.inst()?.snapshot.theme));
+  readonly shares = computed(() => {
+    const s = this.inst()?.snapshot;
+    return s?.secondary?.length ? sharesText(s.ability, s.secondary) : '';
+  });
   readonly periodLabel = computed(() => PERIOD_LABEL[this.inst()!.period]);
   readonly color = computed(() => `var(--lu-${this.inst()!.snapshot.ability.toLowerCase()})`);
   readonly done = computed(() => this.inst()?.status === 'completed');
@@ -436,6 +444,13 @@ export class QuestDetailPage {
     const q = this.inst();
     if (q) void this.game.setProgress(q, { progress: 0 });
   }
+
+  /** Compteurs en minutes : on avance par paliers de 5 (15 pour les gros objectifs) plutôt que d’un seul tap par minute. */
+  readonly stepSize = computed(() => {
+    const v = this.inst()?.snapshot.validation;
+    if (v?.type !== 'counter' || !v.unit.startsWith('minute')) return 1;
+    return v.target >= 300 ? 15 : 5;
+  });
 
   step(delta: number): void {
     const next = Math.min(Math.max(this.localCount() + delta, 0), this.target());

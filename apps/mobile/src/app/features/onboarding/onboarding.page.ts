@@ -330,7 +330,7 @@ export class OnboardingPage {
   readonly quiz = assessment as SelfAssessmentQuestion[];
   readonly principle = [
     { i: 'swords', t: 'Accomplis des quêtes réelles', d: 'Marcher, lire, respirer, appeler un ami : chaque action concrète devient une quête.' },
-    { i: 'trending', t: 'Gagne de l’XP dans 6 caractéristiques', d: 'Courage, Créativité, Vitalité, Savoir, Équilibre et Liens progressent chacune à leur rythme.' },
+    { i: 'trending', t: 'Gagne de l’XP dans 6 caractéristiques', d: 'Force, Dextérité, Constitution, Intelligence, Sagesse et Charisme progressent chacune à leur rythme.' },
     { i: 'crown', t: 'Monte de niveau', d: 'Ton héros grandit avec toi : nouvelles quêtes, titres, trophées, et des compagnons pour t’encourager.' },
   ];
 

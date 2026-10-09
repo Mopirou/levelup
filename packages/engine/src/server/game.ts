@@ -17,6 +17,7 @@ import {
   OFFLINE_MAX_DELAY_MS,
   UNDO_WINDOW_MS,
   applyXp,
+  applyXpParts,
   canDeclareRest,
   canUndo,
   completeQuest,
@@ -59,6 +60,7 @@ import {
   questCountFor,
   unlocksAt,
   PATH_LEVEL,
+  splitXp,
 } from '../xp';
 import {
   CharacterRecord,
@@ -136,6 +138,8 @@ function snapshotOf(t: QuestTemplate): QuestInstance['snapshot'] {
     tips: t.tips,
     validation: t.validation,
     tags: t.tags,
+    ...(t.theme ? { theme: t.theme } : {}),
+    ...(t.secondary?.length ? { secondary: t.secondary } : {}),
   };
 }
 
@@ -373,8 +377,9 @@ export async function ensureQuests(ctx: ServerContext, userId: string): Promise<
     if (inst.status === 'accepted') {
       xp = expiredPartialXp(inst, character.level, masteries, pathAbility);
       if (xp > 0) {
-        events.push(eventFor(ctx, { instanceId: inst.id, ability: inst.snapshot.ability, amount: xp, reason: 'partial', custom: customIds.has(inst.templateId) }, inst.periodEnd));
-        const applied = applyXp(character, inst.snapshot.ability, xp);
+        const parts = splitXp(xp, inst.snapshot.ability, inst.snapshot.secondary);
+        for (const p of parts) events.push(eventFor(ctx, { instanceId: inst.id, ability: p.ability, amount: p.amount, reason: 'partial', custom: customIds.has(inst.templateId) }, inst.periodEnd));
+        const applied = applyXpParts(character, parts);
         character = mergeChar(character, applied.character);
         result.levelUps.push(...applied.levelsGained);
       } else if (settings.hardcore) {
@@ -643,9 +648,9 @@ export async function completeQuestAction(ctx: ServerContext, userId: string, re
   const abilityUps = [...res.abilityUps];
   let character = mergeChar(env.character, res.character);
   const custom = (await store.listTemplates(userId)).some((t) => t.id === inst.templateId && t.source === 'custom');
-  const events: XpEvent[] = [
-    eventFor(ctx, { instanceId: inst.id, ability: inst.snapshot.ability, amount: res.xpAwarded, reason: 'quest', custom }, completedDay),
-  ];
+  const events: XpEvent[] = splitXp(res.xpAwarded, inst.snapshot.ability, inst.snapshot.secondary).map((p) =>
+    eventFor(ctx, { instanceId: inst.id, ability: p.ability, amount: p.amount, reason: 'quest', custom }, completedDay),
+  );
 
   await store.updateInstance(userId, inst.id, {
     status: 'completed',
@@ -754,9 +759,12 @@ export async function undoQuest(ctx: ServerContext, userId: string, instanceId: 
   const inst = await ctx.store.getInstance(userId, instanceId);
   if (!inst) return fail('not-found');
   if (inst.status !== 'completed' || !canUndo(inst.completedAt, env.nowMs)) return fail('cannot-undo', 'Cette quête ne peut plus être annulée (24 h maximum).');
-  await ctx.store.insertXpEvents(userId, [
-    eventFor(ctx, { instanceId, ability: inst.snapshot.ability, amount: -inst.xpAwarded, reason: 'undo' }, env.today),
-  ]);
+  await ctx.store.insertXpEvents(
+    userId,
+    splitXp(inst.xpAwarded, inst.snapshot.ability, inst.snapshot.secondary).map((p) =>
+      eventFor(ctx, { instanceId, ability: p.ability, amount: -p.amount, reason: 'undo' }, env.today),
+    ),
+  );
   const patch = { status: 'accepted' as const, xpAwarded: 0, inspirationUsed: false, completedAt: null };
   await ctx.store.updateInstance(userId, instanceId, patch);
   await ctx.store.detachPostsFromInstance(userId, instanceId);

@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { IonContent } from '@ionic/angular';
 import {
@@ -23,22 +24,23 @@ import { UiService } from '../../core/ui.service';
 import { PageHeaderComponent, AbilityBadgeComponent } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
 import { ModalComponent } from '../../shared/modal.component';
+import { THEMES, TIER_LABEL, sharesText, themeLabel } from '../../shared/themes';
 
 const TAGS = ['sans matériel', 'extérieur', 'social', 'moins de 10 min', 'sport', 'cuisine', 'langue', 'détox'];
 const CHAPTER_TEXT: Record<AbilityId, string> = {
-  FOR: 'Le Courage ne se mesure pas qu’en kilos : il se mesure à ce que tu oses, un petit pas hors de ta zone de confort à la fois.',
-  DEX: 'La Créativité, c’est la précision et la souplesse : le geste juste, au bon moment, qu’il tienne un crayon ou une idée.',
-  CON: 'La Vitalité, c’est l’endurance : tenir la distance, récupérer, rester debout quand les autres flanchent.',
-  INT: 'Le Savoir, c’est le raisonnement et la mémoire : comprendre, retenir, relier les idées.',
-  SAG: 'L’Équilibre ne se mesure ni en kilos ni en pages lues. Il se mesure à la qualité de ton attention.',
-  CHA: 'Les Liens, c’est la force de la personnalité : oser parler, créer du lien, laisser une trace chez les autres.',
+  FOR: 'La Force, c’est le physique pur : pousser, porter, tenir. Ici, les quêtes de renforcement et d’effort musculaire, jugées au temps passé.',
+  DEX: 'La Dextérité, c’est l’agilité sous toutes ses formes : souplesse, coordination, réflexes, adresse manuelle et esprit vif.',
+  CON: 'La Constitution, c’est la santé du corps : heure de coucher, repas, hydratation, marche et récupération.',
+  INT: 'L’Intelligence, c’est apprendre, qu’il s’agisse d’informations ou de compétences : lire, étudier, pratiquer, retenir.',
+  SAG: 'La Sagesse, c’est prendre soin de soi à l’intérieur : calme, émotions, attention, retour sur sa journée.',
+  CHA: 'Le Charisme, c’est le social : écouter, parler, donner des nouvelles, passer du temps avec les autres.',
 };
 
 type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
 
 @Component({
   selector: 'app-grimoire',
-  imports: [IonContent, PageHeaderComponent, AbilityBadgeComponent, IconComponent, ModalComponent],
+  imports: [IonContent, NgTemplateOutlet, PageHeaderComponent, AbilityBadgeComponent, IconComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
@@ -57,49 +59,83 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
           @if (filtered()) { <button type="button" class="lu-chip big" (click)="clear()">Effacer</button> }
         </div>
 
-        @for (a of abilities; track a) {
-          <section class="chapter" [class.open]="opened().has(a) || filtered()">
-            <button type="button" class="chead" (click)="toggle(a)" [attr.aria-expanded]="opened().has(a) || filtered()">
-              <lu-ability-badge [ability]="a" [size]="52" />
-              <span class="ct"><strong>{{ label(a) }}</strong><span class="xs muted">{{ discovered(a) }} / {{ total(a) }} quêtes découvertes</span></span>
-              <lu-icon [name]="opened().has(a) || filtered() ? 'chevron-down' : 'chevron-right'" [size]="18" />
-            </button>
-            @if (opened().has(a) || filtered()) {
-              <div class="cbody fade-in">
-                <p class="illum">{{ chapterText(a) }}</p>
-                @for (d of difficulties; track d) {
-                  @if (rows(a, d).length) {
-                    <h4 class="dh">{{ dl(d) }}</h4>
-                    @for (t of rows(a, d); track t.id) {
-                      <div class="qrow" [class.excl]="pref(t.id)?.isExcluded" role="button" tabindex="0" (click)="detail.set(t)" (keydown.enter)="detail.set(t)">
-                        <div class="qm">
-                          <strong>@if (lock(t).locked) { <lu-icon name="lock" [size]="13" /> } {{ t.title }}</strong>
-                          <span class="xs muted">
-                            @for (p of t.periods; track p) { <i class="pp">{{ ps(p) }}</i> }
-                            {{ vlabel(t) }} · {{ doneCount(t) ? doneCount(t) + ' fois' : 'jamais faite' }}{{ lastDone(t) ? ' · ' + lastDone(t) : '' }}
-                          </span>
-                          @if (lock(t).locked) { <span class="xs gold">{{ lock(t).reason }}</span> }
-                        </div>
-                        <div class="qa" (click)="$event.stopPropagation()">
-                          <button type="button" class="ib" [class.on]="pref(t.id)?.isFavorite" (click)="fav(t)" [attr.aria-label]="pref(t.id)?.isFavorite ? 'Retirer des favorites' : 'Marquer favorite'" [attr.aria-pressed]="!!pref(t.id)?.isFavorite"><lu-icon name="star" [size]="16" /></button>
-                          <button type="button" class="ib" [class.on]="pref(t.id)?.isExcluded" (click)="exclude(t)" [attr.aria-label]="pref(t.id)?.isExcluded ? 'Ne plus exclure' : 'Exclure du tirage'" [attr.aria-pressed]="!!pref(t.id)?.isExcluded"><lu-icon name="ban" [size]="16" /></button>
-                        </div>
-                      </div>
+        <div class="seg" role="group" aria-label="Classer par">
+          <button type="button" [class.on]="view() === 'ability'" [attr.aria-pressed]="view() === 'ability'" (click)="view.set('ability')">Caractéristiques</button>
+          <button type="button" [class.on]="view() === 'theme'" [attr.aria-pressed]="view() === 'theme'" (click)="view.set('theme')">Disciplines</button>
+        </div>
+        @if (view() === 'ability') {
+          @for (a of abilities; track a) {
+            <section class="chapter" [class.open]="opened().has(a) || filtered()">
+              <button type="button" class="chead" (click)="toggle(a)" [attr.aria-expanded]="opened().has(a) || filtered()">
+                <lu-ability-badge [ability]="a" [size]="52" />
+                <span class="ct"><strong>{{ label(a) }}</strong><span class="xs muted">{{ discovered(a) }} / {{ total(a) }} quêtes découvertes</span></span>
+                <lu-icon [name]="opened().has(a) || filtered() ? 'chevron-down' : 'chevron-right'" [size]="18" />
+              </button>
+              @if (opened().has(a) || filtered()) {
+                <div class="cbody fade-in">
+                  <p class="illum">{{ chapterText(a) }}</p>
+                  @for (d of difficulties; track d) {
+                    @if (rows(a, d).length) {
+                      <h4 class="dh">{{ dl(d) }}</h4>
+                      @for (t of rows(a, d); track t.id) {
+                        <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: t }" />
+                      }
                     }
                   }
-                }
-              </div>
-            }
-          </section>
+                </div>
+              }
+            </section>
+          }
+        } @else {
+          @for (th of themes; track th.id) {
+            <section class="chapter" [class.open]="openedThemes().has(th.id) || filtered()">
+              <button type="button" class="chead" (click)="toggleTheme(th.id)" [attr.aria-expanded]="openedThemes().has(th.id) || filtered()">
+                <lu-ability-badge [ability]="th.ability" [size]="52" />
+                <span class="ct"><strong>{{ th.label }}</strong><span class="xs muted">{{ themeDiscovered(th.id) }} / {{ themeTotal(th.id) }} quêtes découvertes</span></span>
+                <lu-icon [name]="openedThemes().has(th.id) || filtered() ? 'chevron-down' : 'chevron-right'" [size]="18" />
+              </button>
+              @if (openedThemes().has(th.id) || filtered()) {
+                <div class="cbody fade-in">
+                  <p class="illum">{{ th.blurb }} Répartition de l’XP : {{ shares(th.ability, th.secondary) }}.</p>
+                  @for (d of difficulties; track d) {
+                    @if (themeRows(th.id, d).length) {
+                      <h4 class="dh">{{ tier(d) }}</h4>
+                      @for (t of themeRows(th.id, d); track t.id) {
+                        <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: t }" />
+                      }
+                    }
+                  }
+                </div>
+              }
+            </section>
+          }
         }
         @if (game.unlocks().forge) {
           <button type="button" class="fab lu-btn mint" (click)="ui.go('/forge')"><lu-icon name="hammer" [size]="18" /> Forger une quête</button>
         }
       </div>
 
+      <ng-template #rowTpl let-t>
+        <div class="qrow" [class.excl]="pref(t.id)?.isExcluded" role="button" tabindex="0" (click)="detail.set(t)" (keydown.enter)="detail.set(t)">
+          <div class="qm">
+            <strong>@if (lock(t).locked) { <lu-icon name="lock" [size]="13" /> } {{ t.title }}</strong>
+            <span class="xs muted">
+              @for (p of t.periods; track p) { <i class="pp">{{ ps(p) }}</i> }
+              {{ vlabel(t) }} · {{ doneCount(t) ? doneCount(t) + ' fois' : 'jamais faite' }}{{ lastDone(t) ? ' · ' + lastDone(t) : '' }}
+            </span>
+            @if (lock(t).locked) { <span class="xs gold">{{ lock(t).reason }}</span> }
+          </div>
+          <div class="qa" (click)="$event.stopPropagation()">
+            <button type="button" class="ib" [class.on]="pref(t.id)?.isFavorite" (click)="fav(t)" [attr.aria-label]="pref(t.id)?.isFavorite ? 'Retirer des favorites' : 'Marquer favorite'" [attr.aria-pressed]="!!pref(t.id)?.isFavorite"><lu-icon name="star" [size]="16" /></button>
+            <button type="button" class="ib" [class.on]="pref(t.id)?.isExcluded" (click)="exclude(t)" [attr.aria-label]="pref(t.id)?.isExcluded ? 'Ne plus exclure' : 'Exclure du tirage'" [attr.aria-pressed]="!!pref(t.id)?.isExcluded"><lu-icon name="ban" [size]="16" /></button>
+          </div>
+        </div>
+      </ng-template>
+
       @if (detail(); as t) {
         <lu-modal [label]="t.title" (close)="detail.set(null)">
-          <div class="dhd"><lu-ability-badge [ability]="t.ability" [size]="44" /><div><h2>{{ t.title }}</h2><p class="xs muted">{{ label(t.ability) }} · {{ dl(t.difficulty) }} · {{ vlabel(t) }}</p></div></div>
+          <div class="dhd"><lu-ability-badge [ability]="t.ability" [size]="44" /><div><h2>{{ t.title }}</h2><p class="xs muted">{{ t.theme ? themeName(t.theme) + ' · ' : '' }}{{ label(t.ability) }} · {{ dl(t.difficulty) }} · {{ vlabel(t) }}</p></div></div>
+          @if (t.secondary?.length) { <p class="xs muted">XP répartie : {{ shares(t.ability, t.secondary) }}</p> }
           <p class="flav">{{ t.flavor }}</p>
           <div class="goal"><span class="lu-eyebrow">OBJECTIF</span><p>{{ t.objective }}</p></div>
           @if (t.tips.length) { <ul class="tips">@for (x of t.tips; track x) { <li>{{ x }}</li> }</ul> }
@@ -131,6 +167,7 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
     .pp { font-style: normal; font-weight: 700; font-size: 9px; padding: 1px 5px; margin-right: 3px; border-radius: 4px; background: var(--lu-surface-2); color: var(--lu-text-2); }
     .qa { display: flex; gap: 4px; } .ib { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--lu-border); background: transparent; color: var(--lu-muted); display: grid; place-items: center; cursor: pointer; }
     .ib.on { color: var(--lu-gold); border-color: var(--lu-gold); background: var(--lu-gold-bg); }
+    .seg { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--lu-surface-2); border: 1px solid var(--lu-border); } .seg button { flex: 1; height: 36px; border-radius: 10px; border: 0; background: transparent; color: var(--lu-text-2); font: 600 13px var(--lu-font-body); cursor: pointer; } .seg button.on { background: var(--lu-surface-grad); color: var(--lu-text); box-shadow: var(--lu-shadow); }
     .fab { position: sticky; bottom: 12px; align-self: center; width: auto; padding: 0 20px; box-shadow: var(--lu-shadow); }
     .dhd { display: flex; gap: 12px; align-items: center; padding-right: 40px; } .dhd h2 { font-size: 24px; }
     .flav { font-family: var(--lu-font-title); font-style: italic; line-height: 1.6; font-size: 15px; }
@@ -152,7 +189,10 @@ export class GrimoirePage {
   readonly tag = signal<string | null>(null);
   readonly source = signal<'all' | 'catalog' | 'custom'>('all');
   readonly status = signal<StatusFilter>('all');
+  readonly themes = THEMES;
+  readonly view = signal<'ability' | 'theme'>('ability');
   readonly opened = signal<Set<AbilityId>>(new Set());
+  readonly openedThemes = signal<Set<string>>(new Set());
   readonly detail = signal<QuestTemplate | null>(null);
   readonly history = signal<QuestInstance[]>([]);
 
@@ -201,6 +241,20 @@ export class GrimoirePage {
       default: return true;
     }
   };
+  themeName = themeLabel;
+  shares = sharesText;
+  tier = (d: Difficulty) => TIER_LABEL[d];
+  themeDiscovered = (id: string) => this.game.templates().filter((t) => t.theme === id && this.counts().has(t.id)).length;
+  themeTotal = (id: string) => this.game.templates().filter((t) => t.theme === id).length;
+  themeRows = (id: string, d: Difficulty) => this.game.templates().filter((t) => t.theme === id && t.difficulty === d && this.matches(t));
+  toggleTheme(id: string): void {
+    this.openedThemes.update((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
   rows = (a: AbilityId, d: Difficulty) => this.game.templates().filter((t) => t.ability === a && t.difficulty === d && this.matches(t));
 
   constructor() {

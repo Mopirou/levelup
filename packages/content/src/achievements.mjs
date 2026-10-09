@@ -1,6 +1,7 @@
 // Trophées : [id, catégorie, nom, description, condition, bonus XP, titre honorifique?, secret?, indice?]
 const A = ['FOR', 'DEX', 'CON', 'INT', 'SAG', 'CHA'];
-const LABEL = { FOR: 'Courage', DEX: 'Créativité', CON: 'Vitalité', INT: 'Savoir', SAG: 'Équilibre', CHA: 'Liens' };
+const LABEL = { FOR: 'Force', DEX: 'Dextérité', CON: 'Constitution', INT: 'Intelligence', SAG: 'Sagesse', CHA: 'Charisme' };
+const ADJ = (a, m, f) => (a === 'CHA' ? m : f);
 
 const rows = [
   // ── Constance (21)
@@ -27,7 +28,7 @@ const rows = [
   ['repos-du-sage', 'constance', 'Le Repos du Sage', 'Déclarer un premier jour de repos.', { kind: 'rest_days', target: 1 }, 25, null],
   // ── Maîtrise (24)
   ...A.flatMap((a) => [
-    [`${a.toLowerCase()}-16`, 'maitrise', `${LABEL[a]} aguerri`, `Atteindre un score de ${LABEL[a]} de 16.`, { kind: 'ability_score', ability: a, target: 16 }, 75, null],
+    [`${a.toLowerCase()}-16`, 'maitrise', `${LABEL[a]} ${ADJ(a, 'aguerri', 'aguerrie')}`, `Atteindre un score de ${LABEL[a]} de 16.`, { kind: 'ability_score', ability: a, target: 16 }, 75, null],
     [`${a.toLowerCase()}-18`, 'maitrise', `${LABEL[a]} remarquable`, `Atteindre un score de ${LABEL[a]} de 18.`, { kind: 'ability_score', ability: a, target: 18 }, 200, null],
   ]),
   ['niveau-5', 'maitrise', 'Héros du royaume', 'Atteindre le niveau 5.', { kind: 'level', target: 5 }, 100, 'Héros du royaume'],

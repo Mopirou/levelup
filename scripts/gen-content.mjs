@@ -44,6 +44,65 @@ for (const a of ABILITIES) {
     if (counts[d] !== EXPECTED[d]) throw new Error(`${a}: ${d} = ${counts[d]} (attendu ${EXPECTED[d]})`);
   }
 }
+// ───────────── Quêtes guidées par discipline (4 paliers : jour, semaine, mois, épique) ─────────────
+const { default: themeRows } = await import(pathToFileURL(join(root, 'src', 'guided.mjs')).href);
+const TIERS = [
+  { n: 1, difficulty: 'easy', period: 'daily' },
+  { n: 2, difficulty: 'medium', period: 'weekly' },
+  { n: 3, difficulty: 'high', period: 'monthly' },
+  { n: 4, difficulty: 'expert', period: 'epic' },
+];
+const PRUDENCE = ' Adapte à ta condition et consulte un professionnel au besoin.';
+const themes = [];
+let guidedCount = 0;
+for (const th of themeRows) {
+  if (th.activities.length !== 5) throw new Error(`${th.id}: ${th.activities.length} activités (attendu 5)`);
+  const secondary = th.secondary.map(([ability, pct]) => ({ ability, pct }));
+  if (secondary.reduce((n, s) => n + s.pct, 0) >= 100) throw new Error(`${th.id}: parts secondaires >= 100`);
+  const [day, week, monthH, epicH] = th.time;
+  themes.push({ id: th.id, label: th.label, blurb: th.blurb, ability: th.primary, secondary, activities: th.activities.map((a) => a[0]) });
+  for (const [name, doing, why, flow, tech, goal] of th.activities) {
+    const tags = ['guidé', th.id, ...(th.physical ? ['sport'] : [])];
+    const mk = (tier, extra) => {
+      quests.push({
+        id: `g-${th.id}-${slug(name)}-t${tier.n}`, ability: th.primary, difficulty: tier.difficulty, periods: [tier.period],
+        ...extra, tags, theme: th.id, secondary,
+      });
+      guidedCount++;
+    };
+    mk(TIERS[0], {
+      title: `${name}, ${day} minutes guidées`,
+      flavor: why,
+      objective: `Pendant ${day} minutes, ${doing}, en suivant un cours guidé (vidéo, application ou professeur).`,
+      tips: [flow, tech],
+      validation: { type: 'timer', minutes: day },
+    });
+    mk(TIERS[1], {
+      title: `${name}, ${week} min cette semaine`,
+      flavor: `${why} Quelques séances par semaine donnent des progrès visibles.`,
+      objective: `Cumuler ${week} minutes sur la semaine : ${doing}, en suivant des séances guidées.`,
+      tips: [tech, 'Répartis tes séances sur 2 à 4 jours et ajoute les minutes après chaque séance.'],
+      validation: { type: 'counter', target: week, unit: 'minutes' },
+    });
+    mk(TIERS[2], {
+      title: `${name}, ${monthH} heures ce mois-ci`,
+      flavor: `${why} Un mois de pratique régulière installe l’habitude et le niveau.`,
+      objective: `Cumuler ${monthH} heures sur le mois : ${doing}, avec un cours ou un programme guidé.`,
+      tips: [tech, 'Planifie tes créneaux à l’avance et note ta progression chaque semaine.'],
+      validation: { type: 'counter', target: monthH * 60, unit: 'minutes' },
+    });
+    mk(TIERS[3], {
+      title: `${name}, ${epicH} heures de pratique`,
+      flavor: `${why} Un grand objectif, qui demande de la constance sur la durée.`,
+      objective: `Cumuler ${epicH} heures de pratique guidée (${doing}) jusqu’à ${goal}.${th.physical ? PRUDENCE : ''}`,
+      tips: [tech, 'Fixe-toi un point d’étape toutes les deux semaines pour mesurer ta progression.'],
+      validation: { type: 'counter', target: epicH * 60, unit: 'minutes' },
+    });
+  }
+}
+mkdirSync(join(root, 'data'), { recursive: true });
+writeFileSync(join(root, 'data', 'themes.fr.json'), JSON.stringify(themes, null, 2) + '\n');
+
 const ids = new Set(quests.map((q) => q.id));
 if (ids.size !== quests.length) throw new Error('identifiants en double');
 mkdirSync(join(root, 'data'), { recursive: true });

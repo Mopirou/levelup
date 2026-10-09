@@ -100,293 +100,293 @@
   "best": [
     {
       "ability": "FOR",
-      "text": "Le Courage a mené la danse : {name} a osé et soulevé plus que d’habitude."
+      "text": "La Force a mené la danse : {name} a poussé, porté et tenu plus que d’habitude."
     },
     {
       "ability": "FOR",
-      "text": "Le Courage a brillé : les efforts francs ont payé."
+      "text": "La Force est en tête : les séances musculaires ont payé."
     },
     {
       "ability": "FOR",
-      "text": "Du Courage à revendre cette période. Les pas vers l’inconnu ont fait la différence."
+      "text": "Beaucoup d’effort physique cette période, et la Force en profite."
     },
     {
       "ability": "FOR",
-      "text": "C’est le Courage qui a porté la période, sans bruit mais avec force."
+      "text": "C’est la Force qui a porté la période, répétition après répétition."
     },
     {
       "ability": "FOR",
-      "text": "Beaucoup d’audace cette fois : le Courage tire la fiche vers le haut."
+      "text": "Des muscles sollicités, des séries tenues : la Force tire la fiche vers le haut."
     },
     {
       "ability": "FOR",
-      "text": "Le Courage est en tête, et tout le reste en bénéficie."
+      "text": "La Force est en tête, et le reste du corps en bénéficie."
     },
     {
       "ability": "DEX",
-      "text": "La Créativité a éclaté : crayons, notes et mains en mouvement."
+      "text": "La Dextérité a pris les devants : souplesse, coordination et réflexes ont travaillé."
     },
     {
       "ability": "DEX",
-      "text": "Beaucoup de gestes créatifs cette période, et ça se voit sur la fiche."
+      "text": "La Dextérité a mené la période : étirements, jonglage, précision du geste."
     },
     {
       "ability": "DEX",
-      "text": "La Créativité a pris la tête, portée par des idées qui s’enchaînent."
+      "text": "Beaucoup d’agilité cette fois : {name} a bougé avec plus de finesse."
     },
     {
       "ability": "DEX",
-      "text": "C’est la Créativité qui a nourri la période, avec légèreté."
+      "text": "C’est la Dextérité qui a nourri la période, du corps à l’esprit vif."
     },
     {
       "ability": "DEX",
-      "text": "Des mains actives, des idées vives : la Créativité s’est imposée."
+      "text": "Des mains adroites, un esprit rapide : la Dextérité s’est imposée."
     },
     {
       "ability": "DEX",
-      "text": "La Créativité a donné le ton, et ça fait du bien."
+      "text": "La Dextérité est en tête, et tout paraît plus fluide."
     },
     {
       "ability": "CON",
-      "text": "La Vitalité a pris les devants : marche, sommeil et bonne alimentation."
+      "text": "La Constitution a pris les devants : sommeil, repas et marche ont suivi."
     },
     {
       "ability": "CON",
-      "text": "Le corps a répondu présent : la Vitalité est en tête."
+      "text": "Le corps a répondu présent : la Constitution est en tête."
     },
     {
       "ability": "CON",
-      "text": "Beaucoup de souffle cette période, et la Vitalité s’en souvient."
+      "text": "Des nuits tenues et de bons repas : la Constitution s’en souvient."
     },
     {
       "ability": "CON",
-      "text": "La Vitalité s’est construite sur la régularité. C’est la meilleure des bases."
+      "text": "La Constitution s’est construite sur la régularité, la meilleure des bases."
     },
     {
       "ability": "CON",
-      "text": "La Vitalité a mené la danse, et tout le reste s’en est mieux porté."
+      "text": "La Constitution a mené la danse, et tout le reste s’en est mieux porté."
     },
     {
       "ability": "CON",
-      "text": "On sent que le corps a été entretenu : la Vitalité est en tête."
+      "text": "On sent que le corps a été entretenu : la Constitution est en tête."
     },
     {
       "ability": "INT",
-      "text": "Le Savoir a mené la danse : {name} a lu, appris, compris."
+      "text": "L’Intelligence a mené la danse : {name} a lu, appris, pratiqué."
     },
     {
       "ability": "INT",
-      "text": "Beaucoup de curiosité cette période, et le Savoir en récolte les fruits."
+      "text": "Beaucoup d’heures d’apprentissage cette période : l’Intelligence en récolte les fruits."
     },
     {
       "ability": "INT",
-      "text": "Le Savoir a pris la tête, nourri par des pages et des questions."
+      "text": "L’Intelligence a pris la tête, nourrie par des pages, des cours et de la pratique."
     },
     {
       "ability": "INT",
-      "text": "La tête a travaillé : le Savoir est en tête."
+      "text": "La tête a travaillé : l’Intelligence est en tête."
     },
     {
       "ability": "INT",
-      "text": "Le Savoir est la caractéristique qui a le plus progressé."
+      "text": "L’Intelligence est la caractéristique qui a le plus progressé."
     },
     {
       "ability": "INT",
-      "text": "Les livres sont restés ouverts : le Savoir a avancé."
+      "text": "Les livres sont restés ouverts : l’Intelligence a avancé."
     },
     {
       "ability": "SAG",
-      "text": "L’Équilibre a gagné du terrain : respirations, pauses et regard apaisé."
+      "text": "La Sagesse a gagné du terrain : respirations, pauses et regard apaisé."
     },
     {
       "ability": "SAG",
-      "text": "Le calme a fait son chemin : l’Équilibre est en tête."
+      "text": "Le calme a fait son chemin : la Sagesse est en tête."
     },
     {
       "ability": "SAG",
-      "text": "L’Équilibre a porté la période, discrètement et efficacement."
+      "text": "La Sagesse a porté la période, discrètement et efficacement."
     },
     {
       "ability": "SAG",
-      "text": "Beaucoup d’attention à soi cette fois : l’Équilibre brille."
+      "text": "Beaucoup d’attention à soi cette fois : la Sagesse progresse."
     },
     {
       "ability": "SAG",
-      "text": "Moments de silence, journal, nature : l’Équilibre a progressé."
+      "text": "Moments de silence, journal, retour sur soi : la Sagesse a avancé."
     },
     {
       "ability": "SAG",
-      "text": "L’Équilibre a pris les devants, et tout le reste en respire mieux."
+      "text": "La Sagesse a pris les devants, et tout le reste en respire mieux."
     },
     {
       "ability": "CHA",
-      "text": "Les Liens ont été à l’honneur : appels, messages et rencontres."
+      "text": "Le Charisme a été à l’honneur : appels, messages et rencontres."
     },
     {
       "ability": "CHA",
-      "text": "Beaucoup de gestes tournés vers les autres, et les Liens en sont renforcés."
+      "text": "Beaucoup de temps donné aux autres, et le Charisme en est renforcé."
     },
     {
       "ability": "CHA",
-      "text": "Les Liens ont pris la tête, nourris par la générosité et l’écoute."
+      "text": "Le Charisme a pris la tête, nourri par l’écoute et les conversations."
     },
     {
       "ability": "CHA",
-      "text": "Les rencontres ont compté : les Liens avancent."
+      "text": "Les rencontres ont compté : le Charisme avance."
     },
     {
       "ability": "CHA",
-      "text": "Les Liens sont en tête, et c’est sans doute la plus belle des victoires."
+      "text": "Le Charisme est en tête, et c’est sans doute la plus belle des victoires."
     },
     {
       "ability": "CHA",
-      "text": "Entouré, soutenu, présent : les Liens ont mené la période."
+      "text": "Entouré, présent, à l’écoute : le Charisme a mené la période."
     }
   ],
   "weak": [
     {
       "ability": "FOR",
-      "text": "Le Courage, lui, est resté dans l’ombre : une petite audace suffirait à le réveiller."
+      "text": "La Force est restée en retrait : une courte séance de pompes ou de squats la réveillerait."
     },
     {
       "ability": "FOR",
-      "text": "Pense à ton Courage : un pas hors de ta zone de confort, et il reprend sa place."
+      "text": "Pense à ta Force : dix minutes de renforcement, et elle reprend sa place."
     },
     {
       "ability": "FOR",
-      "text": "Le Courage attend son heure. Une petite quête, une grande première fois ?"
+      "text": "La Force attend son heure. Une petite séance, et c’est reparti."
     },
     {
       "ability": "FOR",
-      "text": "Le Courage a un peu dormi. Il n’attend qu’un petit défi."
+      "text": "La Force a un peu dormi : elle n’attend qu’un peu de charge à porter."
     },
     {
       "ability": "FOR",
-      "text": "Il y a un peu de Courage à reprendre : commence par une audace de deux minutes."
+      "text": "Il y a de la Force à reprendre : commence par dix minutes de gainage."
     },
     {
       "ability": "FOR",
-      "text": "Le Courage gagnerait à être sollicité : un oui, un non franc, un nouveau lieu."
+      "text": "La Force gagnerait à être sollicitée : quelques séries par semaine suffisent."
     },
     {
       "ability": "DEX",
-      "text": "Du côté de la Créativité, c’était calme : un crayon, un instrument, et tout repart."
+      "text": "Du côté de la Dextérité, c’était calme : dix minutes de souplesse ou de coordination, et tout repart."
     },
     {
       "ability": "DEX",
-      "text": "La Créativité a été oubliée sur l’établi. Elle demande peu pour revenir."
+      "text": "La Dextérité a été oubliée : étirements, équilibre ou jonglage lui rendraient vie."
     },
     {
       "ability": "DEX",
-      "text": "Pense à ta Créativité : quelques lignes ou un geste créatif suffiront."
+      "text": "Pense à ta Dextérité : un peu de mobilité, un peu d’adresse, chaque jour."
     },
     {
       "ability": "DEX",
-      "text": "La Créativité s’est mise en veille, mais elle se réveille vite."
+      "text": "La Dextérité s’est mise en veille, mais elle se réveille vite."
     },
     {
       "ability": "DEX",
-      "text": "La Créativité attend son tour : dix minutes de dessin, d’écriture ou de musique."
+      "text": "La Dextérité attend son tour : dix minutes d’étirements, de réflexes ou d’adresse manuelle."
     },
     {
       "ability": "DEX",
-      "text": "Un petit élan créatif ferait du bien à l’ensemble de la fiche."
+      "text": "Un peu d’agilité ferait du bien à l’ensemble de la fiche."
     },
     {
       "ability": "CON",
-      "text": "La Vitalité demande un peu d’attention : une marche, un verre d’eau, un coucher plus tôt."
+      "text": "La Constitution demande de l’attention : une marche, de l’eau, un coucher plus tôt."
     },
     {
       "ability": "CON",
-      "text": "Le corps aimerait qu’on pense à lui : la Vitalité reste en retrait."
+      "text": "Le corps aimerait qu’on pense à lui : la Constitution reste en retrait."
     },
     {
       "ability": "CON",
-      "text": "Pense à ta Vitalité : de petits gestes de santé, chaque jour."
+      "text": "Pense à ta Constitution : de petits gestes de santé, chaque jour."
     },
     {
       "ability": "CON",
-      "text": "La Vitalité s’essouffle un peu : une promenade lui rendrait le sourire."
+      "text": "La Constitution s’essouffle un peu : une promenade lui rendrait le sourire."
     },
     {
       "ability": "CON",
-      "text": "La Vitalité reste à renforcer : sommeil et mouvement seront ses alliés."
+      "text": "La Constitution reste à renforcer : sommeil et repas seront ses alliés."
     },
     {
       "ability": "CON",
-      "text": "Une marche régulière redonnerait de la vigueur à la Vitalité."
+      "text": "Une marche régulière et des horaires de coucher fixes redonneraient de la vigueur à la Constitution."
     },
     {
       "ability": "INT",
-      "text": "Les livres sont restés fermés : le Savoir t’attend quand tu voudras."
+      "text": "Les livres sont restés fermés : l’Intelligence t’attend quand tu voudras."
     },
     {
       "ability": "INT",
-      "text": "Le Savoir aimerait un peu de curiosité : dix pages, un mot nouveau, une question."
+      "text": "L’Intelligence aimerait un peu de curiosité : vingt minutes de lecture ou de cours."
     },
     {
       "ability": "INT",
-      "text": "Pense à ton Savoir : quinze minutes de lecture par jour changeraient la donne."
+      "text": "Pense à ton Intelligence : un quart d’heure d’étude par jour change la donne."
     },
     {
       "ability": "INT",
-      "text": "Le Savoir est en retrait. Une petite leçon et il repart."
+      "text": "L’Intelligence est en retrait. Une petite leçon et elle repart."
     },
     {
       "ability": "INT",
-      "text": "Le Savoir est resté sur l’étagère : prends-le dans tes mains, même cinq minutes."
+      "text": "L’Intelligence est restée sur l’étagère : reprends-la, même cinq minutes."
     },
     {
       "ability": "INT",
-      "text": "Un peu d’étude fera du bien à ton Savoir."
+      "text": "Un peu d’étude fera du bien à ton Intelligence."
     },
     {
       "ability": "SAG",
-      "text": "L’Équilibre est en retrait : cinq minutes de silence suffiraient à le ramener."
+      "text": "La Sagesse est en retrait : cinq minutes de silence suffiraient à la ramener."
     },
     {
       "ability": "SAG",
-      "text": "Pense à ton Équilibre : respirer, observer, écrire quelques lignes."
+      "text": "Pense à ta Sagesse : respirer, observer, écrire quelques lignes."
     },
     {
       "ability": "SAG",
-      "text": "L’Équilibre aimerait un peu de calme : un souffle, une pause, un regard au loin."
+      "text": "La Sagesse aimerait un peu de calme : un souffle, une pause, un regard au loin."
     },
     {
       "ability": "SAG",
-      "text": "Un peu d’attention à soi remettrait l’Équilibre en marche."
+      "text": "Un peu d’attention à soi remettrait la Sagesse en marche."
     },
     {
       "ability": "SAG",
-      "text": "Ton Équilibre a besoin de silence : une petite méditation lui fera du bien."
+      "text": "Ta Sagesse a besoin de silence : dix minutes de méditation lui feront du bien."
     },
     {
       "ability": "SAG",
-      "text": "L’Équilibre n’a pas eu sa part : réserve-lui un moment tranquille."
+      "text": "La Sagesse n’a pas eu sa part : réserve-lui un moment tranquille."
     },
     {
       "ability": "CHA",
-      "text": "Les Liens ont été un peu délaissés : un message, un appel, un café."
+      "text": "Le Charisme a été un peu délaissé : un message, un appel, un café."
     },
     {
       "ability": "CHA",
-      "text": "Pense à tes Liens : un mot sincère à quelqu’un qui compte."
+      "text": "Pense à ton Charisme : un mot sincère à quelqu’un qui compte."
     },
     {
       "ability": "CHA",
-      "text": "Les Liens attendent un geste simple : écouter, remercier, inviter."
+      "text": "Le Charisme attend un geste simple : écouter, remercier, inviter."
     },
     {
       "ability": "CHA",
-      "text": "Un petit signe à un proche relancerait les Liens."
+      "text": "Un petit signe à un proche relancerait le Charisme."
     },
     {
       "ability": "CHA",
-      "text": "Les Liens sont restés discrets : une conversation suffirait à les raviver."
+      "text": "Le Charisme est resté discret : une conversation suffirait à le raviver."
     },
     {
       "ability": "CHA",
-      "text": "Un peu de chaleur humaine, et les Liens repartent."
+      "text": "Un peu de chaleur humaine, et le Charisme repart."
     }
   ],
   "closers": [

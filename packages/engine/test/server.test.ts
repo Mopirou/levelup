@@ -540,3 +540,42 @@ describe('trophées et statistiques', () => {
     expect(ABILITIES.length).toBe(6);
   });
 });
+
+describe('quêtes guidées multi-caractéristiques', () => {
+  const salsa = catalog.find((t) => t.id === 'g-danse-salsa-t1')!;
+  async function withGuidedQuest() {
+    const s = await started();
+    const inst = (await s.store.listInstances(U, { period: 'daily', status: 'accepted' }))[0];
+    const { ability, difficulty, title, flavor, objective, tips, validation, tags, theme, secondary } = salsa;
+    await s.store.updateInstance(U, inst.id, { snapshot: { ability, difficulty, title, flavor, objective, tips, validation, tags, theme, secondary } });
+    return { s, id: inst.id };
+  }
+  const done = (s: ReturnType<typeof setup>, id: string) =>
+    completeQuestAction(s.ctx, U, { instanceId: id, useInspiration: false, progress: 20 });
+
+  it('répartit l’XP entre la caractéristique principale et les secondaires', async () => {
+    const { s, id } = await withGuidedQuest();
+    const before = (await s.store.getCharacter(U))!;
+    const res = await done(s, id);
+    expect(res.ok).toBe(true);
+    const events = (await s.store.listXpEvents(U)).filter((e) => e.reason === 'quest' && e.instanceId === id);
+    const by = Object.fromEntries(events.map((e) => [e.ability, e.amount]));
+    expect(Object.keys(by).sort()).toEqual(['CHA', 'DEX', 'FOR']);
+    expect(by.DEX).toBeGreaterThan(by.CHA);
+    expect(by.CHA).toBeGreaterThan(by.FOR);
+    const xp = res.ok ? res.data.xpAwarded : 0;
+    expect(events.reduce((n, e) => n + e.amount, 0)).toBe(xp);
+    const after = (await s.store.getCharacter(U))!;
+    expect(after.abilityXp.CHA - before.abilityXp.CHA).toBe(by.CHA);
+    expect(after.abilityXp.FOR - before.abilityXp.FOR).toBe(by.FOR);
+  });
+  it('l’annulation retire l’XP de chaque caractéristique', async () => {
+    const { s, id } = await withGuidedQuest();
+    await done(s, id);
+    expect((await undoQuest(s.ctx, U, id)).ok).toBe(true);
+    // Le bonus d’un trophée déjà débloqué reste acquis : on vérifie les mouvements de la quête elle-même.
+    const events = (await s.store.listXpEvents(U)).filter((e) => e.reason === 'quest' || e.reason === 'undo');
+    for (const a of ABILITIES) expect(events.filter((e) => e.ability === a).reduce((n, e) => n + e.amount, 0)).toBe(0);
+    expect(events.filter((e) => e.reason === 'undo')).toHaveLength(3);
+  });
+});

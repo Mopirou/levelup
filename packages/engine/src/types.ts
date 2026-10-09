@@ -20,6 +20,12 @@ export type ValidationSpec =
 
 export type ValidationType = ValidationSpec['type'];
 
+/** Part de l'XP d'une quête versée à une caractéristique secondaire (en %). */
+export interface XpShare {
+  ability: AbilityId;
+  pct: number;
+}
+
 export interface QuestTemplate {
   id: string;
   source: 'catalog' | 'custom';
@@ -33,13 +39,17 @@ export interface QuestTemplate {
   tips: string[];
   validation: ValidationSpec;
   tags: string[];
+  /** Discipline guidée (danse, cuisine…) ; absente pour les quêtes générales. */
+  theme?: string | null;
+  /** Caractéristiques secondaires qui reçoivent une part de l'XP. */
+  secondary?: XpShare[];
   isActive?: boolean;
 }
 
 /** Copie figée du texte d'une quête au moment du tirage. */
 export type QuestSnapshot = Pick<
   QuestTemplate,
-  'ability' | 'difficulty' | 'title' | 'flavor' | 'objective' | 'tips' | 'validation' | 'tags'
+  'ability' | 'difficulty' | 'title' | 'flavor' | 'objective' | 'tips' | 'validation' | 'tags' | 'theme' | 'secondary'
 >;
 
 export interface QuestPreference {

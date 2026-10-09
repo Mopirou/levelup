@@ -84,7 +84,7 @@ const complete = (s: ReturnType<typeof setup>, q: QuestInstance, extra: Record<s
 beforeAll(async () => {
   pg = await PGlite.create({ extensions: { citext, pgcrypto } });
   await pg.exec(PLATFORM);
-  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql']) await pg.exec(read(`migrations/${f}`));
+  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql']) await pg.exec(read(`migrations/${f}`));
   await pg.exec(read('seed.sql'));
   await pg.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'a@ex.fr', '{"username":"aldric","birth_year":1994}')`, [U]);
 }, 120_000);
@@ -135,7 +135,9 @@ describe('logique de jeu sur le vrai schéma (adaptateur SupabaseStore)', () => 
     expect(c.totalXp).toBe(r.data.character.totalXp);
     expect(c.streakCurrent).toBe(1);
     const events = await s.store.listXpEvents(U);
-    expect(events.map((e: { reason: string }) => e.reason).sort()).toEqual(['achievement', 'quest']);
+    // une quête guidée verse son XP sur plusieurs caractéristiques : un événement par caractéristique
+    expect([...new Set(events.map((e: { reason: string }) => e.reason))].sort()).toEqual(['achievement', 'quest']);
+    expect(events.filter((e: { reason: string }) => e.reason === 'quest').reduce((n: number, e: { amount: number }) => n + e.amount, 0)).toBe(firstXp);
     expect(events[0].gameDate).toBe('2026-10-05');
     expect((await s.store.listUnlocked(U)).map((u: { achievementId: string }) => u.achievementId)).toContain('premier-pas');
     const posts = (await pg.query(`select type, text, visibility from posts where author_id = $1 order by type`, [U])).rows as { type: string; text: string }[];
@@ -144,9 +146,10 @@ describe('logique de jeu sur le vrai schéma (adaptateur SupabaseStore)', () => 
     expect(posts.filter((p) => p.type === 'achievement')).toHaveLength(r.data.achievements.length);
     expect(((await pg.query(`select storage_path from post_media`)).rows as { storage_path: string }[]).map((m) => m.storage_path)).toEqual([`${U}/a.webp`]);
     // idempotence côté base
+    const questEvents = events.filter((e: { reason: string }) => e.reason === 'quest').length;
     const again = await complete(s, q);
     expect(again.ok && again.data.duplicate).toBe(true);
-    expect((await s.store.listXpEvents(U)).filter((e: { reason: string }) => e.reason === 'quest')).toHaveLength(1);
+    expect((await s.store.listXpEvents(U)).filter((e: { reason: string }) => e.reason === 'quest')).toHaveLength(questEvents);
   });
 
   it('annule une validation : événement compensatoire, quête rouverte, publication détachée', async () => {
@@ -155,7 +158,7 @@ describe('logique de jeu sur le vrai schéma (adaptateur SupabaseStore)', () => 
     const r = await undoQuest(s.ctx, U, done.id);
     expect(r.ok).toBe(true);
     const events = await s.store.listXpEvents(U);
-    expect(events.some((e: { reason: string; amount: number }) => e.reason === 'undo' && e.amount === -firstXp)).toBe(true);
+    expect(events.filter((e: { reason: string }) => e.reason === 'undo').reduce((n: number, e: { amount: number }) => n + e.amount, 0)).toBe(-firstXp);
     expect((await s.store.getInstance(U, done.id)).status).toBe('accepted');
     const post = (await pg.query(`select instance_id, payload from posts where author_id = $1`, [U])).rows[0] as { instance_id: string | null; payload: Record<string, unknown> };
     expect(post.instance_id).toBeNull();

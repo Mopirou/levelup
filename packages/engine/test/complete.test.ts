@@ -208,7 +208,7 @@ describe('narration', () => {
   it('choisit un message compatible et stable', () => {
     const m1 = pickTavernMessage(msgs, ctx);
     expect(m1).toBe(pickTavernMessage(msgs, ctx));
-    expect(['Série 7 pour Alex.', 'Générique.', 'Ta Équilibre s’endort.']).toContain(m1);
+    expect(['Série 7 pour Alex.', 'Générique.', 'Ta Sagesse s’endort.']).toContain(m1);
     expect(pickTavernMessage([{ id: 'x', text: 'Seulement lundi', when: { monday: true } }], ctx)).toBe('Seulement lundi');
     expect(pickTavernMessage([], ctx)).toBe('');
   });
@@ -237,8 +237,8 @@ describe('narration', () => {
     expect(r.best).toBe('INT');
     expect(r.weakest).toBe('DEX');
     expect(r.narrative).toContain('Belle semaine pour Alex.');
-    expect(r.narrative).toContain('Savoir brille.');
-    expect(r.narrative).toContain('Créativité attend.');
+    expect(r.narrative).toContain('Intelligence brille.');
+    expect(r.narrative).toContain('Dextérité attend.');
     const empty = buildRecap(
       { kind: 'month', name: 'A', xp: 0, xpPrev: 0, done: 0, proposed: 0, xpByAbility: { FOR: 0, DEX: 0, CON: 0, INT: 0, SAG: 0, CHA: 0 }, doneByAbility: { FOR: 0, DEX: 0, CON: 0, INT: 0, SAG: 0, CHA: 0 }, seed: 'e' },
       templates,
