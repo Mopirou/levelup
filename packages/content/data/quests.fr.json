@@ -50,23 +50,22 @@
     ]
   },
   {
-    "id": "for-easy-gainage-3-planches",
+    "id": "for-easy-gainage-3-minutes-au-total",
     "ability": "FOR",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Gainage, 3 planches",
+    "title": "Gainage, 3 minutes au total",
     "flavor": "Un tronc solide protège le dos et rend tous les autres efforts plus faciles.",
-    "objective": "Tenir 3 planches dans la journée, de 20 à 30 secondes chacune, avec du repos entre.",
+    "objective": "Tenir la planche pendant 3 minutes en tout dans la journée, en une ou plusieurs séries.",
     "tips": [
       "Coudes sous les épaules, corps aligné.",
-      "Mets-toi à genoux si c’est trop dur."
+      "Fractionne en séries de 20 à 30 secondes si besoin."
     ],
     "validation": {
-      "type": "counter",
-      "target": 3,
-      "unit": "planches"
+      "type": "timer",
+      "minutes": 3
     },
     "tags": [
       "sans matériel",
@@ -471,24 +470,23 @@
     ]
   },
   {
-    "id": "for-medium-gainage-6-planches",
+    "id": "for-medium-gainage-5-minutes-au-total",
     "ability": "FOR",
     "difficulty": "medium",
     "periods": [
       "daily",
       "weekly"
     ],
-    "title": "Gainage, 6 planches",
-    "flavor": "Six planches, c’est un vrai travail du tronc, loin de la routine.",
-    "objective": "Tenir 6 planches (face et côtés), de 30 à 45 secondes chacune, avec du repos entre.",
+    "title": "Gainage, 5 minutes au total",
+    "flavor": "Cinq minutes de planche, c’est un vrai travail du tronc, loin de la routine.",
+    "objective": "Tenir des planches (face et côtés) pendant 5 minutes en tout, en plusieurs séries.",
     "tips": [
       "Garde le corps aligné, sans cambrer.",
       "Repose-toi dès que la forme se dégrade."
     ],
     "validation": {
-      "type": "counter",
-      "target": 6,
-      "unit": "planches"
+      "type": "timer",
+      "minutes": 5
     },
     "tags": [
       "sans matériel",
@@ -737,24 +735,24 @@
     ]
   },
   {
-    "id": "for-high-gainage-25-planches",
+    "id": "for-high-gainage-15-minutes-cumulees",
     "ability": "FOR",
     "difficulty": "high",
     "periods": [
       "weekly",
       "monthly"
     ],
-    "title": "Gainage, 25 planches",
-    "flavor": "Un gainage régulier sculpte un tronc stable et résistant.",
-    "objective": "Tenir 25 planches sur la période, de 30 secondes à 1 minute chacune.",
+    "title": "Gainage, 15 minutes cumulées",
+    "flavor": "Un gainage long et régulier sculpte un tronc stable et résistant.",
+    "objective": "Cumuler 15 minutes de gainage sur la période, en séries de 30 secondes à 2 minutes.",
     "tips": [
-      "Note chaque planche pour suivre ton total.",
+      "Note chaque série pour suivre ton total.",
       "Varie face, côtés et dos."
     ],
     "validation": {
       "type": "counter",
-      "target": 25,
-      "unit": "planches"
+      "target": 15,
+      "unit": "minutes"
     },
     "tags": [
       "sans matériel",
@@ -1923,23 +1921,22 @@
     ]
   },
   {
-    "id": "con-easy-marcher-2-kilometres",
+    "id": "con-easy-marche-15-minutes",
     "ability": "CON",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Marcher 2 kilomètres",
-    "flavor": "Marcher chaque jour est le geste de santé le plus simple et le plus efficace.",
-    "objective": "Marcher 2 kilomètres dans la journée, dehors si possible, d’une traite ou en plusieurs fois.",
+    "title": "Marche, 15 minutes",
+    "flavor": "Marcher un quart d’heure par jour est le geste de santé le plus simple et le plus efficace.",
+    "objective": "Marcher 15 minutes, dehors si possible, à un rythme soutenu, d’une traite ou en plusieurs fois.",
     "tips": [
       "Un peu d’air, sans écran.",
-      "Tu peux les répartir en deux sorties d’un kilomètre."
+      "Tu peux les répartir en deux sorties de 8 minutes."
     ],
     "validation": {
-      "type": "counter",
-      "target": 2,
-      "unit": "km"
+      "type": "timer",
+      "minutes": 15
     },
     "tags": [
       "extérieur",
@@ -2011,21 +2008,22 @@
     ]
   },
   {
-    "id": "con-easy-marcher-apres-un-repas",
+    "id": "con-easy-marche-apres-le-repas-10-minutes",
     "ability": "CON",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Marcher après un repas",
-    "flavor": "Marcher après manger facilite la digestion et stabilise la glycémie.",
-    "objective": "Faire un tour à pied tranquille juste après le déjeuner ou le dîner.",
+    "title": "Marche après le repas, 10 minutes",
+    "flavor": "Dix minutes de marche après manger facilitent la digestion et stabilisent la glycémie.",
+    "objective": "Marcher 10 minutes juste après le déjeuner ou le dîner, à un rythme tranquille.",
     "tips": [
       "Dehors de préférence.",
       "Un tour du quartier suffit."
     ],
     "validation": {
-      "type": "simple"
+      "type": "timer",
+      "minutes": 10
     },
     "tags": [
       "extérieur",
@@ -2033,24 +2031,24 @@
     ]
   },
   {
-    "id": "con-easy-prendre-l-air-dehors",
+    "id": "con-easy-regler-le-reveil-de-demain",
     "ability": "CON",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Prendre l’air dehors",
-    "flavor": "La lumière du jour cale l’horloge interne et améliore le sommeil du soir.",
-    "objective": "Sortir dehors, à la lumière du jour : un café en terrasse, un banc ou un tour du pâté de maisons suffisent.",
+    "title": "Régler le réveil de demain",
+    "flavor": "Un réveil à heure fixe se prépare la veille : c’est ce soir que ça se joue.",
+    "objective": "Ce soir, choisir l’heure de lever de demain, régler le réveil et te coucher en conséquence.",
     "tips": [
-      "Même sous les nuages, la lumière extérieure compte.",
-      "Laisse le téléphone dans ta poche."
+      "Choisis une heure réaliste, la même chaque jour.",
+      "Pose le réveil loin du lit pour devoir te lever."
     ],
     "validation": {
       "type": "simple"
     },
     "tags": [
-      "extérieur"
+      "sommeil"
     ]
   },
   {
@@ -2165,24 +2163,25 @@
     ]
   },
   {
-    "id": "con-easy-une-collation-saine",
+    "id": "con-easy-preparer-le-petit-dejeuner-de-demain",
     "ability": "CON",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Une collation saine",
-    "flavor": "Une collation de qualité évite de craquer sur les produits très sucrés ou très gras.",
-    "objective": "Prendre une collation saine à la place d’un biscuit ou d’une barre : fruit, noix, yaourt, crudités.",
+    "title": "Préparer le petit-déjeuner de demain",
+    "flavor": "Un petit-déjeuner prêt la veille, c’est un bon début de journée sans effort.",
+    "objective": "Ce soir, préparer le petit-déjeuner de demain : sortir les bols, préparer les flocons, le pain ou les fruits.",
     "tips": [
-      "Prévois-la dans ton sac.",
-      "Mange-la assis, sans écran."
+      "Pense à une protéine : œufs, yaourt, fromage blanc.",
+      "Prépare-le avant de te coucher."
     ],
     "validation": {
       "type": "simple"
     },
     "tags": [
-      "alimentation"
+      "alimentation",
+      "matin"
     ]
   },
   {
@@ -2232,24 +2231,23 @@
     ]
   },
   {
-    "id": "con-medium-marcher-4-kilometres",
+    "id": "con-medium-marche-rapide-30-minutes",
     "ability": "CON",
     "difficulty": "medium",
     "periods": [
       "daily",
       "weekly"
     ],
-    "title": "Marcher 4 kilomètres",
-    "flavor": "Quatre kilomètres de marche soutenue entretiennent le cœur et les articulations.",
-    "objective": "Marcher 4 kilomètres à bon rythme, d’une traite ou en deux fois.",
+    "title": "Marche rapide, 30 minutes",
+    "flavor": "Trente minutes de marche rapide entretiennent le cœur et les articulations.",
+    "objective": "Marcher 30 minutes à bon rythme, d’une traite ou en deux fois.",
     "tips": [
       "Choisis un parcours que tu aimes.",
       "Un rythme où tu peux parler mais plus chanter."
     ],
     "validation": {
-      "type": "counter",
-      "target": 4,
-      "unit": "km"
+      "type": "timer",
+      "minutes": 30
     },
     "tags": [
       "extérieur",
@@ -2257,24 +2255,23 @@
     ]
   },
   {
-    "id": "con-medium-courir-ou-marcher-vite-3-km",
+    "id": "con-medium-cardio-20-minutes",
     "ability": "CON",
     "difficulty": "medium",
     "periods": [
       "daily",
       "weekly"
     ],
-    "title": "Courir ou marcher vite, 3 km",
+    "title": "Cardio, 20 minutes",
     "flavor": "Le cardio régulier améliore l’endurance et l’humeur.",
-    "objective": "Parcourir 3 kilomètres en courant ou en marchant vite, à une allure où tu peux encore parler.",
+    "objective": "Courir, pédaler ou nager 20 minutes à une allure où tu peux encore parler.",
     "tips": [
       "Alterne course et marche si besoin.",
-      "Échauffe-toi en marchant au début."
+      "Échauffe-toi quelques minutes à allure lente."
     ],
     "validation": {
-      "type": "counter",
-      "target": 3,
-      "unit": "km"
+      "type": "timer",
+      "minutes": 20
     },
     "tags": [
       "sport"
@@ -2327,22 +2324,23 @@
     ]
   },
   {
-    "id": "con-medium-velo-ou-natation-une-sortie",
+    "id": "con-medium-velo-ou-natation-30-minutes",
     "ability": "CON",
     "difficulty": "medium",
     "periods": [
       "daily",
       "weekly"
     ],
-    "title": "Vélo ou natation, une sortie",
+    "title": "Vélo ou natation, 30 minutes",
     "flavor": "Un cardio sans impact ménage les articulations tout en entraînant le souffle.",
-    "objective": "Faire une sortie de vélo (environ 10 km, réel ou d’appartement) ou de natation (environ 20 longueurs) à un rythme soutenu.",
+    "objective": "Faire 30 minutes de vélo (réel ou d’appartement) ou de natation à un rythme soutenu.",
     "tips": [
       "Règle bien la selle.",
       "Varie l’intensité en cours de route."
     ],
     "validation": {
-      "type": "simple"
+      "type": "timer",
+      "minutes": 30
     },
     "tags": [
       "sport"
@@ -2420,24 +2418,30 @@
     ]
   },
   {
-    "id": "con-medium-marche-et-etirements-du-soir",
+    "id": "con-medium-preparer-sa-matinee-de-demain",
     "ability": "CON",
     "difficulty": "medium",
     "periods": [
       "daily"
     ],
-    "title": "Marche et étirements du soir",
-    "flavor": "Une activité douce le soir aide à se détendre avant de dormir.",
-    "objective": "Faire une marche tranquille puis quelques étirements en fin de journée, avant le coucher.",
+    "title": "Préparer sa matinée de demain",
+    "flavor": "Une matinée qui démarre bien se prépare la veille.",
+    "objective": "Ce soir, préparer demain matin : régler le réveil, sortir les vêtements, préparer le petit-déjeuner et poser le téléphone hors de la chambre.",
     "tips": [
-      "Un tour du quartier suffit.",
-      "Étire surtout le dos, les hanches et les mollets."
+      "Fais-le avant de te mettre en pyjama.",
+      "Coche chaque point au fur et à mesure."
     ],
     "validation": {
-      "type": "simple"
+      "type": "steps",
+      "steps": [
+        "Régler le réveil",
+        "Sortir mes vêtements",
+        "Préparer le petit-déjeuner",
+        "Poser le téléphone hors de la chambre"
+      ]
     },
     "tags": [
-      "sport"
+      "sommeil"
     ]
   },
   {
@@ -2449,7 +2453,7 @@
     ],
     "title": "Marcher 5 fois dans la semaine",
     "flavor": "Marcher presque tous les jours est la base de la santé cardiovasculaire.",
-    "objective": "Faire 5 sorties à pied dans la semaine, d’au moins 2 kilomètres chacune.",
+    "objective": "Faire 5 sorties à pied dans la semaine, d’au moins 20 minutes chacune.",
     "tips": [
       "Intègre la marche à un trajet quotidien.",
       "Ajoute une sortie dès qu’elle est faite."
@@ -2465,22 +2469,23 @@
     ]
   },
   {
-    "id": "con-medium-grande-sortie-a-pied-ou-a-velo",
+    "id": "con-medium-grande-sortie-45-minutes",
     "ability": "CON",
     "difficulty": "medium",
     "periods": [
       "daily",
       "weekly"
     ],
-    "title": "Grande sortie à pied ou à vélo",
+    "title": "Grande sortie, 45 minutes",
     "flavor": "Une longue sortie combine endurance et exposition à la lumière.",
-    "objective": "Faire une vraie sortie dehors : environ 5 km à pied ou 15 km à vélo, à un rythme régulier.",
+    "objective": "Faire une sortie de 45 minutes à pied ou à vélo, dehors, à un rythme régulier.",
     "tips": [
       "Emporte de l’eau.",
       "Prends un chemin que tu aimes."
     ],
     "validation": {
-      "type": "simple"
+      "type": "timer",
+      "minutes": 45
     },
     "tags": [
       "extérieur",
@@ -2558,22 +2563,23 @@
     ]
   },
   {
-    "id": "con-high-longue-marche-8-kilometres",
+    "id": "con-high-longue-marche-90-minutes",
     "ability": "CON",
     "difficulty": "high",
     "periods": [
       "daily",
       "weekly"
     ],
-    "title": "Longue marche, 8 kilomètres",
+    "title": "Longue marche, 90 minutes",
     "flavor": "Une longue marche entretient l’endurance de base et clarifie l’esprit.",
-    "objective": "Faire une longue marche d’environ 8 kilomètres, à un rythme régulier, dehors.",
+    "objective": "Faire une sortie de 90 minutes à pied à un rythme régulier.",
     "tips": [
       "Emporte de l’eau et une collation.",
       "Alterne montées et portions plates."
     ],
     "validation": {
-      "type": "simple"
+      "type": "timer",
+      "minutes": 90
     },
     "tags": [
       "extérieur",
@@ -2683,7 +2689,7 @@
     ],
     "title": "Marche, 20 sorties dans le mois",
     "flavor": "Vingt sorties à pied dans le mois, c’est presque une marche tous les deux jours.",
-    "objective": "Faire 20 sorties à pied dans le mois, d’au moins 2 kilomètres chacune.",
+    "objective": "Faire 20 sorties à pied dans le mois, d’au moins 20 minutes chacune.",
     "tips": [
       "Intègre la marche à un trajet quotidien.",
       "Ajoute chaque sortie après coup."
@@ -2778,7 +2784,7 @@
     ],
     "title": "Semaine santé, 7 jours",
     "flavor": "Sept jours où sommeil, repas, eau et marche sont tenus ensemble.",
-    "objective": "Pendant 7 jours : dormir 7 à 9 heures, marcher 3 kilomètres, boire 1,5 L d’eau et manger équilibré chaque jour. Adapte à ta condition.",
+    "objective": "Pendant 7 jours : dormir 7 à 9 heures, marcher 30 minutes, boire 1,5 L d’eau et manger équilibré chaque jour. Adapte à ta condition.",
     "tips": [
       "Coche chaque jour réussi.",
       "Prépare tes repas à l’avance."
@@ -2869,27 +2875,25 @@
     ]
   },
   {
-    "id": "int-easy-dix-mots-de-vocabulaire",
+    "id": "int-easy-un-cours-de-langue-etrangere",
     "ability": "INT",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Dix mots de vocabulaire",
-    "flavor": "La régularité compte plus que la durée pour retenir du vocabulaire.",
-    "objective": "Apprendre ou réviser 10 mots dans une langue étrangère, avec une application, un carnet ou des fiches.",
+    "title": "Un cours de langue étrangère",
+    "flavor": "Un cours par jour fait plus progresser qu’une longue séance de temps en temps.",
+    "objective": "Suivre un cours de langue étrangère aujourd’hui : espagnol, anglais, allemand… en ligne, en application ou avec un professeur.",
     "tips": [
-      "Associe chaque mot à une phrase.",
-      "Dis-les à voix haute."
+      "Choisis toujours la même langue pour progresser.",
+      "Fais les exercices du cours, pas seulement la vidéo."
     ],
     "validation": {
-      "type": "counter",
-      "target": 10,
-      "unit": "mots"
+      "type": "simple"
     },
     "tags": [
       "langue",
-      "moins de 10 min"
+      "numérique"
     ]
   },
   {
@@ -3171,26 +3175,26 @@
     "tags": []
   },
   {
-    "id": "int-medium-langue-etrangere-une-seance-complete",
+    "id": "int-medium-un-cours-de-langue-complet",
     "ability": "INT",
     "difficulty": "medium",
     "periods": [
       "daily",
       "weekly"
     ],
-    "title": "Langue étrangère, une séance complète",
-    "flavor": "Alterner vocabulaire, écoute et expression ancre mieux la langue.",
-    "objective": "Faire une séance de langue étrangère complète : vocabulaire, écoute, expression.",
+    "title": "Un cours de langue complet",
+    "flavor": "Alterner cours, exercices et expression orale ancre mieux la langue.",
+    "objective": "Suivre un cours de langue étrangère, faire ses exercices, puis dire trois phrases à voix haute.",
     "tips": [
       "Parle à voix haute, même seul.",
-      "Termine par trois phrases écrites ou dites de mémoire."
+      "Réutilise les mots du cours dans tes phrases."
     ],
     "validation": {
       "type": "steps",
       "steps": [
-        "Apprendre ou réviser 15 mots",
-        "Écouter un court audio",
-        "Écrire ou dire 3 phrases"
+        "Suivre le cours",
+        "Faire les exercices",
+        "Dire trois phrases à voix haute"
       ]
     },
     "tags": [
@@ -3269,23 +3273,26 @@
     ]
   },
   {
-    "id": "int-medium-langue-60-mots-dans-la-semaine",
+    "id": "int-medium-un-texte-en-langue-etrangere",
     "ability": "INT",
     "difficulty": "medium",
     "periods": [
       "weekly"
     ],
-    "title": "Langue, 60 mots dans la semaine",
-    "flavor": "Quelques mots chaque jour donnent de meilleurs résultats qu’une longue séance.",
-    "objective": "Apprendre 60 mots dans une langue étrangère sur la semaine, en les réutilisant dans des phrases.",
+    "title": "Un texte en langue étrangère",
+    "flavor": "Écrire puis lire à voix haute fait passer la langue de la tête à la bouche.",
+    "objective": "Rédiger un texte de quelques phrases dans la langue que tu apprends (espagnol, anglais…), le corriger, puis le lire à voix haute.",
     "tips": [
-      "Dix mots par jour pendant 6 jours.",
-      "Réutilise-les à l’oral ou à l’écrit."
+      "Écris sur un sujet simple : ta journée, ta famille, tes projets.",
+      "Enregistre-toi pour te réécouter."
     ],
     "validation": {
-      "type": "counter",
-      "target": 60,
-      "unit": "mots"
+      "type": "steps",
+      "steps": [
+        "Rédiger un texte de quelques phrases",
+        "Le relire et le corriger",
+        "Le lire à voix haute"
+      ]
     },
     "tags": [
       "langue"
@@ -3445,23 +3452,23 @@
     "tags": []
   },
   {
-    "id": "int-high-langue-100-mots-dans-la-semaine",
+    "id": "int-high-deux-textes-lus-a-voix-haute",
     "ability": "INT",
     "difficulty": "high",
     "periods": [
       "weekly"
     ],
-    "title": "Langue, 100 mots dans la semaine",
-    "flavor": "Cent mots par semaine permettent de progresser visiblement.",
-    "objective": "Apprendre 100 mots dans une langue étrangère sur la semaine, et en réutiliser au moins 20 dans des phrases.",
+    "title": "Deux textes lus à voix haute",
+    "flavor": "Deux textes dans la semaine, c’est la meilleure façon de fixer le vocabulaire et la grammaire.",
+    "objective": "Rédiger 2 textes dans la langue que tu apprends et les lire à voix haute dans la semaine.",
     "tips": [
-      "Alterne leçon, vocabulaire et écoute.",
-      "Écris des phrases avec les mots nouveaux."
+      "Un texte descriptif, un texte qui raconte.",
+      "Fais-toi corriger par une application ou un ami."
     ],
     "validation": {
       "type": "counter",
-      "target": 100,
-      "unit": "mots"
+      "target": 2,
+      "unit": "textes"
     },
     "tags": [
       "langue"
@@ -3584,23 +3591,23 @@
     "tags": []
   },
   {
-    "id": "int-high-langue-250-mots-dans-le-mois",
+    "id": "int-high-langue-10-cours-dans-le-mois",
     "ability": "INT",
     "difficulty": "high",
     "periods": [
       "monthly"
     ],
-    "title": "Langue, 250 mots dans le mois",
-    "flavor": "Deux cent cinquante mots appris en un mois donnent une vraie différence.",
-    "objective": "Apprendre 250 mots d’une langue étrangère sur le mois et les réutiliser à l’oral ou à l’écrit.",
+    "title": "Langue, 10 cours dans le mois",
+    "flavor": "Dix cours en un mois donnent une vraie différence.",
+    "objective": "Suivre 10 cours de langue étrangère dans le mois et parler quelques phrases à voix haute à chaque fois.",
     "tips": [
-      "Huit mots par jour environ.",
-      "Révise les anciens mots chaque semaine."
+      "Un cours tous les trois jours.",
+      "Révise le cours précédent avant de commencer."
     ],
     "validation": {
       "type": "counter",
-      "target": 250,
-      "unit": "mots"
+      "target": 10,
+      "unit": "cours"
     },
     "tags": [
       "langue"
@@ -3699,24 +3706,24 @@
     "tags": []
   },
   {
-    "id": "int-expert-langue-etrangere-1-000-mots",
+    "id": "int-expert-langue-etrangere-40-cours",
     "ability": "INT",
     "difficulty": "expert",
     "periods": [
       "monthly",
       "epic"
     ],
-    "title": "Langue étrangère, 1 000 mots",
-    "flavor": "Mille mots donnent un niveau de conversation de base.",
-    "objective": "Apprendre 1 000 mots d’une langue étrangère et tenir une conversation d’au moins 10 phrases avec quelqu’un.",
+    "title": "Langue étrangère, 40 cours",
+    "flavor": "Quarante cours de langue étrangère mènent à un niveau de conversation de base.",
+    "objective": "Suivre 40 cours de langue étrangère et tenir une conversation d’au moins 10 phrases avec quelqu’un.",
     "tips": [
-      "Révise régulièrement tes mots anciens.",
+      "Révise régulièrement tes anciens cours.",
       "Parle avec un locuteur dès que possible."
     ],
     "validation": {
       "type": "counter",
-      "target": 1000,
-      "unit": "mots"
+      "target": 40,
+      "unit": "cours"
     },
     "tags": [
       "langue"
@@ -3746,23 +3753,22 @@
     ]
   },
   {
-    "id": "sag-easy-respiration-calme-3-series",
+    "id": "sag-easy-respiration-calme-5-minutes",
     "ability": "SAG",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Respiration calme, 3 séries",
+    "title": "Respiration calme, 5 minutes",
     "flavor": "Respirer lentement active le système nerveux qui apaise le corps.",
-    "objective": "Faire 3 séries de 10 respirations lentes : inspirer 4 secondes, expirer 6 secondes, assis ou allongé.",
+    "objective": "Pendant 5 minutes, respirer lentement : inspirer 4 secondes, expirer 6 secondes, assis ou allongé.",
     "tips": [
       "Pose une main sur le ventre.",
       "Garde les épaules relâchées."
     ],
     "validation": {
-      "type": "counter",
-      "target": 3,
-      "unit": "séries"
+      "type": "timer",
+      "minutes": 5
     },
     "tags": [
       "sans matériel",
@@ -3770,21 +3776,22 @@
     ]
   },
   {
-    "id": "sag-easy-une-seance-de-meditation",
+    "id": "sag-easy-meditation-10-minutes",
     "ability": "SAG",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Une séance de méditation",
-    "flavor": "Méditer entraîne la capacité à rester présent.",
-    "objective": "Faire une séance de méditation, assis, en portant l’attention sur la respiration, avec ou sans guidage.",
+    "title": "Méditation, 10 minutes",
+    "flavor": "Dix minutes de méditation entraînent la capacité à rester présent.",
+    "objective": "Méditer 10 minutes, assis, en portant l’attention sur la respiration, avec ou sans guidage.",
     "tips": [
       "Utilise une méditation guidée si tu débutes.",
       "Quand l’esprit part, reviens simplement à la respiration."
     ],
     "validation": {
-      "type": "simple"
+      "type": "timer",
+      "minutes": 10
     },
     "tags": [
       "sans matériel"
@@ -3859,21 +3866,22 @@
     ]
   },
   {
-    "id": "sag-easy-un-moment-de-silence",
+    "id": "sag-easy-silence-sans-ecran-10-minutes",
     "ability": "SAG",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Un moment de silence",
+    "title": "Silence sans écran, 10 minutes",
     "flavor": "Le silence laisse l’esprit retomber après une journée de sollicitations.",
-    "objective": "Rester un moment dans le silence, sans écran, sans musique, sans lecture, assis ou en marchant lentement.",
+    "objective": "Rester 10 minutes dans le silence, sans écran, sans musique, sans lecture, assis ou en marchant lentement.",
     "tips": [
-      "Choisis un endroit calme.",
+      "Mets un minuteur.",
       "Laisse les pensées passer sans les suivre."
     ],
     "validation": {
-      "type": "simple"
+      "type": "timer",
+      "minutes": 10
     },
     "tags": [
       "détox",
@@ -3903,21 +3911,22 @@
     ]
   },
   {
-    "id": "sag-easy-coherence-cardiaque-une-seance",
+    "id": "sag-easy-coherence-cardiaque-5-minutes",
     "ability": "SAG",
     "difficulty": "easy",
     "periods": [
       "daily"
     ],
-    "title": "Cohérence cardiaque, une séance",
+    "title": "Cohérence cardiaque, 5 minutes",
     "flavor": "Respirer à ce rythme régulier apaise le rythme cardiaque et l’anxiété.",
-    "objective": "Faire une séance de cohérence cardiaque : une trentaine de respirations à raison de 5 secondes pour inspirer, 5 secondes pour expirer.",
+    "objective": "Pendant 5 minutes, respirer au rythme de 6 respirations par minute : 5 secondes pour inspirer, 5 secondes pour expirer.",
     "tips": [
       "Utilise une application ou une vidéo de guidage.",
       "Respire par le ventre."
     ],
     "validation": {
-      "type": "simple"
+      "type": "timer",
+      "minutes": 5
     },
     "tags": [
       "sans matériel",
@@ -4062,27 +4071,23 @@
     ]
   },
   {
-    "id": "sag-medium-meditation-complete",
+    "id": "sag-medium-meditation-15-minutes",
     "ability": "SAG",
     "difficulty": "medium",
     "periods": [
       "daily",
       "weekly"
     ],
-    "title": "Méditation complète",
-    "flavor": "Une séance structurée permet de dépasser l’agitation du début.",
-    "objective": "Faire une séance de méditation complète : s’installer, respirer en pleine conscience, revenir doucement.",
+    "title": "Méditation, 15 minutes",
+    "flavor": "Quinze minutes permettent de dépasser l’agitation du début de séance.",
+    "objective": "Méditer 15 minutes, assis, en portant l’attention sur la respiration.",
     "tips": [
       "Utilise une méditation guidée si tu débutes.",
       "Quand l’esprit part, reviens simplement à la respiration."
     ],
     "validation": {
-      "type": "steps",
-      "steps": [
-        "M’installer confortablement",
-        "Respirer en pleine conscience",
-        "Revenir doucement et noter ce que j’ai ressenti"
-      ]
+      "type": "timer",
+      "minutes": 15
     },
     "tags": [
       "sans matériel"
@@ -4157,16 +4162,16 @@
     ]
   },
   {
-    "id": "sag-medium-une-pause-sans-ecran-de-loisir",
+    "id": "sag-medium-une-heure-sans-ecran-de-loisir",
     "ability": "SAG",
     "difficulty": "medium",
     "periods": [
       "daily",
       "weekly"
     ],
-    "title": "Une pause sans écran de loisir",
-    "flavor": "Une pause déconnectée laisse la place à autre chose que les notifications.",
-    "objective": "Choisir un moment de la journée (repas, trajet, soirée) et le passer sans écran de loisir : téléphone, télévision, jeux.",
+    "title": "Une heure sans écran de loisir",
+    "flavor": "Une heure déconnectée laisse la place à autre chose que les notifications.",
+    "objective": "Passer une heure sans écran de loisir (téléphone, télévision, jeux) et faire autre chose à la place.",
     "tips": [
       "Prépare une activité de remplacement.",
       "Mets le téléphone dans une autre pièce."
@@ -4389,27 +4394,23 @@
     ]
   },
   {
-    "id": "sag-high-meditation-guidee-en-entier",
+    "id": "sag-high-meditation-longue-20-minutes",
     "ability": "SAG",
     "difficulty": "high",
     "periods": [
       "daily",
       "weekly"
     ],
-    "title": "Méditation guidée en entier",
-    "flavor": "Aller au bout d’une séance guidée approfondit la concentration et la détente.",
-    "objective": "Suivre une méditation guidée en entier, sans l’interrompre.",
+    "title": "Méditation longue, 20 minutes",
+    "flavor": "Une séance longue approfondit la concentration et la détente.",
+    "objective": "Méditer 20 minutes d’affilée, assis, sans interruption.",
     "tips": [
       "Commence par quelques respirations profondes.",
       "Accepte que l’esprit s’agite."
     ],
     "validation": {
-      "type": "steps",
-      "steps": [
-        "Poser mon intention",
-        "Suivre la méditation guidée en entier",
-        "Noter ce que j’ai ressenti"
-      ]
+      "type": "timer",
+      "minutes": 20
     },
     "tags": [
       "sans matériel"
@@ -4565,7 +4566,7 @@
     ],
     "title": "Méditation, 25 jours dans le mois",
     "flavor": "Vingt-cinq jours de pratique installent un vrai rendez-vous quotidien avec soi.",
-    "objective": "Faire une séance de méditation chaque jour pendant 25 jours dans le mois.",
+    "objective": "Méditer au moins 10 minutes par jour pendant 25 jours dans le mois.",
     "tips": [
       "Choisis un moment qui ne bouge pas.",
       "Si tu rates un jour, reprends le lendemain."

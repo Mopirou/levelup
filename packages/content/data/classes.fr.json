@@ -6,7 +6,7 @@
     "masteries": ["FOR", "CON"],
     "profile": "Sportif endurant, salle et cardio",
     "description": "Pour les sportifs d’endurance : course, salle, cardio. Tu progresses surtout en Force et en Constitution.",
-    "favoredQuests": ["Marcher 4 kilomètres", "Endurance, 3 séances dans la semaine", "Pompes, 40 aujourd’hui"],
+    "favoredQuests": ["Marche rapide, 30 minutes", "Endurance, 3 séances dans la semaine", "Pompes, 40 aujourd’hui"],
     "paths": [
       { "id": "eclaireur-sentier", "name": "Voie du Sentier", "ability": "SAG", "title": "Marcheur des cimes", "description": "Tu cours pour entendre le vent. Ta voie ajoute une affinité Sagesse : chaque sortie en nature te rapporte un petit supplément d’XP." },
       { "id": "eclaireur-bastion", "name": "Voie du Bastion", "ability": "INT", "title": "Stratège de l’effort", "description": "Tu planifies, mesures, ajustes. Ta voie ajoute une affinité Intelligence : tes plans d’entraînement t’apportent un petit supplément d’XP." }
@@ -71,7 +71,7 @@
     "masteries": ["INT", "SAG"],
     "profile": "Étudiant permanent, lecteur, réfléchi",
     "description": "Pour les étudiants permanents, les lecteurs et les curieux. Tu progresses surtout en Intelligence et en Sagesse.",
-    "favoredQuests": ["Lecture, 20 pages", "Langue étrangère, une séance complète", "Méditation complète"],
+    "favoredQuests": ["Lecture, 20 pages", "Un cours de langue complet", "Méditation, 15 minutes"],
     "paths": [
       { "id": "erudit-savant", "name": "Voie du Savant", "ability": "INT", "title": "Gardien des savoirs", "description": "Tu creuses chaque sujet jusqu’au fond. Ta voie ajoute une affinité Intelligence." },
       { "id": "erudit-ermite", "name": "Voie de l’Ermite", "ability": "SAG", "title": "Sage de la Tour", "description": "Tu cherches le calme autant que le savoir. Ta voie ajoute une affinité Sagesse." }
@@ -84,7 +84,7 @@
     "masteries": ["SAG", "CHA"],
     "profile": "Bienveillant, tourné vers les autres",
     "description": "Pour ceux qui prennent soin des autres et d’eux-mêmes. Tu progresses surtout en Sagesse et en Charisme.",
-    "favoredQuests": ["Méditation complète", "Écoute active, cinq reformulations", "Trois gratitudes"],
+    "favoredQuests": ["Méditation, 15 minutes", "Écoute active, cinq reformulations", "Trois gratitudes"],
     "paths": [
       { "id": "gardien-guerisseur", "name": "Voie du Guérisseur", "ability": "CON", "title": "Main qui apaise", "description": "Tu prends soin des corps autant que des cœurs. Ta voie ajoute une affinité Constitution." },
       { "id": "gardien-protecteur", "name": "Voie du Protecteur", "ability": "FOR", "title": "Bouclier des siens", "description": "Tu défends ceux que tu aimes. Ta voie ajoute une affinité Force." }
@@ -97,7 +97,7 @@
     "masteries": ["CON", "SAG"],
     "profile": "Proche de la nature, curieux du vivant",
     "description": "Pour les amoureux de nature et de grands espaces. Tu progresses surtout en Constitution et en Sagesse.",
-    "favoredQuests": ["Un moment dans la nature, sans écran", "Grande sortie à pied ou à vélo", "Marcher 5 fois dans la semaine"],
+    "favoredQuests": ["Un moment dans la nature, sans écran", "Grande sortie, 45 minutes", "Marcher 5 fois dans la semaine"],
     "paths": [
       { "id": "explorateur-druide", "name": "Voie du Sentier vert", "ability": "INT", "title": "Lecteur du vivant", "description": "Tu observes, tu notes, tu apprends de la nature. Ta voie ajoute une affinité Intelligence." },
       { "id": "explorateur-nomade", "name": "Voie du Nomade", "ability": "FOR", "title": "Marcheur d’horizons", "description": "Tu vas toujours un peu plus loin. Ta voie ajoute une affinité Force." }
