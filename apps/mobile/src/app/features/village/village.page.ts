@@ -212,16 +212,15 @@ export class VillagePage implements OnDestroy {
   async reload(): Promise<void> {
     this.loading.set(true);
     this.fresh.set(0);
-    try {
-      const [feed, friends] = await Promise.all([this.be.social.feed(null, 20), this.be.social.friends()]);
-      this.posts.set(feed.posts);
-      this.hasMore.set(feed.hasMore);
-      this.friends.set(friends);
-    } catch {
-      /* hors ligne : on garde ce qui est affiché */
-    } finally {
-      this.loading.set(false);
+    // Indépendants : si le fil échoue, le cercle d'amis doit quand même s'afficher (et inversement).
+    // Hors ligne, on garde ce qui est déjà affiché.
+    const [feed, friends] = await Promise.allSettled([this.be.social.feed(null, 20), this.be.social.friends()]);
+    if (feed.status === 'fulfilled') {
+      this.posts.set(feed.value.posts);
+      this.hasMore.set(feed.value.hasMore);
     }
+    if (friends.status === 'fulfilled') this.friends.set(friends.value);
+    this.loading.set(false);
   }
 
   async more(ev: CustomEvent): Promise<void> {
