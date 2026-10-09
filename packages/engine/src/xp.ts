@@ -32,6 +32,20 @@ export const MIN_SCORE = 2;
 export const POINT_BUY_BUDGET = 6;
 /** Score maximum à la création (+3 sur une seule caractéristique). */
 export const POINT_BUY_MAX = 5;
+
+/**
+ * Une quête peut être refaite dans la même période, avec une XP dégressive pour que répéter la même chose
+ * ne remplace pas la variété : 100 %, puis 90 %, 80 %… jusqu'à 50 % (plancher). Le nombre de validations est plafonné par période.
+ */
+export const REPEAT_FACTORS: readonly number[] = [1, 0.9, 0.8, 0.7, 0.6, 0.5];
+export const MAX_RUNS: Record<Period, number> = { daily: 3, weekly: 2, monthly: 1, epic: 1 };
+/** Quêtes ajoutées à la main qui peuvent être en cours en même temps, par période. */
+export const MAX_OPEN_EXTRAS: Record<Period, number> = { daily: 8, weekly: 5, monthly: 3, epic: 1 };
+
+/** Part de l'XP versée quand la quête a déjà été accomplie `doneBefore` fois dans la période. */
+export function repeatMultiplier(doneBefore: number): number {
+  return REPEAT_FACTORS[Math.min(Math.max(Math.floor(doneBefore), 0), REPEAT_FACTORS.length - 1)];
+}
 export const POINT_BUY_COST: Record<number, number> = {
   2: 0, 3: 1, 4: 2, 5: 3,
 };
@@ -179,6 +193,8 @@ export interface QuestXpInput {
   doubled?: boolean;
   /** Ajustement « trop dur / trop facile » : proportionnel à la cible demandée (1 = quête d'origine) */
   scale?: number;
+  /** Nombre de fois où cette quête a déjà été accomplie dans la période (XP dégressive) */
+  repeat?: number;
 }
 
 export interface QuestXpBreakdown {
@@ -187,6 +203,8 @@ export interface QuestXpBreakdown {
   mastery: number;
   affinity: number;
   doubled: boolean;
+  /** Part de l'XP versée (1 = pleine, moins si la quête est refaite) */
+  repeat: number;
   total: number;
 }
 
@@ -197,8 +215,10 @@ export function questXp(i: QuestXpInput): QuestXpBreakdown {
   const mastery = i.masteries.includes(i.ability) ? xpBonusForMastery(proficiencyBonus(i.level)) : 0;
   const affinity = i.pathAbility && i.pathAbility === i.ability ? 2 : 0;
   const core = i.scale && i.scale !== 1 ? Math.max(Math.round(base * multiplier * i.scale), 1) : base * multiplier;
-  const sub = core + mastery + affinity;
-  return { base, multiplier, mastery, affinity, doubled: !!i.doubled, total: i.doubled ? sub * 2 : sub };
+  const repeat = repeatMultiplier(i.repeat ?? 0);
+  const full = core + mastery + affinity;
+  const sub = repeat === 1 ? full : Math.max(1, Math.round(full * repeat));
+  return { base, multiplier, mastery, affinity, doubled: !!i.doubled, repeat, total: i.doubled ? sub * 2 : sub };
 }
 
 export interface XpPart {
@@ -272,7 +292,7 @@ export function questCountFor(period: Period, level: number, dailySetting?: numb
   const u = unlocksAt(level);
   switch (period) {
     case 'daily':
-      return dailySetting ? Math.min(Math.max(dailySetting, 1), u.dailyQuests) : u.dailyQuests;
+      return dailySetting != null ? Math.min(Math.max(dailySetting, 0), u.dailyQuests) : u.dailyQuests;
     case 'weekly':
       return u.weeklyQuests;
     case 'monthly':

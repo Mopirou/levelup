@@ -11,7 +11,6 @@ import {
   baseTargetOf,
   nextTune,
   progressRatio,
-  questXp,
   tunedTarget,
   tuneXpScale,
   validationTarget,
@@ -89,6 +88,9 @@ const timerKey = (id: string) => `lu-timer-${id}`;
             </section>
           } @else if (q.status === 'expired' || q.status === 'abandoned') {
             <section class="lu-card flat"><p class="small muted">Cette quête est {{ q.status === 'expired' ? 'expirée' : 'abandonnée' }}. Elle rapporte 0 XP, mais ne t’en retire pas.</p></section>
+            @if (canRedo()) {
+              <button type="button" class="lu-btn" (click)="redo()"><lu-icon name="refresh" [size]="17" /> La refaire maintenant</button>
+            }
           } @else {
             <section class="lu-card">
               <div class="vhead">
@@ -222,6 +224,13 @@ const timerKey = (id: string) => `lu-timer-${id}`;
               <p class="small muted center">Partagé avec tes amis. Merci d’encourager les autres !</p>
             }
 
+            @if (canRedo()) {
+              <section class="lu-card flat">
+                <p class="small muted">Envie de recommencer ? Tu peux la refaire{{ redoXpNote() }}.</p>
+                <button type="button" class="lu-btn" [disabled]="busy()" (click)="redo()"><lu-icon name="refresh" [size]="17" /> Refaire cette quête</button>
+              </section>
+            }
+
             @if (undoable()) {
               <button type="button" class="lu-btn ghost small inline" style="align-self: center" (click)="undo()"><lu-icon name="undo2" [size]="15" /> Annuler cette validation (24 h)</button>
             }
@@ -336,13 +345,14 @@ export class QuestDetailPage {
   );
   readonly inspiration = computed(() => this.game.character()?.inspiration ?? 0);
 
-  readonly xp = computed(() => {
-    const q = this.inst()!;
-    const c = this.game.character();
-    return questXp({
-      difficulty: q.snapshot.difficulty, period: q.period, ability: q.snapshot.ability, level: c?.level ?? 1,
-      masteries: this.game.masteries(), pathAbility: this.game.pathAbility(), doubled: this.useInsp(), scale: tuneXpScale(q.snapshot),
-    });
+  readonly xp = computed(() => this.game.xpBreakdown(this.inst()!, this.useInsp()));
+  readonly canRedo = computed(() => !!this.inst() && this.game.canRedo(this.inst()!));
+  /** XP de la prochaine tentative, pour prévenir que la répétition rapporte moins. */
+  readonly redoXpNote = computed(() => {
+    const q = this.inst();
+    if (!q) return '';
+    const next = this.game.xpBreakdown({ ...q, id: '', status: 'accepted' }, false);
+    return next.repeat < 1 ? ' (' + Math.round(next.repeat * 100) + ' % de l’XP, soit ' + fmt(next.total) + ' XP)' : '';
   });
   /** Cibles proposées par « trop dur » / « trop facile » (null = pas possible), pour les quêtes à compteur ou à minuteur. */
   readonly tuneOptions = computed(() => {
@@ -387,6 +397,7 @@ export class QuestDetailPage {
     if (scale !== 1) s += ` × ${String(Math.round(scale * 100) / 100).replace('.', ',')}`;
     if (x.mastery) s += ` + maîtrise ${x.mastery}`;
     if (x.affinity) s += ` + voie ${x.affinity}`;
+    if (x.repeat < 1) s = `(${s}) × ${Math.round(x.repeat * 100)} % (quête refaite)`;
     s = `${s} = ${x.doubled ? x.total / 2 : x.total} XP`;
     return x.doubled ? `(${s}) × 2 = ${x.total} XP` : s;
   });
@@ -584,6 +595,22 @@ export class QuestDetailPage {
     void this.ui.nav.navigateBack('/tabs/quests');
   }
 
+  /** Refait la quête : une nouvelle tentative démarre et on y va directement. */
+  async redo(): Promise<void> {
+    const q = this.inst();
+    if (!q || this.busy()) return;
+    this.busy.set(true);
+    try {
+      const next = await this.game.redo(q);
+      if (next) {
+        void haptic('light');
+        this.ui.go(['/quest', next.id]);
+      }
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   async undo(): Promise<void> {
     const q = this.inst();
     if (!q) return;
@@ -596,7 +623,7 @@ export class QuestDetailPage {
     const q = this.inst();
     if (!q) return;
     const pref = this.game.prefs()[q.templateId];
-    const canReroll = q.status === 'proposed' || (q.status === 'accepted' && q.progress === 0);
+    const canReroll = (q.origin ?? 'draw') === 'draw' && (q.status === 'proposed' || (q.status === 'accepted' && q.progress === 0));
     const buttons: { text: string; role?: string; handler?: () => void }[] = [];
     if (canReroll) buttons.push({ text: 'Relancer cette quête', handler: () => void this.reroll() });
     buttons.push({ text: pref?.isFavorite ? 'Retirer des favorites' : 'Marquer comme favorite', handler: () => void this.game.setPreference({ templateId: q.templateId, isFavorite: !pref?.isFavorite, isExcluded: pref?.isExcluded, isPinned: pref?.isPinned }) });

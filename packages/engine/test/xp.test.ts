@@ -20,6 +20,8 @@ import {
   BALANCED_SCORES,
   hasLegacyBaseScores,
   rescaleLegacyBaseScores,
+  repeatMultiplier,
+  REPEAT_FACTORS,
 } from '../src';
 
 describe('niveaux', () => {
@@ -146,6 +148,24 @@ describe('XP d’une quête', () => {
     expect(partialXp(100, 1, 4)).toBe(0);
     expect(partialXp(100, 5, 4)).toBe(100);
     expect(partialXp(100, 1, 0)).toBe(0);
+  });
+});
+
+describe('XP d’une quête refaite', () => {
+  it('baisse de 10 % en 10 %, jusqu’à un plancher de 50 %', () => {
+    expect(REPEAT_FACTORS).toEqual([1, 0.9, 0.8, 0.7, 0.6, 0.5]);
+    expect([0, 1, 2, 3, 4, 5].map(repeatMultiplier)).toEqual([1, 0.9, 0.8, 0.7, 0.6, 0.5]);
+    expect(repeatMultiplier(6)).toBe(0.5);
+    expect(repeatMultiplier(40)).toBe(0.5);
+    expect(repeatMultiplier(-3)).toBe(1);
+  });
+  it('s’applique à l’XP de la quête, avec « trop facile » et l’Inspiration', () => {
+    const base = { difficulty: 'medium', period: 'daily', ability: 'INT', level: 1, masteries: [] } as const;
+    expect(questXp({ ...base, repeat: 0 }).total).toBe(25);
+    expect(questXp({ ...base, repeat: 1 })).toMatchObject({ repeat: 0.9, total: 23 }); // 25 × 0,9 = 22,5 → 23
+    expect(questXp({ ...base, repeat: 5 })).toMatchObject({ repeat: 0.5, total: 13 }); // 25 × 0,5 = 12,5 → 13
+    expect(questXp({ ...base, repeat: 1, doubled: true }).total).toBe(46);
+    expect(questXp({ ...base, repeat: 1, scale: 0.5 }).total).toBe(12); // moitié moins (13) puis × 0,9 = 11,7
   });
 });
 

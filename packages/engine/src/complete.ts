@@ -31,6 +31,8 @@ export interface CompletionInput {
   pathAbility?: AbilityId | null;
   instance: QuestInstance;
   useInspiration: boolean;
+  /** Validations déjà faites de cette quête dans la période (XP dégressive) */
+  repeat?: number;
   progress?: number;
   stepsDone?: boolean[];
   journalText?: string;
@@ -182,6 +184,7 @@ export function completeQuest(input: CompletionInput): { ok: true; result: Compl
     pathAbility: input.pathAbility,
     doubled: input.useInspiration,
     scale: tuneXpScale(instance.snapshot),
+    repeat: input.repeat,
   });
   const base = input.useInspiration ? { ...character, inspiration: character.inspiration - 1 } : character;
   const applied = applyXpParts(base, splitXp(breakdown.total, instance.snapshot.ability, instance.snapshot.secondary));

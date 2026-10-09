@@ -51,6 +51,12 @@ var PERIOD_MULTIPLIER = {
 var MIN_SCORE = 2;
 var POINT_BUY_BUDGET = 6;
 var POINT_BUY_MAX = 5;
+var REPEAT_FACTORS = [1, 0.9, 0.8, 0.7, 0.6, 0.5];
+var MAX_RUNS = { daily: 3, weekly: 2, monthly: 1, epic: 1 };
+var MAX_OPEN_EXTRAS = { daily: 8, weekly: 5, monthly: 3, epic: 1 };
+function repeatMultiplier(doneBefore) {
+  return REPEAT_FACTORS[Math.min(Math.max(Math.floor(doneBefore), 0), REPEAT_FACTORS.length - 1)];
+}
 var POINT_BUY_COST = {
   2: 0,
   3: 1,
@@ -153,8 +159,10 @@ function questXp(i) {
   const mastery = i.masteries.includes(i.ability) ? xpBonusForMastery(proficiencyBonus(i.level)) : 0;
   const affinity = i.pathAbility && i.pathAbility === i.ability ? 2 : 0;
   const core = i.scale && i.scale !== 1 ? Math.max(Math.round(base * multiplier * i.scale), 1) : base * multiplier;
-  const sub = core + mastery + affinity;
-  return { base, multiplier, mastery, affinity, doubled: !!i.doubled, total: i.doubled ? sub * 2 : sub };
+  const repeat = repeatMultiplier(i.repeat ?? 0);
+  const full = core + mastery + affinity;
+  const sub = repeat === 1 ? full : Math.max(1, Math.round(full * repeat));
+  return { base, multiplier, mastery, affinity, doubled: !!i.doubled, repeat, total: i.doubled ? sub * 2 : sub };
 }
 function splitXp(total, primary, secondary) {
   const sign = total < 0 ? -1 : 1;
@@ -202,7 +210,7 @@ function questCountFor(period, level, dailySetting) {
   const u = unlocksAt(level);
   switch (period) {
     case "daily":
-      return dailySetting ? Math.min(Math.max(dailySetting, 1), u.dailyQuests) : u.dailyQuests;
+      return dailySetting != null ? Math.min(Math.max(dailySetting, 0), u.dailyQuests) : u.dailyQuests;
     case "weekly":
       return u.weeklyQuests;
     case "monthly":
@@ -713,7 +721,8 @@ function completeQuest(input) {
     masteries: input.masteries,
     pathAbility: input.pathAbility,
     doubled: input.useInspiration,
-    scale: tuneXpScale(instance.snapshot)
+    scale: tuneXpScale(instance.snapshot),
+    repeat: input.repeat
   });
   const base = input.useInspiration ? { ...character, inspiration: character.inspiration - 1 } : character;
   const applied = applyXpParts(base, splitXp(breakdown.total, instance.snapshot.ability, instance.snapshot.secondary));
@@ -2472,7 +2481,7 @@ function snapshotOf(t) {
     ...t.secondary?.length ? { secondary: t.secondary } : {}
   };
 }
-function newInstance(id, t, period, start, end, status, nowIso, free = false, tune = 0) {
+function newInstance(id, t, period, start, end, status, nowIso, free = false, tune = 0, meta = {}) {
   const snapshot = tunedSnapshot(snapshotOf(t), t.validation, tune ?? 0);
   return {
     id,
@@ -2487,6 +2496,8 @@ function newInstance(id, t, period, start, end, status, nowIso, free = false, tu
     xpAwarded: 0,
     inspirationUsed: false,
     free,
+    run: meta.run ?? 1,
+    origin: meta.origin ?? "draw",
     acceptedAt: status === "accepted" ? nowIso : null,
     completedAt: null
   };
@@ -2654,7 +2665,7 @@ async function ensureQuests(ctx, userId) {
         const applied = applyXpParts(character, parts);
         character = mergeChar(character, applied.character);
         result.levelUps.push(...applied.levelsGained);
-      } else if (settings.hardcore) {
+      } else if (settings.hardcore && (inst.origin ?? "draw") === "draw") {
         const penalty = hardcorePenalty(inst);
         events.push(eventFor(ctx, { instanceId: inst.id, ability: inst.snapshot.ability, amount: -penalty, reason: "hardcore" }, inst.periodEnd));
         character = mergeChar(character, applyXp(character, inst.snapshot.ability, -penalty).character);
@@ -2676,9 +2687,10 @@ async function ensureQuests(ctx, userId) {
   const toInsert = [];
   for (const period of periods) {
     const b = periodBounds(period, today);
-    if (history.some((i) => i.period === period && i.periodStart === b.start)) continue;
+    if (history.some((i) => i.period === period && i.periodStart === b.start && (i.origin ?? "draw") === "draw")) continue;
     const count = questCountFor(period, character.level, period === "daily" ? settings.dailyQuestCount : void 0);
     if (count <= 0) continue;
+    const already = history.filter((i) => i.period === period && i.periodStart === b.start).map((i) => i.templateId);
     const base = {
       characterId: character.id,
       period,
@@ -2691,7 +2703,7 @@ async function ensureQuests(ctx, userId) {
       interests: settings.interests,
       lastDrawn: lastDrawnMap(history, period)
     };
-    const main = drawQuests({ ...base, count });
+    const main = drawQuests({ ...base, count, exclude: already });
     for (const t of main.picks) {
       const pinned = !!prefs[t.id]?.isPinned;
       const status = period === "daily" || pinned ? "accepted" : "proposed";
@@ -2702,7 +2714,7 @@ async function ensureQuests(ctx, userId) {
         ...base,
         count: FREE_QUESTS_PER_DAY,
         difficultyPlan: ["medium", "high"],
-        exclude: main.picks.map((t) => t.id),
+        exclude: [...already, ...main.picks.map((t) => t.id)],
         seedSuffix: "free",
         skipPinned: true
       });
@@ -2735,7 +2747,7 @@ async function abandonQuest(ctx, userId, instanceId) {
   const inst = await ctx.store.getInstance(userId, instanceId);
   if (!inst) return fail("not-found");
   if (inst.status !== "proposed" && inst.status !== "accepted") return fail("not-accepted");
-  if (env.settings.hardcore && inst.status === "accepted") {
+  if (env.settings.hardcore && inst.status === "accepted" && (inst.origin ?? "draw") === "draw") {
     const penalty = hardcorePenalty(inst);
     await ctx.store.insertXpEvents(userId, [eventFor(ctx, { instanceId, ability: inst.snapshot.ability, amount: -penalty, reason: "hardcore" }, env.today)]);
     await ctx.store.saveCharacter(userId, mergeChar(env.character, applyXp(env.character, inst.snapshot.ability, -penalty).character));
@@ -2753,6 +2765,52 @@ async function updateProgress(ctx, userId, instanceId, patch) {
   await ctx.store.updateInstance(userId, instanceId, next);
   return { ok: true, instance: { ...inst, ...next } };
 }
+async function startFromTemplate(env, t, period) {
+  const { ctx, userId, character } = env;
+  if (!PERIODS.includes(period) || !t.periods.includes(period)) return fail("invalid", "Cette qu\xEAte ne se fait pas sur cette p\xE9riode.");
+  if (period === "epic" && !unlocksAt(character.level).epic) return fail("level-too-low", "Les qu\xEAtes \xE9piques s\u2019ouvrent au niveau 11.");
+  const lock = questLock(t.difficulty, abilityScores(character)[t.ability], character.level);
+  if (lock.locked) return fail("locked", lock.reason);
+  const b = periodBounds(period, env.today);
+  if (env.today > lastAcceptDate(period, b.start, b.end)) return fail("too-late-to-accept", "Il est trop tard pour d\xE9marrer cette qu\xEAte.");
+  const inPeriod = await ctx.store.listInstances(userId, { period, from: b.start, to: b.start });
+  const same = inPeriod.filter((i) => i.templateId === t.id);
+  if (same.some((i) => i.status === "accepted")) return fail("already-active", "Cette qu\xEAte est d\xE9j\xE0 en cours.");
+  const nowIso = new Date(env.nowMs).toISOString();
+  const proposed = same.find((i) => i.status === "proposed");
+  if (proposed) {
+    const patch = { status: "accepted", acceptedAt: nowIso };
+    await ctx.store.updateInstance(userId, proposed.id, patch);
+    return { ok: true, instance: { ...proposed, ...patch } };
+  }
+  if (same.filter((i) => i.status === "completed").length >= MAX_RUNS[period]) {
+    return fail("run-limit", period === "daily" ? "Tu as d\xE9j\xE0 refait cette qu\xEAte trois fois aujourd\u2019hui." : "Cette qu\xEAte a d\xE9j\xE0 \xE9t\xE9 faite le maximum de fois sur cette p\xE9riode.");
+  }
+  const openExtras = inPeriod.filter((i) => i.status === "accepted" && (i.free || (i.origin ?? "draw") !== "draw")).length;
+  if (openExtras >= MAX_OPEN_EXTRAS[period]) return fail("too-many-open", "Trop de qu\xEAtes en cours : termine-en une avant d\u2019en ajouter.");
+  const run = same.reduce((n, i) => Math.max(n, i.run ?? 1), 0) + 1;
+  const prefs = await ctx.store.getPreferences(userId);
+  const inst = newInstance(ctx.uuid(), t, period, b.start, b.end, "accepted", nowIso, true, prefs[t.id]?.tune, { origin: same.length ? "redo" : "chosen", run });
+  await ctx.store.insertInstances(userId, [inst]);
+  return { ok: true, instance: inst };
+}
+async function startQuest(ctx, userId, input) {
+  const env = await loadEnv(ctx, userId);
+  if (!env) return fail("no-character");
+  const t = (await ctx.store.listTemplates(userId)).find((x) => x.id === input.templateId && x.isActive !== false);
+  if (!t) return fail("not-found");
+  return startFromTemplate(env, t, input.period);
+}
+async function redoQuest(ctx, userId, instanceId) {
+  const env = await loadEnv(ctx, userId);
+  if (!env) return fail("no-character");
+  const inst = await ctx.store.getInstance(userId, instanceId);
+  if (!inst) return fail("not-found");
+  if (inst.status === "proposed" || inst.status === "accepted") return fail("already-active", "Cette qu\xEAte est d\xE9j\xE0 en cours.");
+  const t = (await ctx.store.listTemplates(userId)).find((x) => x.id === inst.templateId && x.isActive !== false);
+  if (!t) return fail("not-found", "Cette qu\xEAte n\u2019existe plus dans le catalogue.");
+  return startFromTemplate(env, t, inst.period);
+}
 async function rerollQuest(ctx, userId, instanceId) {
   const env = await loadEnv(ctx, userId);
   if (!env) return fail("no-character");
@@ -2760,6 +2818,7 @@ async function rerollQuest(ctx, userId, instanceId) {
   if (!inst) return fail("not-found");
   if (inst.status === "completed" || inst.status === "expired" || inst.status === "abandoned") return fail("not-accepted");
   if (inst.progress > 0) return fail("invalid", "Une qu\xEAte d\xE9j\xE0 entam\xE9e ne peut pas \xEAtre relanc\xE9e.");
+  if ((inst.origin ?? "draw") !== "draw") return fail("invalid", "Seules les qu\xEAtes tir\xE9es peuvent \xEAtre relanc\xE9es.");
   const character = { ...env.character };
   if (character.rerollsDate !== env.today) {
     character.rerollsDate = env.today;
@@ -2861,6 +2920,8 @@ async function completeQuestAction(ctx, userId, req) {
   }
   const statusOk = inst.status === "accepted" || offline && inst.status === "expired";
   if (!statusOk) return fail("not-accepted");
+  const siblings = await store.listInstances(userId, { period: inst.period, from: inst.periodStart, to: inst.periodStart });
+  const repeat = siblings.filter((i) => i.templateId === inst.templateId && i.id !== inst.id && i.status === "completed").length;
   const masteries = masteriesFor(env.character);
   const check = completeQuest({
     character: env.character,
@@ -2868,6 +2929,7 @@ async function completeQuestAction(ctx, userId, req) {
     pathAbility: pathAbilityFor(env.character),
     instance: { ...inst, status: "accepted" },
     useInspiration: req.useInspiration,
+    repeat,
     progress: req.progress,
     stepsDone: req.stepsDone,
     journalText: req.journalText
@@ -3412,6 +3474,8 @@ var SupabaseStore = class {
       xpAwarded: r.xp_awarded,
       inspirationUsed: r.inspiration_used,
       free: r.is_free,
+      run: r.run ?? 1,
+      origin: r.origin ?? "draw",
       acceptedAt: r.accepted_at,
       completedAt: r.completed_at
     };
@@ -3431,6 +3495,8 @@ var SupabaseStore = class {
       xp_awarded: i.xpAwarded,
       inspiration_used: i.inspirationUsed,
       is_free: !!i.free,
+      run: i.run ?? 1,
+      origin: i.origin ?? "draw",
       accepted_at: i.acceptedAt ?? null,
       completed_at: i.completedAt ?? null
     };
@@ -3452,7 +3518,7 @@ var SupabaseStore = class {
   }
   async insertInstances(userId, instances) {
     if (!instances.length) return;
-    const { error } = await this.db.from("quest_instances").upsert(instances.map((i) => this.fromInstance(userId, i)), { onConflict: "profile_id,template_id,period,period_start", ignoreDuplicates: true });
+    const { error } = await this.db.from("quest_instances").upsert(instances.map((i) => this.fromInstance(userId, i)), { onConflict: "profile_id,template_id,period,period_start,run", ignoreDuplicates: true });
     fail2(error, "instances.insert");
   }
   async updateInstance(userId, id, patch) {
@@ -3595,6 +3661,8 @@ export {
   MAX_INSPIRATION,
   MAX_INTERESTS,
   MAX_LEVEL,
+  MAX_OPEN_EXTRAS,
+  MAX_RUNS,
   MAX_SCORE,
   MIN_SCORE,
   MemoryStore,
@@ -3611,6 +3679,7 @@ export {
   REACTION_EMOJI,
   REACTION_KINDS,
   REACTION_LABEL,
+  REPEAT_FACTORS,
   SOFT_CAP_SCORE,
   SupabaseStore,
   TIER3_MIN_SCORE,
@@ -3702,6 +3771,8 @@ export {
   questLock,
   questXp,
   recomputeCharacter,
+  redoQuest,
+  repeatMultiplier,
   rerollQuest,
   rescaleLegacyBaseScores,
   sanitizeInterests,
@@ -3713,6 +3784,7 @@ export {
   startOfMonth,
   startOfQuarter,
   startOfWeek,
+  startQuest,
   tierAt,
   tierUnlocked,
   toDateStr,

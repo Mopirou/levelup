@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { IonContent } from '@ionic/angular';
-import { Capacitor } from '@capacitor/core';
 import { BackendService } from '../../core/backend.service';
 import { AuthService } from '../../core/auth.service';
 import { env } from '../../core/env';
@@ -59,14 +58,12 @@ export function authMessage(e: unknown): string {
               <p class="lead">Tes données restent les tiennes.</p>
               @if (invite()) { <div class="invite"><lu-icon name="user-plus" [size]="16" /> Un ami t’invite à le rejoindre.</div> }
               <div class="btns">
-                @if (apple) { <button type="button" class="lu-btn light" (click)="oauth('apple')"><lu-icon name="globe" [size]="18" /> Continuer avec Apple</button> }
-                <button type="button" class="lu-btn light" (click)="oauth('google')"><lu-icon name="globe" [size]="18" /> Continuer avec Google</button>
                 <button type="button" class="lu-btn" (click)="mode.set('signup')"><lu-icon name="mail" [size]="18" /> Continuer avec un e-mail</button>
               </div>
               <button type="button" class="lu-btn text" (click)="mode.set('login')">J’ai déjà un compte</button>
               @if (error()) { <p class="err" role="alert">{{ error() }}</p> }
               @if (local) {
-                <p class="demo"><lu-icon name="info" [size]="13" /> Mode démo : tes données restent sur cet appareil. Pour jouer en ligne avec des amis, un projet Supabase est nécessaire (voir le guide).</p>
+                <p class="demo"><lu-icon name="info" [size]="13" /> Mode local : tes données restent sur cet appareil, sans amis ni classement. Pour jouer avec des amis, le mode en ligne (projet Supabase) est nécessaire.</p>
               }
             </div>
           }
@@ -191,7 +188,6 @@ export class AuthPage {
   readonly error = signal('');
   readonly thisYear = new Date().getFullYear();
   readonly local = !env.cloud;
-  readonly apple = Capacitor.getPlatform() === 'ios';
   readonly stars = Array.from({ length: 26 }, (_, i) => [(i * 97) % 360, (i * 53) % 90] as [number, number]);
   readonly pwStrength = computed(() => strength(this.pw()));
   readonly invite = signal(this.readInvite());
@@ -211,15 +207,6 @@ export class AuthPage {
 
   private async afterSignIn(): Promise<void> {
     await this.router.navigateByUrl('/tabs/tavern', { replaceUrl: true });
-  }
-
-  async oauth(p: 'google' | 'apple'): Promise<void> {
-    this.error.set('');
-    try {
-      await this.be.auth.signInOAuth(p);
-    } catch (e) {
-      this.error.set(authMessage(e));
-    }
   }
 
   async signup(ev: Event): Promise<void> {

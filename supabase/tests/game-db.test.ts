@@ -16,7 +16,9 @@ import {
   declareRest,
   ensureQuests,
   recomputeCharacter,
+  redoQuest,
   rerollQuest,
+  startQuest,
   undoQuest,
   tuneQuest,
   updateProgress,
@@ -85,7 +87,7 @@ const complete = (s: ReturnType<typeof setup>, q: QuestInstance, extra: Record<s
 beforeAll(async () => {
   pg = await PGlite.create({ extensions: { citext, pgcrypto } });
   await pg.exec(PLATFORM);
-  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql', '20261009000002_interests_and_tuning.sql', '20261009000003_rescale_base_scores.sql']) await pg.exec(read(`migrations/${f}`));
+  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql', '20261009000002_interests_and_tuning.sql', '20261009000003_rescale_base_scores.sql', '20261010000001_quest_runs.sql']) await pg.exec(read(`migrations/${f}`));
   await pg.exec(read('seed.sql'));
   await pg.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'a@ex.fr', '{"username":"aldric","birth_year":1994}')`, [U]);
 }, 120_000);
@@ -252,5 +254,35 @@ describe('logique de jeu sur le vrai schéma (adaptateur SupabaseStore)', () => 
     expect(reread.snapshot.baseTarget).toBe(target);
     expect((reread.snapshot.validation as { target: number }).target).toBeLessThan(target);
     expect((await s.store.getPreferences(U))[counter!.templateId].tune).toBe(-1);
+  });
+
+  it('quêtes choisies et refaites : plusieurs passages dans la période grâce à la colonne run', async () => {
+    const s = setup('2026-10-08T12:00:00+02:00');
+    await ensureQuests(s.ctx, U);
+    const taken = (await s.store.listInstances(U, { period: 'daily', from: '2026-10-08' })).map((i: QuestInstance) => i.templateId);
+    const t = (await s.store.listTemplates(U)).find((x: any) => x.difficulty === 'easy' && x.validation.type === 'simple' && x.periods.includes('daily') && !taken.includes(x.id))!;
+    const first = await startQuest(s.ctx, U, { templateId: t.id, period: 'daily' });
+    expect(first.ok && first.instance).toMatchObject({ origin: 'chosen', run: 1, free: true, status: 'accepted' });
+    if (!first.ok) return;
+    expect((await complete(s, first.instance)).ok).toBe(true);
+    const again = await redoQuest(s.ctx, U, first.instance.id);
+    expect(again.ok && again.instance).toMatchObject({ origin: 'redo', run: 2 });
+    if (!again.ok) return;
+    const stored = await s.store.getInstance(U, again.instance.id);
+    expect(stored).toMatchObject({ origin: 'redo', run: 2, status: 'accepted' });
+    const done = await complete(s, again.instance);
+    expect(done.ok && done.data.breakdown.repeat).toBe(0.9);
+    const rows = (await s.store.listInstances(U, { period: 'daily', from: '2026-10-08' })).filter((i: QuestInstance) => i.templateId === t.id);
+    expect(rows).toHaveLength(2);
+    // le tirage reste idempotent malgré les quêtes ajoutées
+    const before = (await s.store.listInstances(U)).length;
+    await ensureQuests(s.ctx, U);
+    expect((await s.store.listInstances(U)).length).toBe(before);
+  });
+
+  it('mode manuel : la base accepte 0 quête tirée par jour', async () => {
+    const s = setup('2026-10-08T13:00:00+02:00');
+    await s.store.saveSettings(U, { ...(await s.store.getSettings(U)), dailyQuestCount: 0 });
+    expect((await s.store.getSettings(U)).dailyQuestCount).toBe(0);
   });
 });

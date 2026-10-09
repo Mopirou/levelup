@@ -11,7 +11,9 @@ import {
   daysLeft,
   emptyAbilityRecord,
   endOfIsoWeek,
+  MAX_RUNS,
   gameDate,
+  lastAcceptDate,
   levelProgress,
   masteriesFor,
   msUntilReset,
@@ -21,6 +23,8 @@ import {
   periodBounds,
   pickTavernMessage,
   proficiencyBonus,
+  questXp,
+  tuneXpScale,
   startOfIsoWeek,
   startOfMonth,
   tierAt,
@@ -31,6 +35,7 @@ import {
   type CharacterRecord,
   type Period,
   type QuestInstance,
+  type QuestXpBreakdown,
   type QuestPreference,
   type QuestTemplate,
   type SettingsRecord,
@@ -287,8 +292,9 @@ export class GameService {
 
   // ───────────────────────── Aides d'état ─────────────────────────
 
+  /** Remplace une quête dans les listes, ou l'y ajoute si elle vient d'être créée (quête choisie ou refaite). */
   private patchInstance(inst: QuestInstance): void {
-    const upd = (list: QuestInstance[]) => list.map((i) => (i.id === inst.id ? inst : i));
+    const upd = (list: QuestInstance[]) => (list.some((i) => i.id === inst.id) ? list.map((i) => (i.id === inst.id ? inst : i)) : [...list, inst]);
     this.instances.update(upd);
     this.recent.update(upd);
   }
@@ -320,6 +326,10 @@ export class GameService {
       case 'no-inspiration': return 'Tu n’as plus d’Inspiration.';
       case 'not-accepted': return 'Cette quête n’est plus disponible.';
       case 'too-late-to-accept': return 'Il est trop tard pour accepter cette quête.';
+      case 'locked': return 'Cette quête est encore verrouillée.';
+      case 'already-active': return 'Cette quête est déjà en cours.';
+      case 'run-limit': return 'Tu as déjà refait cette quête autant de fois que possible sur cette période.';
+      case 'too-many-open': return 'Trop de quêtes en cours : termine-en une avant d’en ajouter.';
       case 'no-reroll': return 'Plus de relance gratuite aujourd’hui et aucune Inspiration.';
       case 'cannot-undo': return 'Cette quête ne peut plus être annulée (24 h maximum).';
       default: return 'Quelque chose s’est mal passé. Réessaie.';
@@ -343,6 +353,60 @@ export class GameService {
     }
     this.toast(this.errorMessage(r.error, r.message), 'error');
     return false;
+  }
+
+  /** Nombre de validations déjà faites de cette quête dans sa période (l'XP baisse à chaque répétition). */
+  repeatOf(inst: QuestInstance): number {
+    return this.instances().filter((i) => i.id !== inst.id && i.templateId === inst.templateId && i.period === inst.period && i.periodStart === inst.periodStart && i.status === 'completed').length;
+  }
+
+  /** XP d'une quête à valider (ou déjà validée), avec la dégressivité des quêtes refaites. */
+  xpBreakdown(inst: QuestInstance, doubled = false): QuestXpBreakdown {
+    return questXp({
+      difficulty: inst.snapshot.difficulty, period: inst.period, ability: inst.snapshot.ability, level: this.level(),
+      masteries: this.masteries(), pathAbility: this.pathAbility(), doubled, repeat: this.repeatOf(inst), scale: tuneXpScale(inst.snapshot),
+    });
+  }
+  xpOf(inst: QuestInstance): number {
+    return inst.status === 'completed' && inst.xpAwarded ? inst.xpAwarded : this.xpBreakdown(inst).total;
+  }
+
+  /** « Refaire » est possible quand la quête est terminée, que sa période est ouverte et que le plafond de répétitions n'est pas atteint. */
+  canRedo(inst: QuestInstance): boolean {
+    if (inst.status === 'proposed' || inst.status === 'accepted') return false;
+    const today = this.today();
+    const b = periodBounds(inst.period, today);
+    if (today > lastAcceptDate(inst.period, b.start, b.end)) return false;
+    const same = this.instances().filter((i) => i.templateId === inst.templateId && i.period === inst.period && i.periodStart === b.start);
+    if (same.some((i) => i.status === 'accepted' || i.status === 'proposed')) return false;
+    return same.filter((i) => i.status === 'completed').length < MAX_RUNS[inst.period];
+  }
+
+  /** Quête de cette période déjà en cours pour un modèle du catalogue. */
+  activeFor(templateId: string, period: Period): QuestInstance | undefined {
+    return this.instances().find((i) => i.templateId === templateId && i.period === period && i.status === 'accepted');
+  }
+
+  /** Ajoute une quête du catalogue à la période en cours, acceptée tout de suite. */
+  async start(t: QuestTemplate, period: Period): Promise<QuestInstance | null> {
+    const r = await this.be.game.start({ templateId: t.id, period });
+    if (r.ok) {
+      this.patchInstance(r.instance);
+      return r.instance;
+    }
+    this.toast(this.errorMessage(r.error, r.message), 'error');
+    return null;
+  }
+
+  /** Refait une quête terminée : une nouvelle tentative démarre dans la période en cours. */
+  async redo(inst: QuestInstance): Promise<QuestInstance | null> {
+    const r = await this.be.game.redo(inst.id);
+    if (r.ok) {
+      this.patchInstance(r.instance);
+      return r.instance;
+    }
+    this.toast(this.errorMessage(r.error, r.message), 'error');
+    return null;
   }
 
   async abandon(inst: QuestInstance): Promise<boolean> {
@@ -417,6 +481,7 @@ export class GameService {
         pathAbility: this.pathAbility(),
         instance: inst,
         useInspiration: !!opts.useInspiration,
+        repeat: this.repeatOf(inst),
         progress: req.progress,
         stepsDone: req.stepsDone,
         journalText: req.journalText,

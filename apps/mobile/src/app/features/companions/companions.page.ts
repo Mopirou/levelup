@@ -42,6 +42,9 @@ const REQUEST_MESSAGES: Record<string, string> = {
         <!-- Ajouter -->
         <section class="lu-section">
           <div class="lu-section-title"><h2>Ajouter un ami</h2></div>
+          @if (local) {
+            <p class="small muted" role="note">Les amis, le fil et le classement demandent le mode en ligne : ici, tes données restent sur cet appareil et personne d’autre ne peut te trouver.</p>
+          }
           <div class="search">
             <lu-icon name="search" [size]="17" />
             <input type="search" class="inp" placeholder="Rechercher par pseudo…" [value]="query()" (input)="onQuery($any($event.target).value)" aria-label="Rechercher par pseudo" autocapitalize="none" />
@@ -165,6 +168,7 @@ const REQUEST_MESSAGES: Record<string, string> = {
 export class CompanionsPage implements OnDestroy {
   protected ui = inject(UiService);
   private be = inject(BackendService);
+  protected readonly local = this.be.mode === 'local';
   private auth = inject(AuthService);
   private game = inject(GameService);
   private social = inject(SocialService);

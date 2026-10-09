@@ -1,0 +1,8 @@
+# Hébergement gratuit sur Netlify (la même configuration marche sur Cloudflare Pages).
+# Variables à définir dans le tableau de bord : SUPABASE_URL et SUPABASE_ANON_KEY.
+[build]
+  command = "npm run build:web"
+  publish = "apps/mobile/dist/mobile/browser"
+
+[build.environment]
+  NODE_VERSION = "22"

@@ -184,7 +184,7 @@ export class SupabaseStore {
     return {
       id: r.id, templateId: r.template_id, snapshot: r.snapshot, period: r.period, periodStart: r.period_start, periodEnd: r.period_end,
       status: r.status, progress: Number(r.progress), stepsDone: r.steps_done ?? undefined, xpAwarded: r.xp_awarded,
-      inspirationUsed: r.inspiration_used, free: r.is_free, acceptedAt: r.accepted_at, completedAt: r.completed_at,
+      inspirationUsed: r.inspiration_used, free: r.is_free, run: r.run ?? 1, origin: r.origin ?? 'draw', acceptedAt: r.accepted_at, completedAt: r.completed_at,
     };
   }
 
@@ -192,7 +192,7 @@ export class SupabaseStore {
     return {
       id: i.id, profile_id: userId, template_id: i.templateId, snapshot: i.snapshot, period: i.period, period_start: i.periodStart,
       period_end: i.periodEnd, status: i.status, progress: i.progress, steps_done: i.stepsDone ?? null, xp_awarded: i.xpAwarded,
-      inspiration_used: i.inspirationUsed, is_free: !!i.free, accepted_at: i.acceptedAt ?? null, completed_at: i.completedAt ?? null,
+      inspiration_used: i.inspirationUsed, is_free: !!i.free, run: i.run ?? 1, origin: i.origin ?? 'draw', accepted_at: i.acceptedAt ?? null, completed_at: i.completedAt ?? null,
     };
   }
 
@@ -217,7 +217,7 @@ export class SupabaseStore {
     if (!instances.length) return;
     const { error } = await this.db
       .from('quest_instances')
-      .upsert(instances.map((i) => this.fromInstance(userId, i)), { onConflict: 'profile_id,template_id,period,period_start', ignoreDuplicates: true });
+      .upsert(instances.map((i) => this.fromInstance(userId, i)), { onConflict: 'profile_id,template_id,period,period_start,run', ignoreDuplicates: true });
     fail(error, 'instances.insert');
   }
 
