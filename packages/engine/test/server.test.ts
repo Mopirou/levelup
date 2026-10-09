@@ -530,7 +530,7 @@ describe('trophées et statistiques', () => {
     const p = await achievementProgress(s.ctx, U);
     expect(p.find((x) => x.id === 'premier-pas')!.done).toBe(true);
     expect(p.find((x) => x.id === 'premier-elan')!.current).toBeGreaterThanOrEqual(3);
-    expect(p.length).toBe(80);
+    expect(p.length).toBe(98);
   });
   it('mode Journée parfaite et nombre de caractéristiques', async () => {
     const s = await started();

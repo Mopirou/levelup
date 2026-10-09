@@ -122,6 +122,7 @@ const PERIODS: Period[] = ['daily', 'weekly', 'monthly'];
         </section>
 
         <section class="lu-section">
+          <button type="button" class="lu-btn" (click)="ui.go('/grimoire')"><lu-icon name="library" [size]="18" /> Choisir une quête par caractéristique</button>
           <button type="button" class="lu-btn light" (click)="forge()"><lu-icon name="plus" [size]="18" /> Créer ma propre quête</button>
           <p class="xs muted center">Simple · Compteur · Chronomètre · Checklist · Journal</p>
           @if (rerollInfo()) {

@@ -150,8 +150,33 @@ describe('tirage', () => {
     expect(lowM.picks.every((t) => t.difficulty === 'high')).toBe(true);
   });
   it('quêtes libres : plan de difficultés', () => {
-    const r = drawQuests({ ...base, difficultyPlan: ['medium', 'high'], period: 'weekly', exclude: ['x'], seedSuffix: 'free' });
+    const strong = { FOR: 14, DEX: 14, CON: 14, INT: 14, SAG: 14, CHA: 14 };
+    const r = drawQuests({ ...base, scores: strong, difficultyPlan: ['medium', 'high'], period: 'weekly', exclude: ['x'], seedSuffix: 'free' });
     expect(r.picks.map((t) => t.difficulty)).toEqual(['medium', 'high']);
+  });
+  it('niveau 3 : jamais tiré tant que le score de sa caractéristique est sous 14, sauf si rien d’autre n’est possible', () => {
+    const weakScores: Record<AbilityId, number> = { FOR: 10, DEX: 10, CON: 10, INT: 10, SAG: 10, CHA: 10 };
+    const open = { ...weakScores, INT: 14 };
+    for (let d = 1; d <= 30; d++) {
+      const r = drawQuests({ ...base, period: 'monthly', periodStart: `2027-02-${String(d).padStart(2, '0')}`, count: 1, level: 3, scores: open, characterId: `m${d}` });
+      expect(r.picks).toHaveLength(1);
+      expect(r.picks[0].difficulty).toBe('high');
+      expect(r.picks[0].ability).toBe('INT'); // seule caractéristique débloquée
+      expect(r.relaxed).not.toContain('locked');
+    }
+  });
+  it('quête mensuelle d’un début de partie : le créneau n’est jamais vide, il puise dans la caractéristique la plus haute', () => {
+    const start: Record<AbilityId, number> = { FOR: 10, DEX: 10, CON: 13, INT: 10, SAG: 10, CHA: 10 };
+    const r = drawQuests({ ...base, period: 'monthly', periodStart: '2027-02-01', count: 1, level: 1, scores: start });
+    expect(r.picks).toHaveLength(1);
+    expect(r.picks[0].ability).toBe('CON');
+    expect(r.relaxed).toContain('locked');
+  });
+  it('niveau 4 : jamais tiré avant le niveau global 11', () => {
+    for (let d = 1; d <= 20; d++) {
+      const r = drawQuests({ ...base, period: 'weekly', periodStart: `2027-02-${String(d).padStart(2, '0')}`, count: 3, level: 10, scores: { FOR: 20, DEX: 20, CON: 20, INT: 20, SAG: 20, CHA: 20 }, characterId: `e${d}` });
+      expect(r.picks.every((t) => t.difficulty !== 'expert')).toBe(true);
+    }
   });
   it('relance : exclut la quête actuelle', () => {
     const cur = drawQuests(base).picks;

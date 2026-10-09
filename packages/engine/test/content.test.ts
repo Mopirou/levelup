@@ -148,9 +148,9 @@ describe('autres contenus', () => {
       for (const f of c.favoredQuests) expect(quests.some((q) => q.title === f)).toBe(true);
     }
   });
-  it('80 trophées uniques', () => {
-    expect(achievements).toHaveLength(80);
-    expect(new Set(achievements.map((a) => a.id)).size).toBe(80);
+  it('98 trophées uniques', () => {
+    expect(achievements).toHaveLength(98);
+    expect(new Set(achievements.map((a) => a.id)).size).toBe(98);
     for (const a of achievements) {
       expect(a.xpBonus).toBeGreaterThanOrEqual(25);
       expect(a.xpBonus).toBeLessThanOrEqual(500);

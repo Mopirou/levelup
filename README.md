@@ -8,7 +8,7 @@ Cahier des charges : [docs/Level Up — Cahier des charges.docx](docs/Level%20Up
 | Dossier | Rôle |
 |---|---|
 | `packages/engine` | Moteur de jeu pur (XP, niveaux, tirage, séries, trophées) + logique serveur (`server/`). Partagé par l'app et les Edge Functions. |
-| `packages/content` | Contenu : 240 quêtes, 80 trophées, 8 classes, tavernier, bilans… (JSON générés depuis `src/`). |
+| `packages/content` | Contenu : 740 quêtes (240 générales, 500 guidées), 98 succès, 8 classes, tavernier, bilans… (JSON générés depuis `src/`). |
 | `apps/mobile` | App Ionic/Angular/Capacitor (web PWA, Android, iOS). Maquettes Figma pour l'UI. |
 | `supabase` | Migrations SQL + RLS, Edge Functions (`game`, `account`, `push`), seed, tests de base. |
 

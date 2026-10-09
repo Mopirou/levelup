@@ -408,6 +408,240 @@
     "titleUnlocked": null
   },
   {
+    "id": "for-quetes-5",
+    "category": "maitrise",
+    "name": "Force : 5 quêtes",
+    "description": "Accomplir 5 quêtes de Force.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "FOR",
+      "target": 5
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "for-quetes-25",
+    "category": "maitrise",
+    "name": "Force : 25 quêtes",
+    "description": "Accomplir 25 quêtes de Force.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "FOR",
+      "target": 25
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "for-quetes-100",
+    "category": "maitrise",
+    "name": "Force : 100 quêtes",
+    "description": "Accomplir 100 quêtes de Force.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "FOR",
+      "target": 100
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
+    "id": "dex-quetes-5",
+    "category": "maitrise",
+    "name": "Dextérité : 5 quêtes",
+    "description": "Accomplir 5 quêtes de Dextérité.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "DEX",
+      "target": 5
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "dex-quetes-25",
+    "category": "maitrise",
+    "name": "Dextérité : 25 quêtes",
+    "description": "Accomplir 25 quêtes de Dextérité.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "DEX",
+      "target": 25
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "dex-quetes-100",
+    "category": "maitrise",
+    "name": "Dextérité : 100 quêtes",
+    "description": "Accomplir 100 quêtes de Dextérité.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "DEX",
+      "target": 100
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
+    "id": "con-quetes-5",
+    "category": "maitrise",
+    "name": "Constitution : 5 quêtes",
+    "description": "Accomplir 5 quêtes de Constitution.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "CON",
+      "target": 5
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "con-quetes-25",
+    "category": "maitrise",
+    "name": "Constitution : 25 quêtes",
+    "description": "Accomplir 25 quêtes de Constitution.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "CON",
+      "target": 25
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "con-quetes-100",
+    "category": "maitrise",
+    "name": "Constitution : 100 quêtes",
+    "description": "Accomplir 100 quêtes de Constitution.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "CON",
+      "target": 100
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
+    "id": "int-quetes-5",
+    "category": "maitrise",
+    "name": "Intelligence : 5 quêtes",
+    "description": "Accomplir 5 quêtes d’Intelligence.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "INT",
+      "target": 5
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "int-quetes-25",
+    "category": "maitrise",
+    "name": "Intelligence : 25 quêtes",
+    "description": "Accomplir 25 quêtes d’Intelligence.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "INT",
+      "target": 25
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "int-quetes-100",
+    "category": "maitrise",
+    "name": "Intelligence : 100 quêtes",
+    "description": "Accomplir 100 quêtes d’Intelligence.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "INT",
+      "target": 100
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
+    "id": "sag-quetes-5",
+    "category": "maitrise",
+    "name": "Sagesse : 5 quêtes",
+    "description": "Accomplir 5 quêtes de Sagesse.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "SAG",
+      "target": 5
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "sag-quetes-25",
+    "category": "maitrise",
+    "name": "Sagesse : 25 quêtes",
+    "description": "Accomplir 25 quêtes de Sagesse.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "SAG",
+      "target": 25
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "sag-quetes-100",
+    "category": "maitrise",
+    "name": "Sagesse : 100 quêtes",
+    "description": "Accomplir 100 quêtes de Sagesse.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "SAG",
+      "target": 100
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
+    "id": "cha-quetes-5",
+    "category": "maitrise",
+    "name": "Charisme : 5 quêtes",
+    "description": "Accomplir 5 quêtes de Charisme.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "CHA",
+      "target": 5
+    },
+    "xpBonus": 25,
+    "titleUnlocked": null
+  },
+  {
+    "id": "cha-quetes-25",
+    "category": "maitrise",
+    "name": "Charisme : 25 quêtes",
+    "description": "Accomplir 25 quêtes de Charisme.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "CHA",
+      "target": 25
+    },
+    "xpBonus": 75,
+    "titleUnlocked": null
+  },
+  {
+    "id": "cha-quetes-100",
+    "category": "maitrise",
+    "name": "Charisme : 100 quêtes",
+    "description": "Accomplir 100 quêtes de Charisme.",
+    "condition": {
+      "kind": "quests_by_ability",
+      "ability": "CHA",
+      "target": 100
+    },
+    "xpBonus": 200,
+    "titleUnlocked": null
+  },
+  {
     "id": "niveau-5",
     "category": "maitrise",
     "name": "Niveau 5",

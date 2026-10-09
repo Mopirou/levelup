@@ -9,7 +9,8 @@ import {
   DIFFICULTY_LABEL,
   PERIOD_SHORT,
   VALIDATION_LABEL,
-  expertUnlocked,
+  TIER3_MIN_SCORE,
+  TIER4_MIN_LEVEL,
   questLock,
   questXp,
   type AbilityId,
@@ -21,7 +22,7 @@ import {
 import { BackendService } from '../../core/backend.service';
 import { GameService } from '../../core/game.service';
 import { UiService } from '../../core/ui.service';
-import { PageHeaderComponent, AbilityBadgeComponent } from '../../shared/ui';
+import { PageHeaderComponent, AbilityBadgeComponent, BarComponent } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
 import { ModalComponent } from '../../shared/modal.component';
 import { THEMES, TIER_LABEL, sharesText, themeLabel } from '../../shared/themes';
@@ -40,11 +41,11 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
 
 @Component({
   selector: 'app-grimoire',
-  imports: [IonContent, NgTemplateOutlet, PageHeaderComponent, AbilityBadgeComponent, IconComponent, ModalComponent],
+  imports: [IonContent, NgTemplateOutlet, PageHeaderComponent, AbilityBadgeComponent, BarComponent, IconComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
-      <lu-page-header [back]="true" eyebrow="Catalogue" icon="library" title="Toutes les quêtes" />
+      <lu-page-header [back]="true" eyebrow="Catalogue" icon="library" title="Choisir une quête" />
       <div class="lu-page">
         <div class="search">
           <lu-icon name="search" [size]="17" />
@@ -64,27 +65,57 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
           <button type="button" [class.on]="view() === 'theme'" [attr.aria-pressed]="view() === 'theme'" (click)="view.set('theme')">Disciplines</button>
         </div>
         @if (view() === 'ability') {
-          @for (a of abilities; track a) {
-            <section class="chapter" [class.open]="opened().has(a) || filtered()">
-              <button type="button" class="chead" (click)="toggle(a)" [attr.aria-expanded]="opened().has(a) || filtered()">
-                <lu-ability-badge [ability]="a" [size]="52" />
-                <span class="ct"><strong>{{ label(a) }}</strong><span class="xs muted">{{ discovered(a) }} / {{ total(a) }} quêtes essayées</span></span>
-                <lu-icon [name]="opened().has(a) || filtered() ? 'chevron-down' : 'chevron-right'" [size]="18" />
-              </button>
-              @if (opened().has(a) || filtered()) {
-                <div class="cbody fade-in">
-                  <p class="illum">{{ chapterText(a) }}</p>
-                  @for (d of difficulties; track d) {
-                    @if (rows(a, d).length) {
-                      <h4 class="dh">{{ dl(d) }}</h4>
-                      @for (t of rows(a, d); track t.id) {
-                        <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: t }" />
-                      }
+          @if (filtered()) {
+            <h4 class="dh">{{ results().length }} résultat{{ results().length > 1 ? 's' : '' }}</h4>
+            @for (t of results(); track t.id) {
+              <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: t }" />
+            } @empty {
+              <p class="muted small">Aucune quête ne correspond à ces filtres.</p>
+            }
+          } @else if (selected(); as a) {
+            <button type="button" class="lu-link back" (click)="select(null)"><lu-icon name="chevron-left" [size]="15" /> Toutes les caractéristiques</button>
+            <div class="ahead">
+              <lu-ability-badge [ability]="a" [size]="56" />
+              <div class="at"><h2>{{ label(a) }}</h2><p class="xs muted">{{ tagline(a) }}</p><p class="xs">Score actuel : <strong>{{ score(a) }}</strong></p></div>
+            </div>
+            <p class="illum">{{ chapterText(a) }}</p>
+            <p class="small muted">Quatre niveaux de quêtes : les niveaux 3 et 4 se débloquent avec ta progression.</p>
+            @for (d of difficulties; track d) {
+              <section class="tier" [class.locked]="tierLock(a, d).locked" [class.open]="openedTier() === d && !tierLock(a, d).locked">
+                <button type="button" class="thead" [disabled]="tierLock(a, d).locked" (click)="toggleTier(d)" [attr.aria-expanded]="openedTier() === d && !tierLock(a, d).locked">
+                  <span class="tn">{{ tierNum(d) }}</span>
+                  <span class="tm">
+                    <strong>{{ tierName(d) }}</strong>
+                    @if (tierLock(a, d).locked) {
+                      <span class="xs gold"><lu-icon name="lock" [size]="12" /> {{ tierLock(a, d).reason }}</span>
+                      <lu-bar [value]="tierProgress(a, d)" label="Progression vers le déblocage" />
+                    } @else {
+                      <span class="xs muted">{{ tierCount(a, d) }} quêtes · {{ tierDone(a, d) }} déjà faites</span>
                     }
-                  }
-                </div>
-              }
-            </section>
+                  </span>
+                  @if (!tierLock(a, d).locked) { <lu-icon [name]="openedTier() === d ? 'chevron-down' : 'chevron-right'" [size]="18" /> }
+                </button>
+                @if (openedTier() === d && !tierLock(a, d).locked) {
+                  <div class="tbody fade-in">
+                    @for (t of tierRows(a, d); track t.id) {
+                      <ng-container *ngTemplateOutlet="rowTpl; context: { $implicit: t }" />
+                    }
+                  </div>
+                }
+              </section>
+            }
+          } @else {
+            @for (a of abilities; track a) {
+              <button type="button" class="acard" (click)="select(a)">
+                <lu-ability-badge [ability]="a" [size]="52" />
+                <span class="am">
+                  <strong>{{ label(a) }}</strong>
+                  <span class="xs muted">{{ tagline(a) }}</span>
+                  <span class="xs">Score {{ score(a) }} · {{ unlockedTiers(a) }}/4 niveaux ouverts · {{ discovered(a) }}/{{ total(a) }} quêtes essayées</span>
+                </span>
+                <lu-icon name="chevron-right" [size]="18" />
+              </button>
+            }
           }
         } @else {
           @for (th of themes; track th.id) {
@@ -168,6 +199,16 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
     .qa { display: flex; gap: 4px; } .ib { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--lu-border); background: transparent; color: var(--lu-muted); display: grid; place-items: center; cursor: pointer; }
     .ib.on { color: var(--lu-gold); border-color: var(--lu-gold); background: var(--lu-gold-bg); }
     .seg { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: var(--lu-surface-2); border: 1px solid var(--lu-border); } .seg button { flex: 1; height: 36px; border-radius: 10px; border: 0; background: transparent; color: var(--lu-text-2); font: 600 13px var(--lu-font-body); cursor: pointer; } .seg button.on { background: var(--lu-surface-grad); color: var(--lu-text); box-shadow: var(--lu-shadow); }
+    .back { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; }
+    .acard { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px; border-radius: 20px; background: var(--lu-surface-grad); border: 1px solid var(--lu-border); color: inherit; text-align: left; cursor: pointer; }
+    .am { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; } .am strong { font-family: var(--lu-font-title); font-size: 20px; font-weight: 500; }
+    .ahead { display: flex; align-items: center; gap: 14px; } .at { display: flex; flex-direction: column; gap: 3px; } .at h2 { font-size: 26px; }
+    .tier { border-radius: 18px; background: var(--lu-surface-grad); border: 1px solid var(--lu-border); overflow: hidden; }
+    .tier.locked { opacity: .8; border-style: dashed; }
+    .thead { width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px; background: none; border: 0; color: inherit; text-align: left; cursor: pointer; } .thead:disabled { cursor: default; }
+    .tn { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 15px var(--lu-font-body); background: var(--lu-surface-2); border: 1px solid var(--lu-border); }
+    .tm { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; } .tm strong { font-size: 15px; }
+    .tbody { padding: 0 14px 12px; }
     .fab { position: sticky; bottom: 12px; align-self: center; width: auto; padding: 0 20px; box-shadow: var(--lu-shadow); }
     .dhd { display: flex; gap: 12px; align-items: center; padding-right: 40px; } .dhd h2 { font-size: 24px; }
     .flav { font-family: var(--lu-font-title); font-style: italic; line-height: 1.6; font-size: 15px; }
@@ -193,6 +234,9 @@ export class GrimoirePage {
   readonly view = signal<'ability' | 'theme'>('ability');
   readonly opened = signal<Set<AbilityId>>(new Set());
   readonly openedThemes = signal<Set<string>>(new Set());
+  /** Caractéristique ouverte (null = liste des six) et niveau déplié. */
+  readonly selected = signal<AbilityId | null>(null);
+  readonly openedTier = signal<Difficulty | null>(null);
   readonly detail = signal<QuestTemplate | null>(null);
   readonly history = signal<QuestInstance[]>([]);
 
@@ -241,6 +285,25 @@ export class GrimoirePage {
       default: return true;
     }
   };
+  tagline = (a: AbilityId) => ABILITY_TAGLINE[a];
+  score = (a: AbilityId) => this.game.scores()[a];
+  tierName = (d: Difficulty) => TIER_LABEL[d];
+  tierNum = (d: Difficulty) => DIFFICULTIES.indexOf(d) + 1;
+  tierLock = (a: AbilityId, d: Difficulty) => questLock(d, this.score(a), this.game.level(), ABILITY_LABEL[a]);
+  /** Avancement vers le déblocage : score de la caractéristique (niveau 3) ou niveau global (niveau 4). */
+  tierProgress = (a: AbilityId, d: Difficulty) => (d === 'high' ? this.score(a) / TIER3_MIN_SCORE : this.game.level() / TIER4_MIN_LEVEL);
+  unlockedTiers = (a: AbilityId) => DIFFICULTIES.filter((d) => !this.tierLock(a, d).locked).length;
+  tierCount = (a: AbilityId, d: Difficulty) => this.game.templates().filter((t) => t.ability === a && t.difficulty === d).length;
+  tierDone = (a: AbilityId, d: Difficulty) => this.game.templates().filter((t) => t.ability === a && t.difficulty === d && this.counts().has(t.id)).length;
+  tierRows = (a: AbilityId, d: Difficulty) => this.game.templates().filter((t) => t.ability === a && t.difficulty === d);
+  readonly results = computed(() => this.game.templates().filter((t) => this.matches(t)));
+  select(a: AbilityId | null): void {
+    this.selected.set(a);
+    this.openedTier.set(null);
+  }
+  toggleTier(d: Difficulty): void {
+    this.openedTier.update((cur) => (cur === d ? null : d));
+  }
   themeName = themeLabel;
   shares = sharesText;
   tier = (d: Difficulty) => TIER_LABEL[d];
@@ -260,7 +323,7 @@ export class GrimoirePage {
   constructor() {
     queueMicrotask(() => {
       const a = this.abilityParam();
-      if (a && (ABILITIES as readonly string[]).includes(a)) this.opened.set(new Set([a as AbilityId]));
+      if (a && (ABILITIES as readonly string[]).includes(a)) this.selected.set(a as AbilityId);
     });
     void this.loadHistory();
   }
@@ -327,4 +390,4 @@ export class GrimoirePage {
     this.ui.go('/forge', { queryParams: { from: t.id } });
   }
 }
-void expertUnlocked;
+

@@ -31,6 +31,12 @@ const rows = [
     [`${a.toLowerCase()}-16`, 'maitrise', `${LABEL[a]} ${ADJ(a, 'aguerri', 'aguerrie')}`, `Atteindre un score de ${LABEL[a]} de 16.`, { kind: 'ability_score', ability: a, target: 16 }, 75, null],
     [`${a.toLowerCase()}-18`, 'maitrise', `${LABEL[a]} remarquable`, `Atteindre un score de ${LABEL[a]} de 18.`, { kind: 'ability_score', ability: a, target: 18 }, 200, null],
   ]),
+  // Quêtes accomplies par caractéristique : 5, 25 et 100 (progression « 3 / 5 quêtes d’Intelligence »)
+  ...A.flatMap((a) => [
+    [5, 25],
+    [25, 75],
+    [100, 200],
+  ].map(([n, xp]) => [`${a.toLowerCase()}-quetes-${n}`, 'maitrise', `${LABEL[a]} : ${n} quêtes`, `Accomplir ${n} quêtes de ${a === 'INT' ? 'l’' : ''}${LABEL[a]}.`.replace('de l’', 'd’'), { kind: 'quests_by_ability', ability: a, target: n }, xp, null])),
   ['niveau-5', 'maitrise', 'Niveau 5', 'Atteindre le niveau 5.', { kind: 'level', target: 5 }, 100, 'Niveau 5'],
   ['niveau-10', 'maitrise', 'Dix niveaux de patience', 'Atteindre le niveau 10.', { kind: 'level', target: 10 }, 200, null],
   ['niveau-11', 'maitrise', 'Niveau 11', 'Atteindre le niveau 11.', { kind: 'level', target: 11 }, 250, 'Niveau 11'],

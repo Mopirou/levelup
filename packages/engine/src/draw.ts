@@ -9,7 +9,7 @@ import {
   QuestPreference,
   QuestTemplate,
 } from './types';
-import { expertUnlocked } from './xp';
+import { TIER4_MIN_LEVEL, tierUnlocked } from './xp';
 
 /** Délai avant qu'une quête tirée puisse revenir (en jours). */
 export const ANTI_REPEAT_DAYS: Record<Period, number> = {
@@ -44,7 +44,7 @@ export interface DrawInput {
 export interface DrawResult {
   picks: QuestTemplate[];
   /** Règles relâchées faute de catalogue (RG-12) */
-  relaxed: ('anti-repeat' | 'balance' | 'duplicate-ability')[];
+  relaxed: ('anti-repeat' | 'balance' | 'duplicate-ability' | 'locked')[];
 }
 
 function difficultyWeights(period: Period, level: number): Record<Difficulty, number> {
@@ -52,16 +52,16 @@ function difficultyWeights(period: Period, level: number): Record<Difficulty, nu
     case 'daily':
       return { easy: 60, medium: 35, high: level >= 5 ? 5 : 0, expert: 0 };
     case 'weekly':
-      return { easy: 0, medium: 50, high: 40, expert: level >= 5 ? 10 : 0 };
+      return { easy: 0, medium: 50, high: 40, expert: level >= TIER4_MIN_LEVEL ? 10 : 0 };
     case 'monthly':
-      return { easy: 0, medium: 0, high: level >= 5 ? 50 : 100, expert: level >= 5 ? 50 : 0 };
+      return { easy: 0, medium: 0, high: level >= TIER4_MIN_LEVEL ? 50 : 100, expert: level >= TIER4_MIN_LEVEL ? 50 : 0 };
     case 'epic':
       return { easy: 0, medium: 0, high: 0, expert: 100 };
   }
 }
 
 function accessible(t: QuestTemplate, scores: Record<AbilityId, number>, level: number): boolean {
-  return t.difficulty !== 'expert' || expertUnlocked(scores[t.ability], level);
+  return tierUnlocked(t.difficulty, scores[t.ability], level);
 }
 
 /** Tirage déterministe des quêtes d'une période (cahier des charges 5.5). */
@@ -72,13 +72,8 @@ export function drawQuests(input: DrawInput): DrawResult {
   const picked = new Set<string>(input.exclude ?? []);
   const prefs = input.preferences;
 
-  const pool = input.templates.filter(
-    (t) =>
-      t.isActive !== false &&
-      t.periods.includes(input.period) &&
-      !prefs[t.id]?.isExcluded &&
-      accessible(t, input.scores, input.level),
-  );
+  const eligible = input.templates.filter((t) => t.isActive !== false && t.periods.includes(input.period) && !prefs[t.id]?.isExcluded);
+  const pool = eligible.filter((t) => accessible(t, input.scores, input.level));
 
   // Quêtes épinglées : reviennent à chaque période sans tirage.
   if (!input.skipPinned && !input.difficultyPlan) {
@@ -108,7 +103,17 @@ export function drawQuests(input: DrawInput): DrawResult {
     const order = [...DIFFICULTIES].sort((a, b) => Math.abs(DIFFICULTIES.indexOf(a) - idx) - Math.abs(DIFFICULTIES.indexOf(b) - idx));
 
     let found: QuestTemplate | undefined;
+    // Dernier recours : si rien n'est débloqué pour ce créneau (p. ex. la quête mensuelle d'un début de partie),
+    // on tire parmi les quêtes verrouillées de la caractéristique la plus haute plutôt que de laisser le créneau vide.
+    let source = pool;
     // Niveaux de relâchement successifs (RG-12) : anti-répétition, équilibrage, doublon de caractéristique.
+    for (let attempt = 0; attempt < 2 && !found; attempt++) {
+    if (attempt === 1) {
+      const open = eligible.filter((t) => !picked.has(t.id));
+      const best = Math.max(-Infinity, ...open.map((t) => input.scores[t.ability]));
+      source = open.filter((t) => input.scores[t.ability] === best);
+      if (!source.length) break;
+    }
     for (let relax = 0; relax <= 3 && !found; relax++) {
       const useAntiRepeat = relax < 1;
       const useBalance = relax < 2;
@@ -118,7 +123,7 @@ export function drawQuests(input: DrawInput): DrawResult {
 
       for (const diff of order) {
         if (wantedDifficulty && diff !== wantedDifficulty && relax < 1) continue;
-        let cands = pool.filter((t) => t.difficulty === diff && !picked.has(t.id));
+        let cands = source.filter((t) => t.difficulty === diff && !picked.has(t.id));
         if (useAntiRepeat) {
           const win = ANTI_REPEAT_DAYS[input.period];
           cands = cands.filter((t) => {
@@ -152,9 +157,11 @@ export function drawQuests(input: DrawInput): DrawResult {
           if (!useAntiRepeat) relaxed.add('anti-repeat');
           if (!useBalance) relaxed.add('balance');
           if (!useNoDup && input.period === 'daily') relaxed.add('duplicate-ability');
+          if (attempt === 1) relaxed.add('locked');
           break;
         }
       }
+    }
     }
     if (!found) break;
     picks.push(found);

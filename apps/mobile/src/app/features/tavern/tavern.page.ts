@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular';
-import { ABILITY_LABEL, canDeclareRest, progressRatio, questXp, type QuestInstance } from '@levelup/engine';
+import { ACHIEVEMENTS, ABILITIES, ABILITY_LABEL, canDeclareRest, progressRatio, questXp, type AchievementProgress, type QuestInstance } from '@levelup/engine';
+import { BackendService } from '../../core/backend.service';
 import { GameService } from '../../core/game.service';
 import { SocialService } from '../../core/social.service';
 import { UiService } from '../../core/ui.service';
@@ -41,6 +42,18 @@ import { countdown, fmt, longDate, progressText } from '../../shared/format';
 
       @if (c(); as ch) {
         <div class="lu-page">
+          <!-- Jours d'élan -->
+          <section class="lu-card elan" [class.kept]="keptToday()">
+            <span class="flame"><lu-icon name="flame" [size]="26" /></span>
+            <div class="em">
+              <strong>{{ ch.streakCurrent }} jour{{ ch.streakCurrent > 1 ? 's' : '' }} d’élan</strong>
+              <span class="xs muted">
+                @if (keptToday()) { Élan gardé aujourd’hui } @else { Accomplis au moins 1 quête aujourd’hui pour le garder }
+              </span>
+            </div>
+            <span class="best xs muted">Record<br /><b>{{ ch.streakBest }}</b></span>
+          </section>
+
           <!-- À faire aujourd'hui -->
           <section class="lu-section">
             <div class="lu-section-title">
@@ -74,6 +87,23 @@ import { countdown, fmt, longDate, progressText } from '../../shared/format';
             }
           </section>
 
+          <!-- Objectifs : prochains succès par caractéristique -->
+          @if (goals().length) {
+            <section class="lu-section">
+              <div class="lu-section-title">
+                <h2>Objectifs</h2>
+                <button type="button" class="lu-link" (click)="ui.go('/trophies')">Tous les succès →</button>
+              </div>
+              @for (g of goals(); track g.id) {
+                <div class="lu-card goal">
+                  <div class="gt"><strong>{{ g.label }}</strong><span class="gn">{{ g.current }} / {{ g.target }} quêtes</span></div>
+                  <lu-bar [value]="g.current" [max]="g.target" />
+                  <span class="xs muted">Récompense : {{ g.name }} · +{{ g.xp }} XP</span>
+                </div>
+              }
+            </section>
+          }
+
           <!-- Progression -->
           <section class="lu-card tap prog" (click)="ui.go('/tabs/hero')" role="link" tabindex="0" (keydown.enter)="ui.go('/tabs/hero')" aria-label="Ouvrir mon profil">
             <div class="top"><strong>Niveau {{ ch.level }}</strong><span class="muted">{{ fmt(game.levelInfo().current) }} / {{ fmt(game.levelInfo().needed) }} XP</span></div>
@@ -88,6 +118,14 @@ import { countdown, fmt, longDate, progressText } from '../../shared/format';
     </ion-content>
   `,
   styles: `
+    .elan { flex-direction: row; align-items: center; gap: 12px; padding: 14px; }
+    .elan .flame { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--lu-surface-2); color: var(--lu-muted); }
+    .elan.kept .flame { background: var(--lu-gold-bg); color: var(--lu-gold); }
+    .elan .em { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; } .elan .em strong { font-size: 17px; }
+    .elan .best { text-align: center; line-height: 1.3; } .elan .best b { font-size: 16px; color: var(--lu-text); }
+    .goal { gap: 8px; padding: 12px 14px; }
+    .goal .gt { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; } .goal .gt strong { font-size: 14px; }
+    .goal .gn { font: 600 13px var(--lu-font-body); font-variant-numeric: tabular-nums; color: var(--lu-text-2); }
     .count { font: 600 14px var(--lu-font-body); color: var(--lu-muted); font-variant-numeric: tabular-nums; }
     .count.all { color: var(--lu-accent); }
     .task { flex-direction: row; align-items: center; gap: 12px; padding: 14px; }
@@ -113,6 +151,8 @@ export class TavernPage {
   protected social = inject(SocialService);
   protected ui = inject(UiService);
   private stats = inject(StatsService);
+  private be = inject(BackendService);
+  private readonly achProgress = signal<Map<string, AchievementProgress>>(new Map());
   readonly recap = signal<{ kind: 'week' | 'month'; start: string; key: string; title: string; recap: ReturnType<StatsService['recap']> } | null>(null);
   readonly fmt = fmt;
   readonly countdown = countdown;
@@ -129,6 +169,27 @@ export class TavernPage {
       return progressRatio(y) - progressRatio(x);
     }),
   );
+  /** L'élan est gardé si une quête du jour est faite, ou si un jour de repos est déclaré. */
+  readonly keptToday = computed(() => this.game.dailyDone() > 0 || this.game.restDays().includes(this.game.today()));
+
+  /** Prochain palier « N quêtes de <caractéristique> » pour chaque caractéristique ; on garde les 3 plus avancés (à égalité, celles du jour). */
+  readonly goals = computed(() => {
+    const progress = this.achProgress();
+    const todayAbilities = new Set(this.game.dailies().map((q) => q.snapshot.ability));
+    const next = ABILITIES.map((ability) => {
+      const chain = ACHIEVEMENTS.filter((a) => a.condition.kind === 'quests_by_ability' && a.condition.ability === ability)
+        .map((a) => ({ a, p: progress.get(a.id) }))
+        .filter((x) => !x.p?.done)
+        .sort((x, y) => (x.a.condition as { target: number }).target - (y.a.condition as { target: number }).target);
+      const n = chain[0];
+      if (!n) return null;
+      const target = (n.a.condition as { target: number }).target;
+      const current = Math.min(n.p?.current ?? 0, target);
+      return { id: n.a.id, ability, label: ABILITY_LABEL[ability], current, target, name: n.a.name, xp: n.a.xpBonus, today: todayAbilities.has(ability) };
+    }).filter((g): g is NonNullable<typeof g> => !!g);
+    return next.sort((x, y) => y.current / y.target - x.current / x.target || Number(y.today) - Number(x.today)).slice(0, 3);
+  });
+
   readonly dayXp = computed(() => this.game.dailies().reduce((s, q) => s + (q.status === 'completed' ? q.xpAwarded : 0), 0));
   readonly restAvailable = computed(() => {
     const g = this.game;
@@ -160,6 +221,12 @@ export class TavernPage {
 
   constructor() {
     void this.checkRecap();
+    // Les objectifs se mettent à jour à chaque quête accomplie.
+    effect(() => {
+      this.game.dailyDone();
+      this.game.instances();
+      void this.be.game.achievementProgress().then((p) => this.achProgress.set(new Map(p.map((x) => [x.id, x])))).catch(() => undefined);
+    });
   }
 
   /** Bilan de la semaine / du mois écoulé, à la première ouverture. */

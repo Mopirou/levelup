@@ -240,7 +240,7 @@ export function unlocksAt(level: number): Unlocks {
     monthlyQuests,
     epic: level >= EPIC_LEVEL,
     forge: level >= FORGE_LEVEL,
-    expertEverywhere: level >= 5,
+    expertEverywhere: level >= TIER4_MIN_LEVEL,
   };
 }
 
@@ -264,15 +264,25 @@ export interface Tier {
 }
 
 export function tierAt(level: number): Tier {
-  if (level >= 17) return { index: 4, name: 'Légende' };
-  if (level >= 11) return { index: 3, name: 'Maître du royaume' };
-  if (level >= 5) return { index: 2, name: 'Héros du royaume' };
-  return { index: 1, name: 'Aventurier' };
+  if (level >= 17) return { index: 4, name: 'Expert' };
+  if (level >= 11) return { index: 3, name: 'Confirmé' };
+  if (level >= 5) return { index: 2, name: 'Régulier' };
+  return { index: 1, name: 'Débutant' };
 }
 
-/** Une quête Expert est accessible si score ≥ 14 dans sa caractéristique ou niveau ≥ 5. */
-export function expertUnlocked(score: number, level: number): boolean {
-  return score >= 14 || level >= 5;
+/** Niveau 3 (quêtes Audacieuses, mensuelles) : score minimum dans la caractéristique concernée. */
+export const TIER3_MIN_SCORE = 14;
+/** Niveau 4 (quêtes Légendaires, épiques) : niveau global minimum. */
+export const TIER4_MIN_LEVEL = EPIC_LEVEL;
+
+/**
+ * Déblocage des quêtes par palier : 1 (Facile) et 2 (Modérée) sont toujours ouvertes ;
+ * 3 (Audacieuse) demande un score minimum dans sa caractéristique ; 4 (Légendaire) demande un niveau global.
+ */
+export function tierUnlocked(difficulty: Difficulty, score: number, level: number): boolean {
+  if (difficulty === 'high') return score >= TIER3_MIN_SCORE;
+  if (difficulty === 'expert') return level >= TIER4_MIN_LEVEL;
+  return true;
 }
 
 export interface LockInfo {
@@ -281,10 +291,9 @@ export interface LockInfo {
 }
 
 export function questLock(difficulty: Difficulty, score: number, level: number, abilityLabel = 'caractéristique'): LockInfo {
-  if (difficulty === 'expert' && !expertUnlocked(score, level)) {
-    return { locked: true, reason: `Score de ${abilityLabel} 14 requis, ou niveau 5` };
-  }
-  return { locked: false };
+  if (tierUnlocked(difficulty, score, level)) return { locked: false };
+  if (difficulty === 'high') return { locked: true, reason: `${abilityLabel} ${TIER3_MIN_SCORE} requis (tu es à ${score})` };
+  return { locked: true, reason: `Niveau ${TIER4_MIN_LEVEL} requis (tu es niveau ${level})` };
 }
 
 /** Répartition en % de l'XP d'une quête (principale en tête), pour l'affichage. */

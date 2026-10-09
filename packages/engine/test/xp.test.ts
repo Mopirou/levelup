@@ -3,7 +3,7 @@ import {
   abilityModifier,
   abilityProgress,
   abilityUpgradeCost,
-  expertUnlocked,
+  tierUnlocked,
   isValidPointBuy,
   levelFromXp,
   levelProgress,
@@ -41,10 +41,10 @@ describe('niveaux', () => {
     expect([1, 4, 5, 8, 9, 12, 13, 16, 17, 20].map(proficiencyBonus)).toEqual([2, 2, 3, 3, 4, 4, 5, 5, 6, 6]);
   });
   it('paliers et titres', () => {
-    expect(tierAt(1).name).toBe('Aventurier');
-    expect(tierAt(5).name).toBe('Héros du royaume');
-    expect(tierAt(11).name).toBe('Maître du royaume');
-    expect(tierAt(17).name).toBe('Légende');
+    expect(tierAt(1).name).toBe('Débutant');
+    expect(tierAt(5).name).toBe('Régulier');
+    expect(tierAt(11).name).toBe('Confirmé');
+    expect(tierAt(17).name).toBe('Expert');
   });
   it('déblocages', () => {
     expect(unlocksAt(1)).toMatchObject({ dailyQuests: 3, weeklyQuests: 2, monthlyQuests: 1, forge: false, epic: false });
@@ -133,13 +133,21 @@ describe('XP d’une quête', () => {
 });
 
 describe('verrous', () => {
-  it('Expert accessible avec score ≥ 14 ou niveau ≥ 5', () => {
-    expect(expertUnlocked(13, 4)).toBe(false);
-    expect(expertUnlocked(14, 1)).toBe(true);
-    expect(expertUnlocked(8, 5)).toBe(true);
-    expect(questLock('expert', 10, 2, 'Courage').locked).toBe(true);
-    expect(questLock('expert', 10, 2, 'Courage').reason).toContain('Courage');
-    expect(questLock('high', 8, 1).locked).toBe(false);
+  it('niveaux 1 et 2 toujours ouverts', () => {
+    expect(tierUnlocked('easy', 8, 1)).toBe(true);
+    expect(tierUnlocked('medium', 8, 1)).toBe(true);
+  });
+  it('niveau 3 (Audacieuse) : score ≥ 14 dans la caractéristique, quel que soit le niveau global', () => {
+    expect(tierUnlocked('high', 13, 20)).toBe(false);
+    expect(tierUnlocked('high', 14, 1)).toBe(true);
+    expect(questLock('high', 10, 2, 'Force')).toEqual({ locked: true, reason: 'Force 14 requis (tu es à 10)' });
+    expect(questLock('high', 14, 2, 'Force').locked).toBe(false);
+  });
+  it('niveau 4 (Légendaire) : niveau global ≥ 11, quel que soit le score', () => {
+    expect(tierUnlocked('expert', 20, 10)).toBe(false);
+    expect(tierUnlocked('expert', 8, 11)).toBe(true);
+    expect(questLock('expert', 20, 4, 'Force')).toEqual({ locked: true, reason: 'Niveau 11 requis (tu es niveau 4)' });
+    expect(questLock('expert', 8, 11).locked).toBe(false);
   });
   it('améliorations et voie en attente', () => {
     expect(pendingImprovements(3, 0)).toBe(0);

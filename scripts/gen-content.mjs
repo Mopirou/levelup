@@ -121,7 +121,7 @@ const achievements = achRows.map(([id, category, name, description, condition, x
   ...(isSecret ? { isSecret: true, hint } : {}),
 }));
 if (new Set(achievements.map((a) => a.id)).size !== achievements.length) throw new Error('trophées en double');
-if (achievements.length !== 80) throw new Error(`trophées: ${achievements.length} (attendu 80)`);
+if (achievements.length !== 98) throw new Error(`trophées: ${achievements.length} (attendu 98)`);
 write('achievements.fr.json', achievements);
 
 const tavRows = await imp('taverne.mjs');

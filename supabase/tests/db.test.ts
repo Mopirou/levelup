@@ -76,10 +76,10 @@ afterAll(async () => {
 });
 
 describe('schéma et contenu', () => {
-  it('contient 740 quêtes, 80 trophées et la liste de mots interdits', async () => {
+  it('contient 740 quêtes, 98 trophées et la liste de mots interdits', async () => {
     expect((await admin(`select count(*)::int n from quest_templates where source = 'catalog'`))[0].n).toBe(740);
     expect((await admin(`select count(*)::int n from quest_templates where theme is not null and jsonb_array_length(secondary) > 0`))[0].n).toBe(500);
-    expect((await admin(`select count(*)::int n from achievements`))[0].n).toBe(80);
+    expect((await admin(`select count(*)::int n from achievements`))[0].n).toBe(98);
     expect((await admin(`select count(*)::int n from banned_words`))[0].n).toBeGreaterThan(10);
   });
   it('active la RLS sur 100 % des tables du schéma public', async () => {

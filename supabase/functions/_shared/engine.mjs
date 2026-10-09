@@ -186,7 +186,7 @@ function unlocksAt(level) {
     monthlyQuests,
     epic: level >= EPIC_LEVEL,
     forge: level >= FORGE_LEVEL,
-    expertEverywhere: level >= 5
+    expertEverywhere: level >= TIER4_MIN_LEVEL
   };
 }
 function questCountFor(period, level, dailySetting) {
@@ -203,19 +203,22 @@ function questCountFor(period, level, dailySetting) {
   }
 }
 function tierAt(level) {
-  if (level >= 17) return { index: 4, name: "L\xE9gende" };
-  if (level >= 11) return { index: 3, name: "Ma\xEEtre du royaume" };
-  if (level >= 5) return { index: 2, name: "H\xE9ros du royaume" };
-  return { index: 1, name: "Aventurier" };
+  if (level >= 17) return { index: 4, name: "Expert" };
+  if (level >= 11) return { index: 3, name: "Confirm\xE9" };
+  if (level >= 5) return { index: 2, name: "R\xE9gulier" };
+  return { index: 1, name: "D\xE9butant" };
 }
-function expertUnlocked(score, level) {
-  return score >= 14 || level >= 5;
+var TIER3_MIN_SCORE = 14;
+var TIER4_MIN_LEVEL = EPIC_LEVEL;
+function tierUnlocked(difficulty, score, level) {
+  if (difficulty === "high") return score >= TIER3_MIN_SCORE;
+  if (difficulty === "expert") return level >= TIER4_MIN_LEVEL;
+  return true;
 }
 function questLock(difficulty, score, level, abilityLabel = "caract\xE9ristique") {
-  if (difficulty === "expert" && !expertUnlocked(score, level)) {
-    return { locked: true, reason: `Score de ${abilityLabel} 14 requis, ou niveau 5` };
-  }
-  return { locked: false };
+  if (tierUnlocked(difficulty, score, level)) return { locked: false };
+  if (difficulty === "high") return { locked: true, reason: `${abilityLabel} ${TIER3_MIN_SCORE} requis (tu es \xE0 ${score})` };
+  return { locked: true, reason: `Niveau ${TIER4_MIN_LEVEL} requis (tu es niveau ${level})` };
 }
 function xpShares(primary, secondary) {
   const others = (secondary ?? []).filter((s) => s.ability !== primary && s.pct > 0);
@@ -406,15 +409,15 @@ function difficultyWeights(period, level) {
     case "daily":
       return { easy: 60, medium: 35, high: level >= 5 ? 5 : 0, expert: 0 };
     case "weekly":
-      return { easy: 0, medium: 50, high: 40, expert: level >= 5 ? 10 : 0 };
+      return { easy: 0, medium: 50, high: 40, expert: level >= TIER4_MIN_LEVEL ? 10 : 0 };
     case "monthly":
-      return { easy: 0, medium: 0, high: level >= 5 ? 50 : 100, expert: level >= 5 ? 50 : 0 };
+      return { easy: 0, medium: 0, high: level >= TIER4_MIN_LEVEL ? 50 : 100, expert: level >= TIER4_MIN_LEVEL ? 50 : 0 };
     case "epic":
       return { easy: 0, medium: 0, high: 0, expert: 100 };
   }
 }
 function accessible(t, scores, level) {
-  return t.difficulty !== "expert" || expertUnlocked(scores[t.ability], level);
+  return tierUnlocked(t.difficulty, scores[t.ability], level);
 }
 function drawQuests(input) {
   const rng = createRng(`${input.characterId}|${input.period}|${input.periodStart}|${input.seedSuffix ?? ""}`);
@@ -422,9 +425,8 @@ function drawQuests(input) {
   const picks = [];
   const picked = new Set(input.exclude ?? []);
   const prefs = input.preferences;
-  const pool = input.templates.filter(
-    (t) => t.isActive !== false && t.periods.includes(input.period) && !prefs[t.id]?.isExcluded && accessible(t, input.scores, input.level)
-  );
+  const eligible = input.templates.filter((t) => t.isActive !== false && t.periods.includes(input.period) && !prefs[t.id]?.isExcluded);
+  const pool = eligible.filter((t) => accessible(t, input.scores, input.level));
   if (!input.skipPinned && !input.difficultyPlan) {
     for (const t of pool) {
       if (prefs[t.id]?.isPinned && !picked.has(t.id)) {
@@ -444,49 +446,59 @@ function drawQuests(input) {
     const idx = DIFFICULTIES.indexOf(chosenDifficulty);
     const order = [...DIFFICULTIES].sort((a, b) => Math.abs(DIFFICULTIES.indexOf(a) - idx) - Math.abs(DIFFICULTIES.indexOf(b) - idx));
     let found;
-    for (let relax = 0; relax <= 3 && !found; relax++) {
-      const useAntiRepeat = relax < 1;
-      const useBalance = relax < 2;
-      const useNoDup = relax < 3;
-      const needMastery = slot === 0 && picks.length === 0 && input.masteries.length > 0;
-      const hasMastery = picks.some((p) => input.masteries.includes(p.ability));
-      for (const diff of order) {
-        if (wantedDifficulty && diff !== wantedDifficulty && relax < 1) continue;
-        let cands = pool.filter((t) => t.difficulty === diff && !picked.has(t.id));
-        if (useAntiRepeat) {
-          const win = ANTI_REPEAT_DAYS[input.period];
-          cands = cands.filter((t) => {
-            const last = input.lastDrawn[t.id];
-            return !last || diffDays(input.periodStart, last) >= win;
-          });
-        }
-        if (useNoDup && input.period === "daily" && input.count <= 6) {
-          const used = new Set(picks.map((p) => p.ability));
-          if (used.size < ABILITIES.length) cands = cands.filter((t) => !used.has(t.ability));
-        }
-        if (needMastery || !hasMastery && slot === slots - 1 && input.masteries.length > 0) {
-          const mastered = cands.filter((t) => input.masteries.includes(t.ability));
-          if (mastered.length) cands = mastered;
-        }
-        if (!cands.length) continue;
-        found = weightedPick(
-          cands,
-          (t) => {
-            let w = 1;
-            if (useBalance && maxScore > minScore) {
-              if (input.scores[t.ability] === minScore) w *= 2;
-              else if (input.scores[t.ability] === maxScore) w *= 0.5;
-            }
-            if (prefs[t.id]?.isFavorite) w *= 3;
-            return w;
-          },
-          rng
-        );
-        if (found) {
-          if (!useAntiRepeat) relaxed.add("anti-repeat");
-          if (!useBalance) relaxed.add("balance");
-          if (!useNoDup && input.period === "daily") relaxed.add("duplicate-ability");
-          break;
+    let source = pool;
+    for (let attempt = 0; attempt < 2 && !found; attempt++) {
+      if (attempt === 1) {
+        const open = eligible.filter((t) => !picked.has(t.id));
+        const best = Math.max(-Infinity, ...open.map((t) => input.scores[t.ability]));
+        source = open.filter((t) => input.scores[t.ability] === best);
+        if (!source.length) break;
+      }
+      for (let relax = 0; relax <= 3 && !found; relax++) {
+        const useAntiRepeat = relax < 1;
+        const useBalance = relax < 2;
+        const useNoDup = relax < 3;
+        const needMastery = slot === 0 && picks.length === 0 && input.masteries.length > 0;
+        const hasMastery = picks.some((p) => input.masteries.includes(p.ability));
+        for (const diff of order) {
+          if (wantedDifficulty && diff !== wantedDifficulty && relax < 1) continue;
+          let cands = source.filter((t) => t.difficulty === diff && !picked.has(t.id));
+          if (useAntiRepeat) {
+            const win = ANTI_REPEAT_DAYS[input.period];
+            cands = cands.filter((t) => {
+              const last = input.lastDrawn[t.id];
+              return !last || diffDays(input.periodStart, last) >= win;
+            });
+          }
+          if (useNoDup && input.period === "daily" && input.count <= 6) {
+            const used = new Set(picks.map((p) => p.ability));
+            if (used.size < ABILITIES.length) cands = cands.filter((t) => !used.has(t.ability));
+          }
+          if (needMastery || !hasMastery && slot === slots - 1 && input.masteries.length > 0) {
+            const mastered = cands.filter((t) => input.masteries.includes(t.ability));
+            if (mastered.length) cands = mastered;
+          }
+          if (!cands.length) continue;
+          found = weightedPick(
+            cands,
+            (t) => {
+              let w = 1;
+              if (useBalance && maxScore > minScore) {
+                if (input.scores[t.ability] === minScore) w *= 2;
+                else if (input.scores[t.ability] === maxScore) w *= 0.5;
+              }
+              if (prefs[t.id]?.isFavorite) w *= 3;
+              return w;
+            },
+            rng
+          );
+          if (found) {
+            if (!useAntiRepeat) relaxed.add("anti-repeat");
+            if (!useBalance) relaxed.add("balance");
+            if (!useNoDup && input.period === "daily") relaxed.add("duplicate-ability");
+            if (attempt === 1) relaxed.add("locked");
+            break;
+          }
         }
       }
     }
@@ -1517,6 +1529,240 @@ var achievements_fr_default = [
       kind: "ability_score",
       ability: "CHA",
       target: 18
+    },
+    xpBonus: 200,
+    titleUnlocked: null
+  },
+  {
+    id: "for-quetes-5",
+    category: "maitrise",
+    name: "Force : 5 qu\xEAtes",
+    description: "Accomplir 5 qu\xEAtes de Force.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "FOR",
+      target: 5
+    },
+    xpBonus: 25,
+    titleUnlocked: null
+  },
+  {
+    id: "for-quetes-25",
+    category: "maitrise",
+    name: "Force : 25 qu\xEAtes",
+    description: "Accomplir 25 qu\xEAtes de Force.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "FOR",
+      target: 25
+    },
+    xpBonus: 75,
+    titleUnlocked: null
+  },
+  {
+    id: "for-quetes-100",
+    category: "maitrise",
+    name: "Force : 100 qu\xEAtes",
+    description: "Accomplir 100 qu\xEAtes de Force.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "FOR",
+      target: 100
+    },
+    xpBonus: 200,
+    titleUnlocked: null
+  },
+  {
+    id: "dex-quetes-5",
+    category: "maitrise",
+    name: "Dext\xE9rit\xE9 : 5 qu\xEAtes",
+    description: "Accomplir 5 qu\xEAtes de Dext\xE9rit\xE9.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "DEX",
+      target: 5
+    },
+    xpBonus: 25,
+    titleUnlocked: null
+  },
+  {
+    id: "dex-quetes-25",
+    category: "maitrise",
+    name: "Dext\xE9rit\xE9 : 25 qu\xEAtes",
+    description: "Accomplir 25 qu\xEAtes de Dext\xE9rit\xE9.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "DEX",
+      target: 25
+    },
+    xpBonus: 75,
+    titleUnlocked: null
+  },
+  {
+    id: "dex-quetes-100",
+    category: "maitrise",
+    name: "Dext\xE9rit\xE9 : 100 qu\xEAtes",
+    description: "Accomplir 100 qu\xEAtes de Dext\xE9rit\xE9.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "DEX",
+      target: 100
+    },
+    xpBonus: 200,
+    titleUnlocked: null
+  },
+  {
+    id: "con-quetes-5",
+    category: "maitrise",
+    name: "Constitution : 5 qu\xEAtes",
+    description: "Accomplir 5 qu\xEAtes de Constitution.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "CON",
+      target: 5
+    },
+    xpBonus: 25,
+    titleUnlocked: null
+  },
+  {
+    id: "con-quetes-25",
+    category: "maitrise",
+    name: "Constitution : 25 qu\xEAtes",
+    description: "Accomplir 25 qu\xEAtes de Constitution.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "CON",
+      target: 25
+    },
+    xpBonus: 75,
+    titleUnlocked: null
+  },
+  {
+    id: "con-quetes-100",
+    category: "maitrise",
+    name: "Constitution : 100 qu\xEAtes",
+    description: "Accomplir 100 qu\xEAtes de Constitution.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "CON",
+      target: 100
+    },
+    xpBonus: 200,
+    titleUnlocked: null
+  },
+  {
+    id: "int-quetes-5",
+    category: "maitrise",
+    name: "Intelligence : 5 qu\xEAtes",
+    description: "Accomplir 5 qu\xEAtes d\u2019Intelligence.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "INT",
+      target: 5
+    },
+    xpBonus: 25,
+    titleUnlocked: null
+  },
+  {
+    id: "int-quetes-25",
+    category: "maitrise",
+    name: "Intelligence : 25 qu\xEAtes",
+    description: "Accomplir 25 qu\xEAtes d\u2019Intelligence.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "INT",
+      target: 25
+    },
+    xpBonus: 75,
+    titleUnlocked: null
+  },
+  {
+    id: "int-quetes-100",
+    category: "maitrise",
+    name: "Intelligence : 100 qu\xEAtes",
+    description: "Accomplir 100 qu\xEAtes d\u2019Intelligence.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "INT",
+      target: 100
+    },
+    xpBonus: 200,
+    titleUnlocked: null
+  },
+  {
+    id: "sag-quetes-5",
+    category: "maitrise",
+    name: "Sagesse : 5 qu\xEAtes",
+    description: "Accomplir 5 qu\xEAtes de Sagesse.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "SAG",
+      target: 5
+    },
+    xpBonus: 25,
+    titleUnlocked: null
+  },
+  {
+    id: "sag-quetes-25",
+    category: "maitrise",
+    name: "Sagesse : 25 qu\xEAtes",
+    description: "Accomplir 25 qu\xEAtes de Sagesse.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "SAG",
+      target: 25
+    },
+    xpBonus: 75,
+    titleUnlocked: null
+  },
+  {
+    id: "sag-quetes-100",
+    category: "maitrise",
+    name: "Sagesse : 100 qu\xEAtes",
+    description: "Accomplir 100 qu\xEAtes de Sagesse.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "SAG",
+      target: 100
+    },
+    xpBonus: 200,
+    titleUnlocked: null
+  },
+  {
+    id: "cha-quetes-5",
+    category: "maitrise",
+    name: "Charisme : 5 qu\xEAtes",
+    description: "Accomplir 5 qu\xEAtes de Charisme.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "CHA",
+      target: 5
+    },
+    xpBonus: 25,
+    titleUnlocked: null
+  },
+  {
+    id: "cha-quetes-25",
+    category: "maitrise",
+    name: "Charisme : 25 qu\xEAtes",
+    description: "Accomplir 25 qu\xEAtes de Charisme.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "CHA",
+      target: 25
+    },
+    xpBonus: 75,
+    titleUnlocked: null
+  },
+  {
+    id: "cha-quetes-100",
+    category: "maitrise",
+    name: "Charisme : 100 qu\xEAtes",
+    description: "Accomplir 100 qu\xEAtes de Charisme.",
+    condition: {
+      kind: "quests_by_ability",
+      ability: "CHA",
+      target: 100
     },
     xpBonus: 200,
     titleUnlocked: null
@@ -3242,6 +3488,8 @@ export {
   REACTION_LABEL,
   SOFT_CAP_SCORE,
   SupabaseStore,
+  TIER3_MIN_SCORE,
+  TIER4_MIN_LEVEL,
   UNDO_WINDOW_MS,
   VALIDATION_LABEL,
   abandonQuest,
@@ -3284,7 +3532,6 @@ export {
   ensureQuests,
   equipTitle,
   evaluateAchievements,
-  expertUnlocked,
   expiredPartialXp,
   gameDate,
   hardcorePenalty,
@@ -3332,6 +3579,7 @@ export {
   startOfQuarter,
   startOfWeek,
   tierAt,
+  tierUnlocked,
   toDateStr,
   totalAbilityScoreSum,
   undoQuest,

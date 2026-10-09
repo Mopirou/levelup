@@ -213,7 +213,7 @@ describe('logique de jeu sur le vrai schéma (adaptateur SupabaseStore)', () => 
     expect(after.improvements.INT).toBe(2);
     expect(abilityScores(after).INT).toBe(10);
     const progress = await achievementProgress(s.ctx, U);
-    expect(progress).toHaveLength(80);
+    expect(progress).toHaveLength(98);
     expect((await s.store.listUnlocked(U)).map((u: { achievementId: string }) => u.achievementId)).toContain('premier-pas');
     expect(progress.find((p) => p.id === 'premier-elan')).toMatchObject({ target: 10 });
   });

@@ -38,6 +38,31 @@ test.describe('Parcours solo', () => {
     await expect(page.locator('app-hero').getByRole('img', { name: /Radar/ })).toBeVisible();
   });
 
+  test('le catalogue se parcourt par caractéristique : quatre niveaux, les niveaux 3 et 4 verrouillés au départ', async ({ page }) => {
+    await createHero(page);
+    await page.goto('/grimoire');
+    await page.getByRole('button', { name: /^Force/ }).click();
+    await expect(page.getByText('Niveau 1 · Journée')).toBeVisible();
+    await expect(page.getByText('Niveau 2 · Semaine')).toBeVisible();
+    await expect(page.getByText('Niveau 3 · Mois')).toBeVisible();
+    await expect(page.getByText('Niveau 4 · Épique')).toBeVisible();
+    await expect(page.getByText('Force 14 requis (tu es à 13)')).toBeVisible();
+    await expect(page.getByText('Niveau 11 requis (tu es niveau 1)')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Niveau 3 · Mois/ })).toBeDisabled();
+    await page.getByRole('button', { name: /Niveau 1 · Journée/ }).click();
+    await expect(page.getByText('Pompes en séries, 5 minutes')).toBeVisible();
+    await page.getByRole('button', { name: 'Toutes les caractéristiques' }).click();
+    await expect(page.getByRole('button', { name: /^Dextérité/ })).toBeVisible();
+  });
+
+  test('l’accueil montre les jours d’élan et les objectifs par caractéristique', async ({ page }) => {
+    await createHero(page);
+    await expect(page.getByText(/0 jour d’élan/)).toBeVisible();
+    await expect(page.getByText(/Accomplis au moins 1 quête aujourd’hui/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Objectifs' })).toBeVisible();
+    await expect(page.getByText("0 / 5 quêtes", { exact: false }).first()).toBeVisible();
+  });
+
   test('le Grimoire se classe aussi par disciplines, avec quatre niveaux par quête guidée', async ({ page }) => {
     await createHero(page);
     await page.goto('/grimoire');
@@ -54,7 +79,7 @@ test.describe('Parcours solo', () => {
   test('le Grimoire liste les quêtes par chapitre et se filtre', async ({ page }) => {
     await createHero(page);
     await page.goto('/grimoire');
-    await expect(page.getByText('0 / 100 quêtes essayées').first()).toBeVisible();
+    await expect(page.getByText('0/100 quêtes essayées').first()).toBeVisible();
     await page.getByPlaceholder('Chercher une quête…').fill('pompes');
     await expect(page.getByText('Pompes en séries, 5 minutes')).toBeVisible();
   });
