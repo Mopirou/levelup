@@ -33,11 +33,11 @@ export class TabsPage implements OnInit {
   protected game = inject(GameService);
   protected social = inject(SocialService);
   readonly tabs = [
-    { tab: 'tavern', label: 'Taverne', icon: 'house' },
-    { tab: 'quests', label: 'Quêtes', icon: 'swords' },
-    { tab: 'village', label: 'Village', icon: 'users' },
-    { tab: 'hero', label: 'Héros', icon: 'user-round' },
-    { tab: 'chronicle', label: 'Chronique', icon: 'book-open' },
+    { tab: 'tavern', label: 'Aujourd’hui', icon: 'house' },
+    { tab: 'quests', label: 'Quêtes', icon: 'circle-check' },
+    { tab: 'village', label: 'Amis', icon: 'users' },
+    { tab: 'hero', label: 'Profil', icon: 'user-round' },
+    { tab: 'chronicle', label: 'Progression', icon: 'book-open' },
   ];
 
   ngOnInit(): void {

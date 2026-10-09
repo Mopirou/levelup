@@ -28,12 +28,12 @@ const EFFORT: Record<Difficulty, string> = {
   high: '1 à 2 heures, ou un inconfort réel',
   expert: 'Plusieurs heures ou étapes, sortie nette de la zone de confort',
 };
-const EPIC_PREFIX = ['L’Épreuve de', 'Le Serment du', 'La Traversée de', 'Le Défi du', 'La Quête de', 'Le Chemin de'];
+const EPIC_PREFIX = ['Objectif :', 'Défi :', 'Projet :', 'Programme :'];
 const FLAVOR_MODELS = [
-  'Les anciens racontent que {x}. Aujourd’hui, c’est ton tour d’essayer.',
-  'Il y a, dans chaque royaume, une épreuve qui ne se refuse pas. La tienne : {x}.',
-  'Le voyageur qui accomplit « {x} » ne revient jamais tout à fait le même.',
-  'Personne ne t’y oblige. Mais tu sais déjà que « {x} » te ferait du bien.',
+  'Un objectif simple et concret : {x}.',
+  'Pour avancer régulièrement : {x}.',
+  'Une étape à la fois : {x}.',
+  'Tu sais déjà que « {x} » te ferait du bien.',
 ];
 const TAG_SUGGESTIONS = ['sans matériel', 'extérieur', 'social', 'moins de 10 min', 'sport', 'cuisine'];
 
@@ -43,9 +43,9 @@ const TAG_SUGGESTIONS = ['sans matériel', 'extérieur', 'social', 'moins de 10 
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
-      <lu-page-header [back]="true" eyebrow="La Forge" icon="hammer" [title]="editing() ? 'Modifier ma quête' : 'Forger une quête'" />
+      <lu-page-header [back]="true" eyebrow="Mes quêtes" icon="hammer" [title]="editing() ? 'Modifier ma quête' : 'Créer une quête'" />
       @if (!game.unlocks().forge) {
-        <div class="lu-page"><lu-empty icon="lock" title="La Forge s’ouvre au niveau 2" text="Accomplis tes premières quêtes pour inventer les tiennes." /></div>
+        <div class="lu-page"><lu-empty icon="lock" title="Créer ses propres quêtes s’ouvre au niveau 2" text="Accomplis tes premières quêtes pour inventer les tiennes." /></div>
       } @else {
         <div class="lu-page">
           <section class="lu-section">
@@ -132,7 +132,7 @@ const TAG_SUGGESTIONS = ['sans matériel', 'extérieur', 'social', 'moins de 10 
               </div>
             }
             @if (errors().length) { <ul class="errs" role="alert">@for (e of errors(); track e) { <li>{{ e }}</li> }</ul> }
-            <button type="button" class="lu-btn mint" [disabled]="busy()" (click)="save()"><lu-icon name="hammer" [size]="17" /> {{ editing() ? 'Enregistrer' : 'Forger' }}</button>
+            <button type="button" class="lu-btn mint" [disabled]="busy()" (click)="save()"><lu-icon name="hammer" [size]="17" /> {{ editing() ? 'Enregistrer' : 'Créer' }}</button>
             @if (editing()) { <button type="button" class="lu-btn danger" (click)="disable()">Désactiver cette quête</button> }
             <button type="button" class="lu-btn text" (click)="cancel()">Annuler</button>
           </section>
@@ -257,7 +257,7 @@ export class ForgePage {
   }
 
   epicTitle(): void {
-    const base = (this.title().replace(/^(L’|Le |La |Les )?(Épreuve|Serment|Traversée|Défi|Quête|Chemin) (de |du |des |de la |d’)?/i, '').trim() || this.objective().split(' ').slice(0, 3).join(' ') || 'ton royaume').toLowerCase();
+    const base = (this.title().replace(/^(Objectif|Défi|Projet|Programme) : /i, '').trim() || this.objective().split(' ').slice(0, 3).join(' ') || 'ton objectif').toLowerCase();
     const prefix = EPIC_PREFIX[Math.floor(Math.random() * EPIC_PREFIX.length)];
     this.title.set(`${prefix} ${base}`.replace(/\s+/g, ' ').slice(0, 60));
   }
@@ -308,7 +308,7 @@ export class ForgePage {
       await this.game.be.game.saveTemplate(t);
       if (this.pinned() || this.game.prefs()[t.id]?.isPinned) await this.game.setPreference({ templateId: t.id, isPinned: this.pinned() });
       await this.game.refresh();
-      this.game.toast(this.editing() ? 'Quête enregistrée.' : 'Quête forgée ! Elle entrera dans le tirage.', 'success');
+      this.game.toast(this.editing() ? 'Quête enregistrée.' : 'Quête créée. Elle entrera dans le tirage.', 'success');
       this.ui.nav.navigateBack('/grimoire');
     } catch {
       this.errors.set(['Impossible d’enregistrer pour le moment. Réessaie.']);

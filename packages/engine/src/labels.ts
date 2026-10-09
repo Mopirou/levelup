@@ -81,7 +81,7 @@ export const VALIDATION_LABEL: Record<ValidationType, string> = {
 };
 
 export const REACTION_LABEL = {
-  bravo: 'Bravo, aventurier',
+  bravo: 'Bravo',
   inspirant: 'Inspirant',
   respect: 'Respect',
   rire: 'Rire',

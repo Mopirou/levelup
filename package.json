@@ -10,6 +10,8 @@
   "scripts": {
     "test": "npm run test -w @levelup/engine && npm run test -w @levelup/db-tests",
     "build:server-engine": "node scripts/build-server-engine.mjs",
+    "migrate": "node scripts/migrate.mjs",
+    "predev": "node scripts/migrate.mjs",
     "dev": "npm run start -w @levelup/mobile",
     "build": "npm run build -w @levelup/mobile",
     "gen:content": "node scripts/gen-seed.mjs",
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
+    "pg": "^8.23.1",
     "typescript": "~5.8.0"
   }
 }

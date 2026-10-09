@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { ActionSheetController, AlertController, NavController } from '@ionic/angular';
 import { GameService } from './game.service';
 
-/** Navigation, menu secondaire (« Sac »), confirmations. */
+/** Navigation, menu secondaire, confirmations. */
 @Injectable({ providedIn: 'root' })
 export class UiService {
   private sheet = inject(ActionSheetController);
@@ -14,18 +14,18 @@ export class UiService {
     void this.nav.navigateForward(path as string, extras);
   }
 
-  /** Menu secondaire : Compagnons, Grimoire, Forge, Trophées, Campement. */
+  /** Menu secondaire : Amis, Catalogue, Créer une quête, Succès, Réglages. */
   async bag(): Promise<void> {
     const forge = this.game.unlocks().forge;
     const sheet = await this.sheet.create({
-      header: 'Le Sac',
+      header: 'Menu',
       cssClass: 'lu-sheet',
       buttons: [
-        { text: 'Mes compagnons', icon: undefined, handler: () => this.go('/companions') },
-        { text: 'Le Grimoire — toutes les quêtes', handler: () => this.go('/grimoire') },
-        { text: forge ? 'La Forge — créer une quête' : 'La Forge (niveau 2)', handler: () => (forge ? this.go('/forge') : this.game.toast('La Forge s’ouvre au niveau 2.', 'info')) },
-        { text: 'La Salle des Trophées', handler: () => this.go('/trophies') },
-        { text: 'Le Campement — réglages', handler: () => this.go('/settings') },
+        { text: 'Mes amis', icon: undefined, handler: () => this.go('/companions') },
+        { text: 'Catalogue — toutes les quêtes', handler: () => this.go('/grimoire') },
+        { text: forge ? 'Créer une quête' : 'Créer une quête (niveau 2)', handler: () => (forge ? this.go('/forge') : this.game.toast('Créer ses propres quêtes s’ouvre au niveau 2.', 'info')) },
+        { text: 'Succès', handler: () => this.go('/trophies') },
+        { text: 'Réglages', handler: () => this.go('/settings') },
         { text: 'Fermer', role: 'cancel' },
       ],
     });

@@ -10,7 +10,7 @@ async function audit(page: Page): Promise<string[]> {
 }
 
 for (const theme of ['dark', 'light'] as const) {
-  test(`WCAG 2.1 AA — thème ${theme === 'dark' ? 'donjon' : 'parchemin'}`, async ({ page }) => {
+  test(`WCAG 2.1 AA — thème ${theme === 'dark' ? 'sombre' : 'clair'}`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await createHero(page);
     const problems: string[] = [];

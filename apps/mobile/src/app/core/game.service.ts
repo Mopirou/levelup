@@ -73,7 +73,7 @@ export class GameService {
   readonly prefs = signal<Record<string, QuestPreference>>({});
   /** Quêtes dont la période couvre aujourd'hui */
   readonly instances = signal<QuestInstance[]>([]);
-  /** Quêtes depuis le début du mois (ou de la semaine) pour les bilans de la Taverne */
+  /** Quêtes depuis le début du mois (ou de la semaine) pour les bilans */
   readonly recent = signal<QuestInstance[]>([]);
   readonly unlocked = signal<{ achievementId: string; unlockedAt: string }[]>([]);
   readonly restDays = signal<string[]>([]);
@@ -458,7 +458,7 @@ export class GameService {
     return false;
   }
 
-  /** Recharge les quêtes et la liste des trophées après une action serveur. */
+  /** Recharge les quêtes et la liste des succès après une action serveur. */
   async refreshLists(): Promise<void> {
     const uid = this.be.game.userId();
     const store = this.be.game.store;

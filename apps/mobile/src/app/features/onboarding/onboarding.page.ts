@@ -27,7 +27,7 @@ import { GameService } from '../../core/game.service';
 import { IconComponent } from '../../shared/icon.component';
 import { AbilityBadgeComponent, BarComponent, PORTRAIT_IDS, PortraitComponent, RadarComponent } from '../../shared/ui';
 
-const STEPS = ['Accueil', 'Le principe', 'Le nom', 'La classe', 'Le pseudo', 'Les caractéristiques', 'L’apparence', 'Le Serment'] as const;
+const STEPS = ['Accueil', 'Le principe', 'Le nom', 'La classe', 'Le pseudo', 'Les caractéristiques', 'L’apparence', 'L’engagement'] as const;
 const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a', '#5f9e6e', '#a8c0b0'];
 const DRAFT_KEY = 'lu-onboarding-draft';
 
@@ -72,16 +72,9 @@ function loadDraft(): Draft | null {
         @switch (step()) {
           @case (0) {
             <section class="step fade-in center">
-              <svg viewBox="0 0 200 220" class="door" aria-hidden="true">
-                <defs><radialGradient id="dl" cx="0.5" cy="0.6" r="0.6"><stop offset="0" stop-color="#f2d38a" stop-opacity=".95" /><stop offset="1" stop-color="#f2d38a" stop-opacity="0" /></radialGradient></defs>
-                <ellipse cx="100" cy="150" rx="95" ry="70" fill="url(#dl)" />
-                <path d="M40 220 V100 a60 60 0 0 1 120 0 V220 Z" fill="#3a2a1a" stroke="#c9a15a" stroke-width="4" />
-                <path d="M100 40 V220 M46 130 h108 M46 175 h108" stroke="#1d140b" stroke-width="3" />
-                <circle cx="124" cy="150" r="5" fill="#f2d38a" />
-              </svg>
-              <h1 class="lu-title">Tout héros commence quelque part.</h1>
-              <p class="lead">Le tien commence ici, ce soir, avec une décision.</p>
-              <button type="button" class="lu-btn" (click)="next()">Pousser la porte</button>
+              <h1 class="lu-title">Bienvenue sur Level Up.</h1>
+              <p class="lead">Des quêtes simples, un peu chaque jour, et une progression que tu vois.</p>
+              <button type="button" class="lu-btn" (click)="next()">Commencer</button>
             </section>
           }
           @case (1) {
@@ -103,7 +96,7 @@ function loadDraft(): Draft | null {
           @case (2) {
             <section class="step fade-in">
               <h1 class="lu-title s">Comment s’appelle ton personnage ?</h1>
-              <p class="lead">Un nom de fantasy, ou ton vrai nom : comme tu veux.</p>
+              <p class="lead">Ton prénom ou un pseudonyme : comme tu veux.</p>
               <div class="lu-field">
                 <label for="nm">Nom du personnage</label>
                 <div class="row">
@@ -225,7 +218,7 @@ function loadDraft(): Draft | null {
           }
           @case (7) {
             <section class="step fade-in">
-              <h1 class="lu-title s">Le Serment</h1>
+              <h1 class="lu-title s">Ton engagement</h1>
               <div class="lu-card recap">
                 <lu-portrait [id]="portraitId()" [size]="72" [frame]="frameColor()" />
                 <h3>{{ name() }}</h3>
@@ -236,11 +229,11 @@ function loadDraft(): Draft | null {
               <div class="lu-field">
                 <label for="oa">Pourquoi entreprends-tu cette quête ? · facultatif</label>
                 <textarea id="oa" class="lu-input area" rows="3" [value]="oath()" (input)="oath.set($any($event.target).value)" placeholder="Pour retrouver de l’énergie, pour apprendre à me connaître…"></textarea>
-                <span class="hint">Ce texte reste privé. Il te sera rappelé dans ta Chronique.</span>
+                <span class="hint">Ce texte reste privé. Il te sera rappelé dans ta progression.</span>
               </div>
               @if (error()) { <p class="err" role="alert">{{ error() }}</p> }
               <button type="button" class="lu-btn mint seal" [disabled]="busy()" (click)="swear()">
-                <lu-icon name="scroll" [size]="18" /> Prêter serment
+                <lu-icon name="scroll" [size]="18" /> Commencer
               </button>
             </section>
           }
@@ -331,7 +324,7 @@ export class OnboardingPage {
   readonly principle = [
     { i: 'swords', t: 'Accomplis des quêtes réelles', d: 'Marcher, lire, respirer, appeler un ami : chaque action concrète devient une quête.' },
     { i: 'trending', t: 'Gagne de l’XP dans 6 caractéristiques', d: 'Force, Dextérité, Constitution, Intelligence, Sagesse et Charisme progressent chacune à leur rythme.' },
-    { i: 'crown', t: 'Monte de niveau', d: 'Ton héros grandit avec toi : nouvelles quêtes, titres, trophées, et des compagnons pour t’encourager.' },
+    { i: 'crown', t: 'Monte de niveau', d: 'Ton niveau monte avec toi : nouvelles quêtes, titres, succès, et des amis pour t’encourager.' },
   ];
 
   private d = loadDraft();
@@ -359,7 +352,7 @@ export class OnboardingPage {
   private checkTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
-    // Brouillon gardé en mémoire de session (aucune donnée n'est enregistrée avant le serment).
+    // Brouillon gardé en mémoire de session (aucune donnée n'est enregistrée avant la fin).
     effect(() => {
       const draft: Draft = {
         step: this.step(), name: this.name(), classId: this.classId(), username: this.username(), scores: this.scores(),

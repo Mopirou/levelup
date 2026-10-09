@@ -33,10 +33,10 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
-      <lu-page-header eyebrow="Fiche personnage" icon="user-round" title="Ton aventure prend forme.">
+      <lu-page-header eyebrow="Profil" icon="user-round" title="Ta progression">
         <div actions>
           <button type="button" class="lu-icon-btn" aria-label="Partager ma fiche" (click)="shareSheet()"><lu-icon name="share" [size]="17" /></button>
-          <button type="button" class="lu-icon-btn" aria-label="Le Campement : réglages" (click)="ui.go('/settings')"><lu-icon name="settings" [size]="17" /></button>
+          <button type="button" class="lu-icon-btn" aria-label="Réglages" (click)="ui.go('/settings')"><lu-icon name="settings" [size]="17" /></button>
         </div>
       </lu-page-header>
 
@@ -63,9 +63,9 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
             <p class="xs muted">{{ fmt(ch.totalXp) }} XP cumulés · {{ totalDone() }} quêtes accomplies</p>
           </section>
 
-          <!-- Six façons de grandir -->
+          <!-- Tes six caractéristiques -->
           <section class="lu-section">
-            <div class="lu-section-title"><h2>Six façons de grandir</h2></div>
+            <div class="lu-section-title"><h2>Tes six caractéristiques</h2></div>
             <div class="lu-card radar">
               <div class="rhead"><span class="lu-eyebrow">PROFIL ACTUEL</span><span class="xs dim">Échelle de 0 à 20 · pointillés : à ta création</span></div>
               <lu-radar [scores]="game.scores()" [base]="ch.baseScores" [highlight]="game.weakest()" />
@@ -112,10 +112,10 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
             <div class="t"><strong>{{ counts().expert }}</strong><span>Légendaires</span></div>
           </section>
 
-          <!-- Trophées et améliorations -->
+          <!-- Succès et améliorations -->
           <section class="lu-section">
             <div class="lu-section-title">
-              <h2>Les traces de ton chemin</h2>
+              <h2>Ton parcours</h2>
               <button type="button" class="lu-link" (click)="ui.go('/trophies')">Tout voir →</button>
             </div>
             @if (recentTrophies().length) {
@@ -125,12 +125,12 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
                 }
               </div>
             } @else {
-              <p class="small muted">Tes premiers trophées arrivent avec tes premières quêtes.</p>
+              <p class="small muted">Tes premiers succès arrivent avec tes premières quêtes.</p>
             }
             @if (game.pendingImprovements() > 0) {
               <button type="button" class="lu-card gold up" (click)="game.checkPending()"><lu-icon name="sparkles" [size]="20" /><span><strong>Amélioration disponible</strong><br /><span class="xs">+2 à répartir entre tes caractéristiques</span></span><b>Choisir</b></button>
             } @else if (game.pendingPath()) {
-              <button type="button" class="lu-card gold up" (click)="game.checkPending()"><lu-icon name="compass" [size]="20" /><span><strong>Choisis ta voie</strong><br /><span class="xs">Une affinité secondaire et un titre</span></span><b>Choisir</b></button>
+              <button type="button" class="lu-card gold up" (click)="game.checkPending()"><lu-icon name="compass" [size]="20" /><span><strong>Choisis ta spécialité</strong><br /><span class="xs">Une affinité secondaire et un titre</span></span><b>Choisir</b></button>
             } @else {
               <div class="lu-card flat up"><lu-icon name="gem" [size]="20" /><span><strong>{{ nextUnlock().title }}</strong><br /><span class="xs muted">{{ nextUnlock().text }}</span></span></div>
             }
@@ -141,8 +141,8 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
           @if (ch.motto || oath()) {
             <section class="lu-card flat">
-              <span class="lu-eyebrow">LE SERMENT</span>
-              <p class="oath">{{ oath() || 'Tu n’as pas écrit de serment. Tu peux le faire dans le Campement.' }}</p>
+              <span class="lu-eyebrow">MON ENGAGEMENT</span>
+              <p class="oath">{{ oath() || 'Tu n’as pas écrit d’engagement. Tu peux le faire dans les Réglages.' }}</p>
             </section>
           }
           <button type="button" class="lu-btn ghost" (click)="shareSheet()"><lu-icon name="download" [size]="17" /> Partager ma fiche (image)</button>
@@ -260,10 +260,10 @@ export class HeroPage {
   readonly nextUnlock = computed(() => {
     const l = this.game.level();
     const marks: [number, string, string][] = [
-      [2, 'La Forge', 'Crée tes propres quêtes au niveau 2.'],
+      [2, 'Créer ses quêtes', 'Crée tes propres quêtes au niveau 2.'],
       [3, 'Une voie à choisir', 'Une affinité secondaire au niveau 3.'],
       [4, 'Une amélioration', '+2 à répartir au niveau 4.'],
-      [5, 'Héros du royaume', 'Quêtes légendaires et 4 quêtes par jour au niveau 5.'],
+      [5, 'Quêtes légendaires', 'Quêtes légendaires et 4 quêtes par jour au niveau 5.'],
       [6, 'Une quête de plus', 'Une 3e quête hebdomadaire au niveau 6.'],
       [8, 'Une amélioration', '+2 à répartir au niveau 8.'],
       [10, 'Routine ancrée', '5 quêtes par jour et 2 quêtes mensuelles au niveau 10.'],
@@ -271,9 +271,9 @@ export class HeroPage {
       [12, 'Une amélioration', '+2 à répartir au niveau 12.'],
       [14, 'Une quête de plus', 'Une 4e quête hebdomadaire au niveau 14.'],
       [16, 'Une amélioration', '+2 à répartir au niveau 16.'],
-      [17, 'Légende', '6 quêtes par jour au niveau 17.'],
+      [17, '6 quêtes par jour', '6 quêtes par jour au niveau 17.'],
       [19, 'Dernière amélioration', '+2 à répartir au niveau 19.'],
-      [20, 'Fiche dorée', 'Le titre final au niveau 20.'],
+      [20, 'Titre final', 'Le titre final au niveau 20.'],
     ];
     const n = marks.find((m) => m[0] > l);
     return n ? { title: n[1], text: n[2] } : { title: 'Au sommet', text: 'Tu as atteint tous les déblocages. Continue pour les rangs légendaires.' };
@@ -354,7 +354,7 @@ export class HeroPage {
   async pickTitle(): Promise<void> {
     const titles = this.game.titles();
     if (!titles.length) {
-      this.game.toast('Débloque des trophées pour gagner des titres honorifiques.', 'info');
+      this.game.toast('Débloque des succès pour gagner des titres honorifiques.', 'info');
       return;
     }
     const choice = await this.ui.choose('Titre affiché', [

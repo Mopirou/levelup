@@ -12,22 +12,22 @@ const CATEGORIES: { id: AchievementDef['category']; label: string; icon: string 
   { id: 'constance', label: 'Constance', icon: 'flame' },
   { id: 'maitrise', label: 'Maîtrise', icon: 'crown' },
   { id: 'exploration', label: 'Exploration', icon: 'compass' },
-  { id: 'exploits', label: 'Exploits', icon: 'swords' },
+  { id: 'exploits', label: 'Objectifs', icon: 'target' },
   { id: 'equilibre', label: 'Équilibre', icon: 'scale' },
   { id: 'secrets', label: 'Secrets', icon: 'gem' },
 ];
 
-/** La Salle des Trophées. */
+/** Succès. */
 @Component({
   selector: 'app-trophies',
   imports: [IonContent, PageHeaderComponent, BarComponent, IconComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
-      <lu-page-header [back]="true" eyebrow="La Salle des Trophées" icon="trophy" title="Tes trophées" />
+      <lu-page-header [back]="true" eyebrow="Succès" icon="trophy" title="Tes succès" />
       <div class="lu-page">
         <section class="lu-card gold head">
-          <div><span class="lu-eyebrow">COLLECTION</span><strong class="big">{{ unlockedCount() }} / {{ all.length }}</strong><span class="xs">trophées obtenus</span></div>
+          <div><span class="lu-eyebrow">COLLECTION</span><strong class="big">{{ unlockedCount() }} / {{ all.length }}</strong><span class="xs">succès obtenus</span></div>
           <button type="button" class="lu-chip gold big" (click)="pickTitle()">{{ game.displayTitle() }} ⌄</button>
         </section>
         <div class="lu-pills cats">
@@ -107,7 +107,7 @@ export class TrophiesPage {
 
   async pickTitle(): Promise<void> {
     const titles = this.game.titles();
-    if (!titles.length) return this.game.toast('Débloque des trophées pour gagner des titres honorifiques.', 'info');
+    if (!titles.length) return this.game.toast('Débloque des succès pour gagner des titres honorifiques.', 'info');
     const choice = await this.ui.choose('Titre affiché', [{ text: 'Titre de palier : ' + this.game.tier().name, value: '__tier__' }, ...titles.map((t) => ({ text: t, value: t }))]);
     if (choice !== null) await this.game.equipTitle(choice === '__tier__' ? null : choice);
   }

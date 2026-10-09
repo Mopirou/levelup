@@ -2,99 +2,99 @@
   "openers": [
     {
       "trend": "up",
-      "text": "Cette période, {name} a pris de l’élan : {xp} XP, plus que la précédente."
+      "text": "Cette période, {name} a gagné {xp} XP, plus que la précédente."
     },
     {
       "trend": "up",
-      "text": "{name} a accéléré. Les chiffres le disent, mais les sourires aussi."
+      "text": "{name} a accéléré : {done} quêtes accomplies et un rythme qui s’installe."
     },
     {
       "trend": "up",
-      "text": "Une belle montée en puissance : {done} quêtes accomplies et un rythme qui s’installe."
+      "text": "Belle progression : {done} quêtes accomplies sur la période."
     },
     {
       "trend": "up",
-      "text": "Le feu de camp brillait fort cette période, et {name} y a gardé la main."
+      "text": "Plus d’XP que la fois d’avant : {name} avance régulièrement."
     },
     {
       "trend": "up",
-      "text": "Plus d’XP que la fois d’avant : {name} avance, et on le voit."
+      "text": "Le rythme monte : {done} quêtes, {xp} XP."
     },
     {
       "trend": "up",
-      "text": "On sent l’élan : {done} quêtes, {xp} XP, et la route devant soi."
+      "text": "{name} fait mieux que la période précédente : {xp} XP."
     },
     {
       "trend": "down",
-      "text": "Une période plus calme pour {name}. Les routes ne sont pas toujours des lignes droites."
+      "text": "Une période plus calme pour {name} : {done} quêtes accomplies."
     },
     {
       "trend": "down",
-      "text": "Moins d’XP que la précédente, mais {done} quêtes tout de même. Rien n’est perdu."
+      "text": "Moins d’XP que la précédente, mais {done} quêtes tout de même."
     },
     {
       "trend": "down",
-      "text": "Le rythme a ralenti. Ce n’est pas un échec : c’est un souffle."
+      "text": "Le rythme a ralenti. Ce n’est pas grave : l’important est de reprendre."
     },
     {
       "trend": "down",
-      "text": "La Taverne était plus tranquille. Les héros ont aussi besoin de repos."
+      "text": "Période plus légère : {xp} XP. La suivante est l’occasion de remonter."
     },
     {
       "trend": "down",
-      "text": "Une période creuse n’efface rien de ce que {name} a bâti."
+      "text": "Moins d’activité cette fois-ci. Une petite quête par jour suffit pour reprendre."
     },
     {
       "trend": "down",
-      "text": "Moins d’élan cette fois-ci. Le prochain pas compte plus que ceux qui manquent."
+      "text": "Une période creuse n’efface pas ce que {name} a déjà accompli."
     },
     {
       "trend": "flat",
-      "text": "Une période régulière pour {name} : {done} quêtes, {xp} XP, un rythme tenu."
+      "text": "Période régulière pour {name} : {done} quêtes, {xp} XP."
     },
     {
       "trend": "flat",
-      "text": "Stable comme un roc : {name} garde le cap."
+      "text": "Rythme stable : {name} garde le cap."
     },
     {
       "trend": "flat",
-      "text": "Pas de grandes vagues, mais une marche régulière. C’est ainsi qu’on va loin."
+      "text": "Même rythme que la période précédente : la régularité est là."
     },
     {
       "trend": "flat",
-      "text": "La constance est une qualité discrète. {name} l’a cultivée."
+      "text": "Ni plus ni moins que d’habitude : {done} quêtes accomplies."
     },
     {
       "trend": "flat",
-      "text": "Le rythme est le même que la fois d’avant. La régularité fait son chemin."
+      "text": "Constance maintenue : {xp} XP sur la période."
     },
     {
       "trend": "flat",
-      "text": "Ni plus ni moins que d’habitude : un équilibre solide."
+      "text": "Une période comparable à la précédente : le rythme est tenu."
     },
     {
       "trend": "first",
-      "text": "Premier bilan pour {name} : {done} quêtes accomplies et {xp} XP pour commencer."
+      "text": "Premier bilan pour {name} : {done} quêtes accomplies et {xp} XP."
     },
     {
       "trend": "first",
-      "text": "Tout commence ici : {done} quêtes à ton actif, c’est déjà un début d’histoire."
+      "text": "Premier bilan : {done} quêtes accomplies, c’est un bon début."
     },
     {
       "trend": "first",
-      "text": "Les premières pages du journal sont écrites : {xp} XP gagnés."
+      "text": "Premiers résultats : {xp} XP gagnés."
     },
     {
       "trend": "first",
-      "text": "Une première période se referme. {name} a posé les premières pierres."
+      "text": "Une première période se termine : {done} quêtes accomplies."
     },
     {
       "trend": "first",
-      "text": "Le voyage ne fait que commencer, et il a déjà de la couleur."
+      "text": "Le suivi commence : {done} quêtes et {xp} XP pour démarrer."
     },
     {
       "trend": "first",
-      "text": "Un premier pas, puis un autre : {done} quêtes, c’est un bon départ."
+      "text": "{name} a bien démarré : {done} quêtes accomplies."
     }
   ],
   "best": [
@@ -396,95 +396,95 @@
     },
     {
       "kind": "week",
-      "text": "La route continue : la semaine qui vient a ses propres quêtes."
+      "text": "Une nouvelle semaine commence : choisis tes quêtes."
     },
     {
       "kind": "week",
-      "text": "Prends un instant pour être fier du chemin parcouru."
+      "text": "Prends un instant pour regarder ce que tu as accompli."
     },
     {
       "kind": "week",
-      "text": "Une nouvelle semaine s’ouvre : choisis tes quêtes avec envie."
+      "text": "Garde ce qui t’a fait du bien cette semaine."
     },
     {
       "kind": "week",
-      "text": "Respire, relis, repars. Le Tableau d’Affichage t’attend."
+      "text": "Continue à ton rythme : la régularité compte plus que l’intensité."
     },
     {
       "kind": "week",
-      "text": "Cette semaine n’est plus à refaire. La prochaine est à écrire."
+      "text": "Cette semaine est terminée. La prochaine est à planifier."
     },
     {
       "kind": "week",
-      "text": "Garde ce qui t’a fait du bien, laisse le reste de côté."
+      "text": "Choisis une quête facile pour bien démarrer la semaine."
     },
     {
       "kind": "week",
-      "text": "Un pas après l’autre, la semaine suivante ne demande pas plus."
+      "text": "Un jour après l’autre : la semaine suivante ne demande pas plus."
     },
     {
       "kind": "week",
-      "text": "La régularité n’est pas un sprint : continue à ton rythme."
+      "text": "Pense à fixer un moment fixe pour tes quêtes."
     },
     {
       "kind": "week",
-      "text": "Demain est un autre jour de jeu."
+      "text": "Tes quêtes de la semaine sont dans l’onglet Quêtes."
     },
     {
       "kind": "week",
-      "text": "Le tavernier a déjà préparé de nouvelles quêtes pour toi."
+      "text": "Regarde ta caractéristique la plus faible : une petite quête suffit."
     },
     {
       "kind": "week",
-      "text": "Le chemin se construit en marchant. Bonne semaine, {name}."
+      "text": "Bonne semaine, {name}."
     },
     {
       "kind": "month",
-      "text": "Un mois de plus dans ton histoire. Elle commence à prendre forme."
+      "text": "Un mois de plus : regarde ta progression et choisis la suite."
     },
     {
       "kind": "month",
-      "text": "Le mois est terminé : regarde ce que tu as bâti, et choisis la suite."
+      "text": "Le mois est terminé : de nouvelles quêtes mensuelles t’attendent."
     },
     {
       "kind": "month",
-      "text": "Un nouveau mois commence, avec ses propres défis à relever."
+      "text": "Garde ce bilan comme repère pour les prochains mois."
     },
     {
       "kind": "month",
-      "text": "Garde ce mois comme un repère : tu pourras y revenir quand le doute viendra."
+      "text": "Un mois de régularité, c’est déjà une habitude qui s’installe."
     },
     {
       "kind": "month",
-      "text": "Un mois de petits pas, c’est déjà un voyage."
+      "text": "Prends le temps de noter ce qui a fonctionné ce mois-ci."
     },
     {
       "kind": "month",
-      "text": "Tu as vécu un mois entier d’aventure. Les prochains t’attendent."
+      "text": "Le mois prochain, tu peux viser une caractéristique de plus."
     },
     {
       "kind": "month",
-      "text": "Prends le temps de te féliciter : c’est aussi une manière d’avancer."
+      "text": "Rien ne se perd : tout s’additionne."
     },
     {
       "kind": "month",
-      "text": "Le mois prochain sera ce que tu en feras. Il est déjà bien parti."
+      "text": "Un bilan n’est pas un jugement : c’est un point de repère."
     },
     {
       "kind": "month",
-      "text": "Rien ne s’est perdu : tout s’est empilé."
+      "text": "Choisis un objectif simple pour le mois qui commence."
     },
     {
       "kind": "month",
-      "text": "Chaque mois laisse sa trace : ceux-ci ne s’effacent pas."
+      "text": "Pense à ajuster tes quêtes à ton emploi du temps."
     },
     {
       "kind": "month",
-      "text": "Un bilan n’est pas un jugement, c’est un point sur la carte."
+      "text": "Chaque mois laisse une trace dans ton historique."
     },
     {
       "kind": "month",
-      "text": "Merci pour ce mois, {name}. La Taverne t’attend pour le suivant."
+      "text": "Merci pour ce mois, {name}. À bientôt pour le suivant."
     }
   ]
 }

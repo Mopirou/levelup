@@ -393,7 +393,7 @@ export function createCloudBackend(): Backend {
       // le profil d'un utilisateur bloqué reste lisible par celui qui l'a bloqué ? non (RLS) : on garde l'identifiant
       const { data: ps } = await sb.from('profiles').select('id, username').in('id', ids);
       const byId = new Map((ps ?? []).map((p: any) => [p.id, String(p.username)]));
-      return ids.map((id: string) => ({ profileId: id, username: byId.get(id) ?? 'Aventurier masqué' }));
+      return ids.map((id: string) => ({ profileId: id, username: byId.get(id) ?? 'Utilisateur masqué' }));
     },
     async friends(): Promise<FriendRow[]> {
       const { data, error } = await sb.rpc('friends_overview');

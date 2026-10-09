@@ -16,7 +16,7 @@ import type {
 import type { LocalAccount } from './local-backend';
 
 /**
- * Social du mode local : quelques compagnons de démonstration (ceux des maquettes) pour pouvoir tout essayer
+ * Social du mode local : quelques amis de démonstration (ceux des maquettes) pour pouvoir tout essayer
  * sans compte en ligne. Rien n'est envoyé nulle part.
  */
 interface Person {
@@ -290,7 +290,7 @@ export async function createLocalSocial(deps: {
       if (state.outgoing.includes(profileId)) return 'already_sent';
       state.outgoing.push(profileId);
       save();
-      // en démonstration, certains compagnons acceptent après quelques secondes
+      // en démonstration, certains amis acceptent après quelques secondes
       setTimeout(() => {
         if (!state.outgoing.includes(profileId)) return;
         state.outgoing = state.outgoing.filter((x) => x !== profileId);
@@ -481,7 +481,7 @@ export async function createLocalSocial(deps: {
     },
   };
 
-  // Réactions factices : un compagnon encourage de temps en temps ta dernière publication.
+  // Réactions factices : un ami encourage de temps en temps ta dernière publication.
   void REACTION_KINDS;
   return social;
 }

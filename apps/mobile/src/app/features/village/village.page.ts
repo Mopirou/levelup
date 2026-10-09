@@ -24,15 +24,15 @@ import { dayLabel, fmt } from '../../shared/format';
     <ion-content [fullscreen]="true">
       <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
 
-      <lu-page-header eyebrow="On avance mieux ensemble" icon="users" title="Place du Village">
+      <lu-page-header eyebrow="Amis" icon="users" title="Fil des amis">
         <div actions>
-          <button type="button" class="lu-icon-btn" aria-label="Mes compagnons" (click)="ui.go('/companions')"><lu-icon name="user-plus" [size]="17" /></button>
+          <button type="button" class="lu-icon-btn" aria-label="Mes amis" (click)="ui.go('/companions')"><lu-icon name="user-plus" [size]="17" /></button>
         </div>
       </lu-page-header>
 
       <div class="lu-page">
         <div class="lu-seg" role="tablist">
-          <button type="button" role="tab" [class.on]="tab() === 'feed'" [attr.aria-selected]="tab() === 'feed'" (click)="tab.set('feed')">Compagnie</button>
+          <button type="button" role="tab" [class.on]="tab() === 'feed'" [attr.aria-selected]="tab() === 'feed'" (click)="tab.set('feed')"> Fil </button>
           @if (game.settings()?.leaderboardOptIn !== false) {
             <button type="button" role="tab" [class.on]="tab() === 'board'" [attr.aria-selected]="tab() === 'board'" (click)="openBoard()">Classement</button>
           }
@@ -47,16 +47,16 @@ import { dayLabel, fmt } from '../../shared/format';
               }
             </div>
             <div class="ctext">
-              <strong>Ton cercle · {{ friends().length }} compagnon{{ friends().length > 1 ? 's' : '' }}</strong>
-              <span class="xs muted">@if (social.requests().length) { {{ social.requests().length }} demande{{ social.requests().length > 1 ? 's' : '' }} en attente } @else { Pas d’abonnés publics. Juste tes compagnons. }</span>
+              <strong>Ton cercle · {{ friends().length }} ami{{ friends().length > 1 ? 's' : '' }}</strong>
+              <span class="xs muted">@if (social.requests().length) { {{ social.requests().length }} demande{{ social.requests().length > 1 ? 's' : '' }} en attente } @else { Pas d’abonnés publics. Juste tes amis. }</span>
             </div>
             <span class="lu-link">Gérer →</span>
           </section>
 
           <!-- Composer -->
-          <button type="button" class="lu-card flat composer" (click)="ui.go('/publish')" aria-label="Partager un exploit">
+          <button type="button" class="lu-card flat composer" (click)="ui.go('/publish')" aria-label="Partager un moment">
             <lu-avatar [name]="game.character()?.name ?? ''" [size]="38" tone="light" />
-            <span class="ph">Un petit exploit à partager ?</span>
+            <span class="ph">Quelque chose à partager ?</span>
             <lu-icon name="camera" [size]="18" />
           </button>
 
@@ -68,13 +68,13 @@ import { dayLabel, fmt } from '../../shared/format';
             <div class="lu-skeleton" style="height: 220px"></div>
             <div class="lu-skeleton" style="height: 180px"></div>
           } @else if (!posts().length) {
-            <lu-empty icon="users" title="La place est vide" text="Une aventure se vit mieux à plusieurs. Invite des compagnons pour voir leurs exploits ici.">
+            <lu-empty icon="users" title="Rien pour le moment" text="Invite des amis pour suivre leur progression ici.">
               <button type="button" class="lu-btn" (click)="shareCode()"><lu-icon name="share" [size]="17" /> Partager mon code ami</button>
-              <button type="button" class="lu-btn ghost" (click)="ui.go('/companions')"><lu-icon name="search" [size]="17" /> Trouver des compagnons</button>
+              <button type="button" class="lu-btn ghost" (click)="ui.go('/companions')"><lu-icon name="search" [size]="17" /> Trouver des amis</button>
             </lu-empty>
           } @else {
             <section class="lu-section">
-              <div class="lu-section-title"><h2>Les nouvelles du cercle</h2></div>
+              <div class="lu-section-title"><h2>Les nouvelles de tes amis</h2></div>
               @for (g of groups(); track g.label) {
                 <p class="day">{{ g.label }}</p>
                 @for (p of g.posts; track p.id) {
@@ -93,15 +93,15 @@ import { dayLabel, fmt } from '../../shared/format';
             <ion-infinite-scroll [disabled]="!hasMore()" (ionInfinite)="more($event)">
               <ion-infinite-scroll-content />
             </ion-infinite-scroll>
-            <p class="xs dim center">Un village privé, rien que pour ton cercle.</p>
+            <p class="xs dim center">Visible uniquement par tes amis.</p>
           }
         } @else {
           <!-- Classement -->
           <section class="lu-section">
-            <div class="lu-section-title"><h2>La compagnie cette semaine</h2></div>
+            <div class="lu-section-title"><h2>Tes amis cette semaine</h2></div>
             <p class="small muted">XP de la semaine en cours, remise à zéro lundi. Les quêtes personnalisées comptent pour 30 % maximum.</p>
             @if (!board().length) {
-              <lu-empty icon="trophy" title="Pas encore de classement" text="Invite des compagnons pour comparer vos semaines, sans pression." />
+              <lu-empty icon="trophy" title="Pas encore de classement" text="Invite des amis pour comparer vos semaines, sans pression." />
             } @else {
               <div class="podium">
                 @for (r of podium(); track r.profileId; let i = $index) {
@@ -272,7 +272,7 @@ export class VillagePage implements OnDestroy {
     const text = `Rejoins-moi sur Level Up ! Mon code ami : ${profile.friendCode}`;
     try {
       if (Capacitor.isNativePlatform() || (navigator.share && navigator.canShare?.({ text }))) {
-        if (Capacitor.isNativePlatform()) await Share.share({ title: 'Level Up', text, url, dialogTitle: 'Inviter un compagnon' });
+        if (Capacitor.isNativePlatform()) await Share.share({ title: 'Level Up', text, url, dialogTitle: 'Inviter un ami' });
         else await navigator.share({ title: 'Level Up', text, url });
       } else {
         await navigator.clipboard.writeText(`${text} ${url}`);

@@ -22,7 +22,9 @@ npm run dev          # http://localhost:4200 — mode démo : données dans le n
 ## Brancher Supabase (mode en ligne)
 
 1. Créer un projet Supabase, **région UE**.
-2. `npx supabase link --project-ref <ref>` puis `npx supabase db push` (migrations) et exécuter `supabase/seed.sql`.
+2. **Migrations automatiques** : définir `SUPABASE_DB_URL` (chaîne de connexion Postgres du projet). `npm run migrate` compare `supabase/migrations` à la table de suivi `supabase_migrations.schema_migrations` (la même que la CLI Supabase), n’applique que les migrations en retard, chacune dans une transaction, puis rejoue `supabase/seed.sql` seulement s’il a changé (catalogue de quêtes, trophées). Rien à faire à la main :
+   - `npm run dev` le lance au démarrage (sans `SUPABASE_DB_URL`, il ne fait rien) ;
+   - `.github/workflows/deploy.yml` le lance à chaque push sur `main` (secrets `SUPABASE_DB_URL`, et en option `SUPABASE_ACCESS_TOKEN` + `SUPABASE_PROJECT_REF` pour redéployer les Edge Functions).
 3. `npm run gen` (regénère contenu, seed et bundle du moteur serveur), puis
    `npx supabase functions deploy game account push` et
    `npx supabase secrets set CRON_SECRET=… PUSH_WEBHOOK_SECRET=… FCM_SERVICE_ACCOUNT='{…}'` (les deux derniers pour le push).

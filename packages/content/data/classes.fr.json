@@ -5,7 +5,7 @@
     "icon": "footsteps-outline",
     "masteries": ["FOR", "CON"],
     "profile": "Sportif endurant, salle et cardio",
-    "description": "L’Éclaireur avance devant, léger et résistant. Il aime le souffle court, la sueur propre et les chemins qu’il n’a pas encore parcourus. Pour lui, chaque séance est une carte qu’il remplit, et son corps est sa meilleure boussole.",
+    "description": "Pour les sportifs d’endurance : course, salle, cardio. Tu progresses surtout en Force et en Constitution.",
     "favoredQuests": ["Marche rapide, 30 minutes", "Cardio, 150 minutes dans la semaine", "Haut du corps, 20 minutes"],
     "paths": [
       { "id": "eclaireur-sentier", "name": "Voie du Sentier", "ability": "SAG", "title": "Marcheur des cimes", "description": "Tu cours pour entendre le vent. Ta voie ajoute une affinité Sagesse : chaque sortie en nature te rapporte un petit supplément d’XP." },
@@ -18,7 +18,7 @@
     "icon": "compass-outline",
     "masteries": ["FOR", "DEX"],
     "profile": "Arts martiaux, yoga, discipline du corps",
-    "description": "L’Aventurier ose. Il apprend un nouveau sport comme on ouvre une porte, avec un sourire et un peu de peur. Son corps est un instrument qu’il accorde par la discipline, la souplesse et le geste précis.",
+    "description": "Pour ceux qui aiment les arts martiaux, le yoga ou toute discipline du corps. Tu progresses surtout en Force et en Dextérité.",
     "favoredQuests": ["Séance de force complète, 30 minutes", "Activité de coordination, 45 minutes", "Parcours d’agilité, 20 minutes"],
     "paths": [
       { "id": "aventurier-ombre", "name": "Voie de l’Ombre", "ability": "SAG", "title": "Maître du calme", "description": "L’art martial est d’abord un art du souffle. Ta voie ajoute une affinité Sagesse." },
@@ -31,7 +31,7 @@
     "icon": "hammer-outline",
     "masteries": ["DEX", "INT"],
     "profile": "Bricoleur ingénieux, apprend par la pratique",
-    "description": "L’Artisan comprend avec ses mains. Il démonte, répare, invente, recommence. Pour lui, un projet vaut mieux qu’un cours : on apprend en faisant, en se trompant, en finissant.",
+    "description": "Pour ceux qui apprennent en pratiquant : bricolage, projets, techniques. Tu progresses surtout en Dextérité et en Intelligence.",
     "favoredQuests": ["Geste précis, 90 minutes dans la semaine", "Tutoriel d’une compétence, 15 minutes", "Programmation, 30 minutes"],
     "paths": [
       { "id": "artisan-inventeur", "name": "Voie de l’Inventeur", "ability": "INT", "title": "Esprit d’atelier", "description": "Tu cherches comment les choses fonctionnent. Ta voie ajoute une affinité Intelligence." },
@@ -44,7 +44,7 @@
     "icon": "musical-notes-outline",
     "masteries": ["DEX", "CHA"],
     "profile": "Artiste, musicien, aime la scène",
-    "description": "Le Troubadour transforme ce qu’il vit en chansons, dessins ou histoires. Il a besoin de public autant que de silence, et sait que la création se partage.",
+    "description": "Pour les artistes et les musiciens qui aiment la scène. Tu progresses surtout en Dextérité et en Charisme.",
     "favoredQuests": ["Habileté manuelle, 120 minutes", "Prise de parole, 15 minutes", "Jonglage progressif, 15 minutes"],
     "paths": [
       { "id": "troubadour-conteur", "name": "Voie du Conteur", "ability": "INT", "title": "Mémoire vivante", "description": "Tu aimes les histoires bien construites. Ta voie ajoute une affinité Intelligence." },
@@ -57,7 +57,7 @@
     "icon": "people-outline",
     "masteries": ["CON", "CHA"],
     "profile": "Énergie naturelle, sociable et résistant",
-    "description": "Le Rassembleur a de l’énergie pour deux et ne s’en sert pas qu’à son profit. Il aime les tablées pleines, les randonnées en groupe et les défis qu’on relève à plusieurs.",
+    "description": "Pour les personnes sociables et pleines d’énergie. Tu progresses surtout en Constitution et en Charisme.",
     "favoredQuests": ["Repas partagé, 45 minutes", "Temps social, 180 minutes dans la semaine", "Marche et discussion, 30 minutes"],
     "paths": [
       { "id": "rassembleur-feu", "name": "Voie du Feu de camp", "ability": "DEX", "title": "Âme des veillées", "description": "Tu crées des moments qui comptent. Ta voie ajoute une affinité Dextérité." },
@@ -70,7 +70,7 @@
     "icon": "library-outline",
     "masteries": ["INT", "SAG"],
     "profile": "Étudiant permanent, lecteur, réfléchi",
-    "description": "L’Érudit lit, note, relie. Il avance par la compréhension et croit que chaque question ouvre un royaume. Son défi est de mettre ce qu’il sait en pratique, pas seulement en mémoire.",
+    "description": "Pour les étudiants permanents, les lecteurs et les curieux. Tu progresses surtout en Intelligence et en Sagesse.",
     "favoredQuests": ["Lecture, 30 minutes", "Langue étrangère, 20 minutes", "Méditation, 15 minutes"],
     "paths": [
       { "id": "erudit-savant", "name": "Voie du Savant", "ability": "INT", "title": "Gardien des savoirs", "description": "Tu creuses chaque sujet jusqu’au fond. Ta voie ajoute une affinité Intelligence." },
@@ -83,7 +83,7 @@
     "icon": "heart-outline",
     "masteries": ["SAG", "CHA"],
     "profile": "Bienveillant, tourné vers les autres",
-    "description": "Le Gardien veille : sur lui-même, sur ses proches, sur l’équilibre fragile des jours. Il écoute plus qu’il ne parle, et sait que la douceur est une force.",
+    "description": "Pour ceux qui prennent soin des autres et d’eux-mêmes. Tu progresses surtout en Sagesse et en Charisme.",
     "favoredQuests": ["Méditation, 15 minutes", "Écoute active, 20 minutes", "Gratitude, 5 minutes"],
     "paths": [
       { "id": "gardien-guerisseur", "name": "Voie du Guérisseur", "ability": "CON", "title": "Main qui apaise", "description": "Tu prends soin des corps autant que des cœurs. Ta voie ajoute une affinité Constitution." },
@@ -96,7 +96,7 @@
     "icon": "leaf-outline",
     "masteries": ["CON", "SAG"],
     "profile": "Proche de la nature, curieux du vivant",
-    "description": "L’Explorateur du quotidien trouve de l’aventure dans une marche, un jardin, un ciel. Il cultive la régularité et le souffle, et progresse sans bruit, un pas après l’autre.",
+    "description": "Pour les amoureux de nature et de grands espaces. Tu progresses surtout en Constitution et en Sagesse.",
     "favoredQuests": ["Nature sans écran, 30 minutes", "Sortie en extérieur, 45 minutes", "Marche, 150 minutes dans la semaine"],
     "paths": [
       { "id": "explorateur-druide", "name": "Voie du Sentier vert", "ability": "INT", "title": "Lecteur du vivant", "description": "Tu observes, tu notes, tu apprends de la nature. Ta voie ajoute une affinité Intelligence." },

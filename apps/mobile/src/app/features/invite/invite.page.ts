@@ -40,7 +40,7 @@ export class InvitePage {
         return;
       }
       const r = await this.be.social.sendRequestByCode(code);
-      this.game.toast(r === 'sent' ? 'Demande envoyée !' : r === 'accepted' ? 'Vous êtes compagnons !' : r === 'already_friends' ? 'Vous êtes déjà compagnons.' : 'Aucun aventurier trouvé.', r === 'sent' || r === 'accepted' ? 'success' : 'info');
+      this.game.toast(r === 'sent' ? 'Demande envoyée !' : r === 'accepted' ? 'Vous êtes amis !' : r === 'already_friends' ? 'Vous êtes déjà amis.' : 'Aucun utilisateur trouvé.', r === 'sent' || r === 'accepted' ? 'success' : 'info');
     } catch {
       this.game.toast('Invitation impossible pour le moment.', 'error');
     }

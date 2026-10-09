@@ -61,7 +61,7 @@ function unlocksText(level: number): string[] {
           <div class="screen sheet" role="dialog" aria-modal="true" aria-label="Choix de la voie">
             <div class="inner fade-in">
               <p class="kicker">Niveau 3</p>
-              <h2>Choisis ta voie</h2>
+              <h2>Choisis ta spécialité</h2>
               <p class="text">Une voie ajoute une affinité secondaire (+2 XP par quête) et un titre. Ce choix est définitif.</p>
               @for (p of game.classDef()?.paths ?? []; track p.id) {
                 <button type="button" class="path" [class.on]="pathChoice() === p.id" (click)="pathChoice.set(p.id)">
@@ -83,7 +83,7 @@ function unlocksText(level: number): string[] {
           <div class="screen sheet" role="dialog" aria-modal="true" aria-label="Amélioration de caractéristique">
             <div class="inner fade-in">
               <p class="kicker">Amélioration</p>
-              <h2>Renforce ton héros</h2>
+              <h2>Améliore une caractéristique</h2>
               <p class="text">Ajoute +2 à une caractéristique, ou +1 à deux caractéristiques. Une caractéristique ne peut pas dépasser 20 par ce moyen.</p>
               <div class="lu-seg">
                 <button type="button" [class.on]="mode() === 'two'" (click)="setMode('two')">+2 à une</button>

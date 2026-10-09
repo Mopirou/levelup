@@ -74,14 +74,14 @@
   {
     "id": "mille-quetes",
     "category": "constance",
-    "name": "Le Millénaire",
+    "name": "1 000 quêtes",
     "description": "Accomplir 1 000 quêtes.",
     "condition": {
       "kind": "quests_total",
       "target": 1000
     },
     "xpBonus": 500,
-    "titleUnlocked": "Légende des mille quêtes"
+    "titleUnlocked": "1 000 quêtes"
   },
   {
     "id": "serie-3",
@@ -98,19 +98,19 @@
   {
     "id": "feu-sacre",
     "category": "constance",
-    "name": "Feu sacré",
+    "name": "Une semaine d’affilée",
     "description": "Tenir une série de 7 jours.",
     "condition": {
       "kind": "streak_best",
       "target": 7
     },
     "xpBonus": 50,
-    "titleUnlocked": "Gardien du feu"
+    "titleUnlocked": "Régulier"
   },
   {
     "id": "serie-14",
     "category": "constance",
-    "name": "Deux semaines de flamme",
+    "name": "Deux semaines d’affilée",
     "description": "Tenir une série de 14 jours.",
     "condition": {
       "kind": "streak_best",
@@ -134,7 +134,7 @@
   {
     "id": "serie-60",
     "category": "constance",
-    "name": "Deux lunes",
+    "name": "Deux mois d’affilée",
     "description": "Tenir une série de 60 jours.",
     "condition": {
       "kind": "streak_best",
@@ -158,7 +158,7 @@
   {
     "id": "serie-200",
     "category": "constance",
-    "name": "Roc dans la tempête",
+    "name": "200 jours d’affilée",
     "description": "Tenir une série de 200 jours.",
     "condition": {
       "kind": "streak_best",
@@ -170,14 +170,14 @@
   {
     "id": "annee-heros",
     "category": "constance",
-    "name": "L’Année du Héros",
+    "name": "Une année complète",
     "description": "Tenir une série de 365 jours.",
     "condition": {
       "kind": "streak_best",
       "target": 365
     },
     "xpBonus": 500,
-    "titleUnlocked": "Héros de l’année"
+    "titleUnlocked": "Une année complète"
   },
   {
     "id": "journee-parfaite",
@@ -410,14 +410,14 @@
   {
     "id": "niveau-5",
     "category": "maitrise",
-    "name": "Héros du royaume",
+    "name": "Niveau 5",
     "description": "Atteindre le niveau 5.",
     "condition": {
       "kind": "level",
       "target": 5
     },
     "xpBonus": 100,
-    "titleUnlocked": "Héros du royaume"
+    "titleUnlocked": "Niveau 5"
   },
   {
     "id": "niveau-10",
@@ -434,14 +434,14 @@
   {
     "id": "niveau-11",
     "category": "maitrise",
-    "name": "Maître du royaume",
+    "name": "Niveau 11",
     "description": "Atteindre le niveau 11.",
     "condition": {
       "kind": "level",
       "target": 11
     },
     "xpBonus": 250,
-    "titleUnlocked": "Maître du royaume"
+    "titleUnlocked": "Niveau 11"
   },
   {
     "id": "niveau-15",
@@ -458,26 +458,26 @@
   {
     "id": "niveau-17",
     "category": "maitrise",
-    "name": "Légende vivante",
+    "name": "Niveau 17",
     "description": "Atteindre le niveau 17.",
     "condition": {
       "kind": "level",
       "target": 17
     },
     "xpBonus": 400,
-    "titleUnlocked": "La Légende"
+    "titleUnlocked": "Niveau 17"
   },
   {
     "id": "niveau-20",
     "category": "maitrise",
-    "name": "La Fiche dorée",
+    "name": "Niveau 20",
     "description": "Atteindre le niveau 20.",
     "condition": {
       "kind": "level",
       "target": 20
     },
     "xpBonus": 500,
-    "titleUnlocked": "Légende des Légendes"
+    "titleUnlocked": "Niveau maximum"
   },
   {
     "id": "rang-legendaire",
@@ -506,7 +506,7 @@
   {
     "id": "decouvreur-50",
     "category": "exploration",
-    "name": "Explorateur du Grimoire",
+    "name": "Explorateur du catalogue",
     "description": "Accomplir 50 quêtes différentes.",
     "condition": {
       "kind": "discovered",
@@ -530,14 +530,14 @@
   {
     "id": "decouvreur-200",
     "category": "exploration",
-    "name": "Le Grimoire complet",
+    "name": "Catalogue complet",
     "description": "Accomplir 200 quêtes différentes.",
     "condition": {
       "kind": "discovered",
       "target": 200
     },
     "xpBonus": 500,
-    "titleUnlocked": "Bibliothécaire du royaume"
+    "titleUnlocked": "Bibliothécaire"
   },
   {
     "id": "premier-journal",
@@ -554,7 +554,7 @@
   {
     "id": "journal-10",
     "category": "exploration",
-    "name": "Le Carnet se remplit",
+    "name": "Le journal se remplit",
     "description": "Écrire 10 entrées de journal.",
     "condition": {
       "kind": "journal_entries",
@@ -566,19 +566,19 @@
   {
     "id": "journal-50",
     "category": "exploration",
-    "name": "Chroniqueur du royaume",
+    "name": "Assidu du journal",
     "description": "Écrire 50 entrées de journal.",
     "condition": {
       "kind": "journal_entries",
       "target": 50
     },
     "xpBonus": 250,
-    "titleUnlocked": "Chroniqueur"
+    "titleUnlocked": "Assidu du journal"
   },
   {
     "id": "forgeron",
     "category": "exploration",
-    "name": "Premier coup de marteau",
+    "name": "Première quête créée",
     "description": "Forger ta première quête personnalisée.",
     "condition": {
       "kind": "custom_quests",
@@ -590,19 +590,19 @@
   {
     "id": "maitre-forgeron",
     "category": "exploration",
-    "name": "Maître forgeron",
+    "name": "Créateur de quêtes",
     "description": "Forger 5 quêtes personnalisées.",
     "condition": {
       "kind": "custom_quests",
       "target": 5
     },
     "xpBonus": 150,
-    "titleUnlocked": "Maître forgeron"
+    "titleUnlocked": "Créateur de quêtes"
   },
   {
     "id": "premiere-publication",
     "category": "exploration",
-    "name": "La Plume du Crieur",
+    "name": "Première publication",
     "description": "Publier ta première victoire au Village.",
     "condition": {
       "kind": "posts_shared",
@@ -614,7 +614,7 @@
   {
     "id": "dix-publications",
     "category": "exploration",
-    "name": "Voix du Village",
+    "name": "Dix publications",
     "description": "Publier 10 victoires au Village.",
     "condition": {
       "kind": "posts_shared",
@@ -626,14 +626,14 @@
   {
     "id": "cinquante-publications",
     "category": "exploration",
-    "name": "Barde du Village",
+    "name": "Cinquante publications",
     "description": "Publier 50 victoires au Village.",
     "condition": {
       "kind": "posts_shared",
       "target": 50
     },
     "xpBonus": 250,
-    "titleUnlocked": "Barde du Village"
+    "titleUnlocked": "Cinquante publications"
   },
   {
     "id": "premier-compagnon",
@@ -650,7 +650,7 @@
   {
     "id": "cinq-compagnons",
     "category": "exploration",
-    "name": "La Compagnie",
+    "name": "Cinq amis",
     "description": "Avoir 5 compagnons.",
     "condition": {
       "kind": "friends",
@@ -662,7 +662,7 @@
   {
     "id": "vingt-compagnons",
     "category": "exploration",
-    "name": "La Grande Compagnie",
+    "name": "Vingt amis",
     "description": "Avoir 20 compagnons.",
     "condition": {
       "kind": "friends",
@@ -686,7 +686,7 @@
   {
     "id": "tueur-de-dragons-1",
     "category": "exploits",
-    "name": "Premier Dragon",
+    "name": "Première quête légendaire",
     "description": "Accomplir une quête Légendaire.",
     "condition": {
       "kind": "quests_by_difficulty",
@@ -699,7 +699,7 @@
   {
     "id": "tueur-de-dragons-5",
     "category": "exploits",
-    "name": "Chasseur de dragons",
+    "name": "5 quêtes légendaires",
     "description": "Accomplir 5 quêtes Légendaires.",
     "condition": {
       "kind": "quests_by_difficulty",
@@ -712,7 +712,7 @@
   {
     "id": "tueur-de-dragons",
     "category": "exploits",
-    "name": "Tueur de Dragons",
+    "name": "10 quêtes légendaires",
     "description": "Accomplir 10 quêtes Légendaires.",
     "condition": {
       "kind": "quests_by_difficulty",
@@ -720,12 +720,12 @@
       "target": 10
     },
     "xpBonus": 400,
-    "titleUnlocked": "Tueur de Dragons"
+    "titleUnlocked": "10 quêtes légendaires"
   },
   {
     "id": "tueur-de-dragons-25",
     "category": "exploits",
-    "name": "Fléau des dragons",
+    "name": "25 quêtes légendaires",
     "description": "Accomplir 25 quêtes Légendaires.",
     "condition": {
       "kind": "quests_by_difficulty",
@@ -751,7 +751,7 @@
   {
     "id": "audacieux-50",
     "category": "exploits",
-    "name": "Le Téméraire",
+    "name": "50 quêtes audacieuses",
     "description": "Accomplir 50 quêtes Audacieuses.",
     "condition": {
       "kind": "quests_by_difficulty",
@@ -759,7 +759,7 @@
       "target": 50
     },
     "xpBonus": 300,
-    "titleUnlocked": "Le Téméraire"
+    "titleUnlocked": "50 quêtes audacieuses"
   },
   {
     "id": "semainier",
@@ -776,7 +776,7 @@
   {
     "id": "moissonneur",
     "category": "exploits",
-    "name": "Le Moissonneur",
+    "name": "6 quêtes mensuelles",
     "description": "Accomplir 6 quêtes mensuelles.",
     "condition": {
       "kind": "monthly_done",
@@ -788,7 +788,7 @@
   {
     "id": "dix-heures-silence",
     "category": "exploits",
-    "name": "Dix heures de silence",
+    "name": "Dix heures chronométrées",
     "description": "Cumuler 10 heures sur le chronomètre intégré.",
     "condition": {
       "kind": "timer_minutes",
@@ -800,7 +800,7 @@
   {
     "id": "cinquante-heures",
     "category": "exploits",
-    "name": "Cinquante heures de présence",
+    "name": "Cinquante heures chronométrées",
     "description": "Cumuler 50 heures sur le chronomètre intégré.",
     "condition": {
       "kind": "timer_minutes",
@@ -872,7 +872,7 @@
   {
     "id": "equilibre-16",
     "category": "equilibre",
-    "name": "Héros complet",
+    "name": "Profil complet",
     "description": "Avoir toutes les caractéristiques à 16 ou plus.",
     "condition": {
       "kind": "all_scores_min",
@@ -908,21 +908,21 @@
   {
     "id": "retour-du-roi",
     "category": "secrets",
-    "name": "Le Retour du Roi",
+    "name": "De retour",
     "description": "Reprendre après 14 jours d’absence.",
     "condition": {
       "kind": "comeback",
       "target": 14
     },
     "xpBonus": 100,
-    "titleUnlocked": "Le Revenant",
+    "titleUnlocked": "De retour",
     "isSecret": true,
-    "hint": "Les rois partent parfois. Les grands reviennent."
+    "hint": "Reprendre après une pause compte aussi."
   },
   {
     "id": "retour-30",
     "category": "secrets",
-    "name": "Le Long Exil",
+    "name": "Retour après 30 jours",
     "description": "Reprendre après 30 jours d’absence.",
     "condition": {
       "kind": "comeback",
@@ -936,7 +936,7 @@
   {
     "id": "dix-mille-xp",
     "category": "secrets",
-    "name": "Dix mille voix",
+    "name": "10 000 XP",
     "description": "Gagner 10 000 XP au total.",
     "condition": {
       "kind": "total_xp",
@@ -950,7 +950,7 @@
   {
     "id": "cinquante-mille-xp",
     "category": "secrets",
-    "name": "Un royaume d’XP",
+    "name": "50 000 XP",
     "description": "Gagner 50 000 XP au total.",
     "condition": {
       "kind": "total_xp",
@@ -959,7 +959,7 @@
     "xpBonus": 400,
     "titleUnlocked": null,
     "isSecret": true,
-    "hint": "Peu de héros vont jusque-là."
+    "hint": "Peu de joueurs vont jusque-là."
   },
   {
     "id": "repos-10",
@@ -978,7 +978,7 @@
   {
     "id": "inspire-30",
     "category": "secrets",
-    "name": "Cœur d’étincelles",
+    "name": "30 Inspirations",
     "description": "Utiliser 30 points d’Inspiration.",
     "condition": {
       "kind": "inspiration_used",
@@ -987,6 +987,6 @@
     "xpBonus": 250,
     "titleUnlocked": null,
     "isSecret": true,
-    "hint": "Une étincelle a grandi."
+    "hint": "Une habitude s’est installée."
   }
 ]

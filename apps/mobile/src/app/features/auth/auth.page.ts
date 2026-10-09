@@ -22,7 +22,7 @@ export function authMessage(e: unknown): string {
   const m = String((e as { message?: string })?.message ?? e ?? '');
   if (/already registered|already been registered|User already/i.test(m)) return 'Cet e-mail a déjà un compte. Connecte-toi ou réinitialise ton mot de passe.';
   if (/Invalid login credentials/i.test(m)) return 'E-mail ou mot de passe incorrect.';
-  if (/Email not confirmed/i.test(m)) return 'Confirme ton e-mail avant de te connecter : un corbeau t’a écrit.';
+  if (/Email not confirmed/i.test(m)) return 'Confirme ton e-mail avant de te connecter : un e-mail vient de t’être envoyé.';
   if (/rate limit|too many/i.test(m)) return 'Trop de tentatives. Patiente quelques minutes avant de réessayer.';
   if (/Password should be/i.test(m)) return 'Le mot de passe doit faire au moins 8 caractères.';
   if (/fetch|network/i.test(m)) return 'Pas de connexion. Vérifie ton réseau et réessaie.';
@@ -55,9 +55,9 @@ export function authMessage(e: unknown): string {
         @switch (mode()) {
           @case ('home') {
             <div class="body fade-in">
-              <h1 class="lu-title">Ton aventure commence par une porte.</h1>
-              <p class="lead">Celle-ci s’ouvre sur ta propre vie.</p>
-              @if (invite()) { <div class="invite"><lu-icon name="user-plus" [size]="16" /> Un compagnon t’invite à rejoindre sa compagnie.</div> }
+              <h1 class="lu-title">Crée ton compte pour commencer.</h1>
+              <p class="lead">Tes données restent les tiennes.</p>
+              @if (invite()) { <div class="invite"><lu-icon name="user-plus" [size]="16" /> Un ami t’invite à le rejoindre.</div> }
               <div class="btns">
                 @if (apple) { <button type="button" class="lu-btn light" (click)="oauth('apple')"><lu-icon name="globe" [size]="18" /> Continuer avec Apple</button> }
                 <button type="button" class="lu-btn light" (click)="oauth('google')"><lu-icon name="globe" [size]="18" /> Continuer avec Google</button>
@@ -66,7 +66,7 @@ export function authMessage(e: unknown): string {
               <button type="button" class="lu-btn text" (click)="mode.set('login')">J’ai déjà un compte</button>
               @if (error()) { <p class="err" role="alert">{{ error() }}</p> }
               @if (local) {
-                <p class="demo"><lu-icon name="info" [size]="13" /> Mode démo : tes données restent sur cet appareil. Pour jouer en ligne avec des compagnons, un projet Supabase est nécessaire (voir le guide).</p>
+                <p class="demo"><lu-icon name="info" [size]="13" /> Mode démo : tes données restent sur cet appareil. Pour jouer en ligne avec des amis, un projet Supabase est nécessaire (voir le guide).</p>
               }
             </div>
           }
@@ -93,13 +93,13 @@ export function authMessage(e: unknown): string {
                 <span>J’accepte les <a routerLink="/legal/terms" target="_blank">conditions d’utilisation</a> et la <a routerLink="/legal/privacy" target="_blank">politique de confidentialité</a>.</span>
               </label>
               @if (error()) { <p class="err" role="alert">{{ error() }}</p> }
-              <button class="lu-btn" type="submit" [disabled]="busy()">Franchir la porte</button>
+              <button class="lu-btn" type="submit" [disabled]="busy()">Continuer</button>
               <button type="button" class="lu-btn text" (click)="back()">Retour</button>
             </form>
           }
           @case ('login') {
             <form class="body fade-in" (submit)="login($event)" novalidate>
-              <h1 class="lu-title small">Bon retour parmi nous</h1>
+              <h1 class="lu-title small">Content de te revoir</h1>
               <div class="lu-field">
                 <label for="em2">E-mail</label>
                 <input id="em2" class="lu-input" type="email" autocomplete="email" inputmode="email" [value]="email()" (input)="email.set($any($event.target).value)" required />
@@ -130,7 +130,7 @@ export function authMessage(e: unknown): string {
           @case ('wait') {
             <div class="body fade-in center">
               <lu-icon name="mail" [size]="40" />
-              <h1 class="lu-title small">Un corbeau est parti vers ta boîte mail</h1>
+              <h1 class="lu-title small">Vérifie ta boîte mail</h1>
               <p class="lead">Ouvre le message envoyé à <strong>{{ email() }}</strong> et clique sur le lien pour confirmer ton compte. Pense à regarder dans les indésirables.</p>
               @if (error()) { <p class="err" role="alert">{{ error() }}</p> }
               <button type="button" class="lu-btn ghost" [disabled]="busy()" (click)="resend()">Renvoyer le message</button>
@@ -234,7 +234,7 @@ export class AuthPage {
     if (!this.terms()) return this.error.set('Accepte les conditions d’utilisation et la politique de confidentialité pour continuer.');
     this.busy.set(true);
     try {
-      const placeholder = 'aventurier' + Math.random().toString(36).slice(2, 8);
+      const placeholder = 'joueur' + Math.random().toString(36).slice(2, 8);
       const r = await this.be.auth.signUp({ email, password: this.pw(), username: placeholder, birthYear: by });
       if (r.confirmationRequired) this.mode.set('wait');
       else {

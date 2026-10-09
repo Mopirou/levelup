@@ -14,7 +14,7 @@ import { fmt, longDate, timeOfDay, dayLabel } from '../../shared/format';
 
 type Tab = 'story' | 'stats' | 'recaps';
 const WEEK_LETTERS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-const IDLE_LINES = ['Le héros ne quitta pas l’auberge.', 'Une journée tranquille, sans quête.', 'Le feu crépita, le héros se reposa.'];
+const IDLE_LINES = ['Aucune quête ce jour-là.', 'Journée sans activité.', 'Jour de pause.'];
 
 @Component({
   selector: 'app-chronicle',
@@ -23,7 +23,7 @@ const IDLE_LINES = ['Le héros ne quitta pas l’auberge.', 'Une journée tranqu
   template: `
     <ion-content [fullscreen]="true">
       <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
-      <lu-page-header eyebrow="Chaque pas laisse une trace" icon="book-open" title="Ta chronique" />
+      <lu-page-header eyebrow="Historique" icon="book-open" title="Ta progression" />
 
       <div class="lu-page">
         <nav class="summary" role="tablist" aria-label="Chapitres">
@@ -35,7 +35,7 @@ const IDLE_LINES = ['Le héros ne quitta pas l’auberge.', 'Une journée tranqu
         @switch (tab()) {
           @case ('story') {
             <section class="lu-section">
-              <div class="lu-section-title"><h2>Le récit de tes petits exploits</h2></div>
+              <div class="lu-section-title"><h2>Ton historique</h2></div>
               <p class="small muted">Ce que tu as fait, pas ce qu’il te reste à faire.</p>
               <div class="filters">
                 <button type="button" class="lu-chip big" [class.mint]="!!abilityFilter()" (click)="pickAbility()">{{ abilityFilter() ? label(abilityFilter()!) : 'Caractéristique' }} ⌄</button>
@@ -43,7 +43,7 @@ const IDLE_LINES = ['Le héros ne quitta pas l’auberge.', 'Une journée tranqu
                 @if (abilityFilter() || monthFilter()) { <button type="button" class="lu-chip big" (click)="clear()">Effacer</button> }
               </div>
               @if (oath()) {
-                <div class="lu-card gold oath"><span class="lu-eyebrow">TON SERMENT</span><p>{{ oath() }}</p></div>
+                <div class="lu-card gold oath"><span class="lu-eyebrow">TON ENGAGEMENT</span><p>{{ oath() }}</p></div>
               }
               @for (d of visibleDays(); track d.date) {
                 <article class="lu-card day">
@@ -66,14 +66,14 @@ const IDLE_LINES = ['Le héros ne quitta pas l’auberge.', 'Une journée tranqu
                   @if (d.rest && d.entries.length) { <p class="xs muted">Jour de repos déclaré.</p> }
                 </article>
               } @empty {
-                <lu-empty icon="book-open" title="Ton récit commence ici" text="Chaque quête accomplie écrira une ligne de ton histoire." />
+                <lu-empty icon="book-open" title="Ton historique commence ici" text="Chaque quête accomplie écrira une ligne de ton histoire." />
               }
               @if (hasMore()) { <button type="button" class="lu-btn ghost" (click)="shown.set(shown() + 14)">Voir plus de jours</button> }
             </section>
           }
           @case ('stats') {
             <section class="lu-section">
-              <div class="lu-section-title"><h2>Ton élan en chiffres</h2><span class="lu-link" style="color: var(--lu-text-2)">{{ weekRange() }}</span></div>
+              <div class="lu-section-title"><h2>Ton activité en chiffres</h2><span class="lu-link" style="color: var(--lu-text-2)">{{ weekRange() }}</span></div>
               <div class="metrics">
                 <div class="lu-card flat m"><strong>{{ fmt(weekXp()) }}</strong><span>XP cette semaine</span></div>
                 <div class="lu-card flat m"><strong>{{ week().done }}</strong><span>Quêtes réussies</span></div>
@@ -91,7 +91,7 @@ const IDLE_LINES = ['Le héros ne quitta pas l’auberge.', 'Une journée tranqu
             </section>
 
             <section class="lu-section">
-              <div class="lu-section-title"><h2>Les forces que tu cultives</h2></div>
+              <div class="lu-section-title"><h2>Tes caractéristiques</h2></div>
               <div class="lu-card">
                 @for (a of byAbility(); track a.id) {
                   <div class="ar"><span class="an"><i [style.background]="color(a.id)"></i>{{ label(a.id) }}</span><lu-bar [value]="a.xp" [max]="maxAbility()" /><span class="gold small">+{{ fmt(a.xp) }} XP</span></div>

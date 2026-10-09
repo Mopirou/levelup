@@ -30,7 +30,7 @@ const PROMPTS: Record<AbilityId | 'any', string[]> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
-      <lu-page-header [back]="true" eyebrow="La Plume du Crieur" icon="feather" title="Raconter un exploit" />
+      <lu-page-header [back]="true" eyebrow="Publication" icon="feather" title="Partager un moment" />
       <div class="lu-page">
         <section class="lu-section">
           <div class="lu-section-title"><h2>Une amorce ?</h2></div>
@@ -151,7 +151,7 @@ export class PublishPage {
         media: d.photos.map((p) => ({ blob: p.blob, ext: p.ext, width: p.width, height: p.height })),
       });
       this.progress.set(100);
-      this.game.toast(sent ? (d.visibility === 'friends' ? 'Publié au Village !' : 'Enregistré dans ta Chronique.') : 'Hors ligne : ta publication partira au retour du réseau.', sent ? 'success' : 'info');
+      this.game.toast(sent ? (d.visibility === 'friends' ? 'Publié pour tes amis !' : 'Enregistré dans ton historique.') : 'Hors ligne : ta publication partira au retour du réseau.', sent ? 'success' : 'info');
       void this.social.loadPreview();
       this.ui.nav.navigateBack('/tabs/village');
     } catch (e) {

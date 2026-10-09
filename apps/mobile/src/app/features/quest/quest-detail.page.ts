@@ -20,7 +20,6 @@ import { haptic, playSound } from '../../core/feedback';
 import type { PickedPhoto } from '../../core/photo';
 import { BarComponent, PageHeaderComponent } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
-import { SceneComponent } from '../../shared/scene.component';
 import { ShareFormComponent, type ShareDraft } from '../../shared/share-card.component';
 import { fmt, longDate, timeOfDay } from '../../shared/format';
 import { sharesText, themeLabel } from '../../shared/themes';
@@ -35,7 +34,7 @@ const timerKey = (id: string) => `lu-timer-${id}`;
 
 @Component({
   selector: 'app-quest-detail',
-  imports: [IonContent, PageHeaderComponent, BarComponent, IconComponent, SceneComponent, ShareFormComponent],
+  imports: [IonContent, PageHeaderComponent, BarComponent, IconComponent, ShareFormComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
@@ -56,15 +55,12 @@ const timerKey = (id: string) => `lu-timer-${id}`;
           </div>
           @if (shares()) { <p class="xs muted shares">XP répartie : {{ shares() }}</p> }
 
-          <div class="scene lu-card flat">
-            <lu-scene [seed]="q.templateId" [ability]="q.snapshot.ability" />
-            @if (estimate()) {
-              <span class="est"><lu-icon name="footprints" [size]="14" /> {{ estimate() }}</span>
-            }
-          </div>
+          @if (estimate()) {
+            <p class="est"><lu-icon name="footprints" [size]="14" /> {{ estimate() }}</p>
+          }
 
           <section class="lu-section">
-            <div class="lu-section-title"><h2>Le récit</h2></div>
+            <div class="lu-section-title"><h2>Détails</h2></div>
             <p class="lu-lead flavor">{{ q.snapshot.flavor }}</p>
             <div class="goal">
               <span class="lab">TON OBJECTIF</span>
@@ -155,7 +151,7 @@ const timerKey = (id: string) => `lu-timer-${id}`;
               @if (!done() && type() !== 'journal') {
                 <div class="lu-field">
                   <label for="nt">Comment ça s’est passé ? · facultatif</label>
-                  <input id="nt" class="lu-input" maxlength="200" [value]="note()" (input)="note.set($any($event.target).value)" placeholder="Une phrase pour ta Chronique…" />
+                  <input id="nt" class="lu-input" maxlength="200" [value]="note()" (input)="note.set($any($event.target).value)" placeholder="Une note pour ton historique…" />
                 </div>
               }
               @if (done()) {
@@ -202,13 +198,13 @@ const timerKey = (id: string) => `lu-timer-${id}`;
 
             @if (!shared()) {
               <section class="lu-section">
-                <div class="lu-section-title"><h2>Les petits pas se partagent</h2></div>
+                <div class="lu-section-title"><h2>Partager avec tes amis</h2></div>
                 <lu-share-form [initialText]="shareSeed()" (change)="draft.set($event)" />
-                <button type="button" class="lu-btn light" [disabled]="busy()" (click)="share()"><lu-icon name="send" [size]="17" /> Partager au Village</button>
+                <button type="button" class="lu-btn light" [disabled]="busy()" (click)="share()"><lu-icon name="send" [size]="17" /> Partager avec tes amis</button>
                 <button type="button" class="lu-btn text" (click)="finish()">Garder pour moi et revenir aux quêtes</button>
               </section>
             } @else {
-              <p class="small muted center">Partagé au Village. Merci d’encourager les autres !</p>
+              <p class="small muted center">Partagé avec tes amis. Merci d’encourager les autres !</p>
             }
 
             @if (undoable()) {
@@ -225,8 +221,7 @@ const timerKey = (id: string) => `lu-timer-${id}`;
   styles: `
     .chips { display: flex; flex-wrap: wrap; gap: 8px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .scene { position: relative; padding: 0; height: 180px; overflow: hidden; }
-    .est { position: absolute; left: 12px; bottom: 12px; display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 100px; background: rgba(11,26,20,.82); border: 1px solid var(--lu-border-strong); font-size: 11px; font-weight: 600; color: #eaf2ec; }
+    .est { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--lu-muted); }
     .flavor { font-style: italic; font-family: var(--lu-font-title); }
     .goal { padding: 14px; border-radius: 12px; background: var(--lu-surface-2); border: 1px solid var(--lu-border); display: flex; flex-direction: column; gap: 6px; }
     .goal .lab { font-size: 10px; font-weight: 700; letter-spacing: .08em; color: var(--lu-text-2); }
@@ -519,7 +514,7 @@ export class QuestDetailPage {
         media: d.photos.map((p: PickedPhoto) => ({ blob: p.blob, ext: p.ext, width: p.width, height: p.height })),
       });
       this.shared.set(true);
-      this.game.toast(!sent ? 'Hors ligne : ton partage partira au retour du réseau.' : d.visibility === 'friends' ? 'Partagé au Village !' : 'Enregistré dans ta Chronique.', sent ? 'success' : 'info');
+      this.game.toast(!sent ? 'Hors ligne : ton partage partira au retour du réseau.' : d.visibility === 'friends' ? 'Partagé avec tes amis !' : 'Enregistré dans ton historique.', sent ? 'success' : 'info');
       void this.social.loadPreview();
     } catch (e) {
       const msg = String((e as Error)?.message ?? '');

@@ -17,14 +17,14 @@ import { IconComponent } from '../../shared/icon.component';
 const ZONES = ['Europe/Paris', 'Europe/Brussels', 'Europe/Zurich', 'Europe/London', 'Europe/Lisbon', 'Europe/Madrid', 'Europe/Berlin', 'Africa/Casablanca', 'Africa/Algiers', 'Africa/Tunis', 'Africa/Dakar', 'America/Montreal', 'America/New_York', 'America/Martinique', 'America/Guadeloupe', 'Indian/Reunion', 'Pacific/Tahiti', 'Pacific/Noumea'];
 const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a', '#5f9e6e', '#a8c0b0'];
 
-/** Le Campement : compte, personnage, rythme, partage, notifications, confidentialité, apparence, données. */
+/** Réglages : compte, personnage, rythme, partage, notifications, confidentialité, apparence, données. */
 @Component({
   selector: 'app-settings',
   imports: [IonContent, RouterLink, PageHeaderComponent, PortraitComponent, SwitchComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
-      <lu-page-header [back]="true" eyebrow="Le Campement" icon="settings" title="Réglages" />
+      <lu-page-header [back]="true" eyebrow="Compte et préférences" icon="settings" title="Réglages" />
       @if (s(); as st) {
         <div class="lu-page">
           <!-- Compte -->
@@ -47,7 +47,7 @@ const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a'
             <div class="portraits">@for (p of portraits; track p) { <button type="button" [class.on]="portrait() === p" (click)="portrait.set(p); saveAppearance()" [attr.aria-label]="'Portrait ' + p"><lu-portrait [id]="p" [size]="40" frame="transparent" /></button> }</div>
             <div class="frames">@for (f of frames; track f) { <button type="button" [style.background]="f" [class.on]="frame() === f" (click)="frame.set(f); saveAppearance()" [attr.aria-label]="'Cadre ' + f"></button> }</div>
             <div class="lu-field"><label for="cm">Devise</label><input id="cm" class="lu-input" maxlength="80" [value]="motto()" (input)="motto.set($any($event.target).value)" (change)="saveAppearance()" /></div>
-            <div class="lu-field"><label for="co">Serment</label><textarea id="co" class="lu-input area" rows="3" [value]="oath()" (input)="oath.set($any($event.target).value)" (change)="saveAppearance()"></textarea><span class="hint">Privé : jamais visible par tes compagnons.</span></div>
+            <div class="lu-field"><label for="co">Engagement</label><textarea id="co" class="lu-input area" rows="3" [value]="oath()" (input)="oath.set($any($event.target).value)" (change)="saveAppearance()"></textarea><span class="hint">Privé : jamais visible par tes amis.</span></div>
             <p class="xs muted">Classe : {{ className() }} · Les scores ne sont pas modifiables : ils progressent avec tes quêtes.</p>
           </section>
 
@@ -69,16 +69,16 @@ const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a'
           <section class="lu-card">
             <h3>Partage</h3>
             <div class="lu-row"><div class="grow"><span class="label">Publier mes montées de niveau</span></div><lu-switch [checked]="st.autoShare.level" label="Montées de niveau" (changed)="share('level', $event)" /></div>
-            <div class="lu-row"><div class="grow"><span class="label">Publier mes trophées</span></div><lu-switch [checked]="st.autoShare.achievement" label="Trophées" (changed)="share('achievement', $event)" /></div>
+            <div class="lu-row"><div class="grow"><span class="label">Publier mes succès</span></div><lu-switch [checked]="st.autoShare.achievement" label="Succès" (changed)="share('achievement', $event)" /></div>
             <div class="lu-row"><div class="grow"><span class="label">Publier mes séries (7, 30, 100 jours…)</span></div><lu-switch [checked]="st.autoShare.streak" label="Séries" (changed)="share('streak', $event)" /></div>
-            <div class="lu-field"><label>Visibilité par défaut</label><div class="lu-seg"><button type="button" [class.on]="st.defaultVisibility === 'friends'" (click)="update({ defaultVisibility: 'friends' })">Compagnons</button><button type="button" [class.on]="st.defaultVisibility === 'private'" (click)="update({ defaultVisibility: 'private' })">Privé</button></div></div>
-            <div class="lu-row"><div class="grow"><span class="label">Participer au classement de la compagnie</span><div class="sub">Désactivé : ton XP n’y apparaît pas et tu ne le vois plus.</div></div><lu-switch [checked]="st.leaderboardOptIn" label="Classement" (changed)="update({ leaderboardOptIn: $event })" /></div>
+            <div class="lu-field"><label>Visibilité par défaut</label><div class="lu-seg"><button type="button" [class.on]="st.defaultVisibility === 'friends'" (click)="update({ defaultVisibility: 'friends' })">Amis</button><button type="button" [class.on]="st.defaultVisibility === 'private'" (click)="update({ defaultVisibility: 'private' })">Privé</button></div></div>
+            <div class="lu-row"><div class="grow"><span class="label">Participer au classement de tes amis</span><div class="sub">Désactivé : ton XP n’y apparaît pas et tu ne le vois plus.</div></div><lu-switch [checked]="st.leaderboardOptIn" label="Classement" (changed)="update({ leaderboardOptIn: $event })" /></div>
           </section>
 
           <!-- Notifications -->
           <section class="lu-card">
             <h3>Notifications</h3>
-            @if (!notif.native) { <p class="xs muted">Les rappels programmés fonctionnent dans l’application mobile. Sur le web, tu retrouves tout dans le Corbeau.</p> }
+            @if (!notif.native) { <p class="xs muted">Les rappels programmés fonctionnent dans l’application mobile. Sur le web, tu retrouves tout dans les notifications.</p> }
             <div class="lu-row"><div class="grow"><span class="label">Rappel quotidien</span></div><input type="time" class="lu-input time" [value]="pref('dailyTime', '09:00')" (change)="setPref('dailyTime', $any($event.target).value)" aria-label="Heure du rappel" /><lu-switch [checked]="flag('daily')" label="Rappel quotidien" (changed)="setPref('daily', $event)" /></div>
             <div class="lu-row"><div class="grow"><span class="label">Rappel de fin de semaine</span></div><lu-switch [checked]="flag('weekEnd')" label="Rappel de fin de semaine" (changed)="setPref('weekEnd', $event)" /></div>
             <div class="lu-row"><div class="grow"><span class="label">Demandes d’ami</span></div><lu-switch [checked]="flag('friendRequests')" label="Demandes d’ami" (changed)="setPref('friendRequests', $event)" /></div>
@@ -104,7 +104,7 @@ const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a'
           <!-- Apparence -->
           <section class="lu-card">
             <h3>Apparence</h3>
-            <div class="lu-seg"><button type="button" [class.on]="st.theme === 'auto'" (click)="update({ theme: 'auto' })">Auto</button><button type="button" [class.on]="st.theme === 'light'" (click)="update({ theme: 'light' })">Parchemin</button><button type="button" [class.on]="st.theme === 'dark'" (click)="update({ theme: 'dark' })">Donjon</button></div>
+            <div class="lu-seg"><button type="button" [class.on]="st.theme === 'auto'" (click)="update({ theme: 'auto' })">Auto</button><button type="button" [class.on]="st.theme === 'light'" (click)="update({ theme: 'light' })">Clair</button><button type="button" [class.on]="st.theme === 'dark'" (click)="update({ theme: 'dark' })">Sombre</button></div>
             <div class="lu-row"><div class="grow"><span class="label">Sons</span></div><lu-switch [checked]="st.sounds" label="Sons" (changed)="update({ sounds: $event })" /></div>
             <div class="lu-row"><div class="grow"><span class="label">Animations réduites</span></div><lu-switch [checked]="st.reducedMotion" label="Animations réduites" (changed)="update({ reducedMotion: $event })" /></div>
           </section>
@@ -119,8 +119,8 @@ const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a'
           <!-- Danger -->
           <section class="lu-card danger">
             <h3>Zone de danger</h3>
-            <button type="button" class="lu-btn danger" (click)="resetAdventure()">Recommencer une nouvelle aventure</button>
-            <p class="xs muted">Remet ton personnage à zéro. Ton compte et tes compagnons sont conservés.</p>
+            <button type="button" class="lu-btn danger" (click)="resetAdventure()">Réinitialiser ma progression</button>
+            <p class="xs muted">Remet ton personnage à zéro. Ton compte et tes amis sont conservés.</p>
             <button type="button" class="lu-btn danger" (click)="deleteAccount()">Supprimer mon compte</button>
             <p class="xs muted">Tes publications et photos sont retirées immédiatement ; tes données personnelles sont effacées sous 30 jours.</p>
           </section>
@@ -295,7 +295,7 @@ export class SettingsPage {
   }
 
   async resetAdventure(): Promise<void> {
-    if (!(await this.ui.confirm({ title: 'Recommencer une nouvelle aventure ?', message: 'Ton personnage, ton XP, tes quêtes et tes trophées seront remis à zéro. Ton compte et tes compagnons restent.', confirm: 'Tout recommencer', danger: true }))) return;
+    if (!(await this.ui.confirm({ title: 'Réinitialiser ma progression ?', message: 'Ton personnage, ton XP, tes quêtes et tes succès seront remis à zéro. Ton compte et tes amis restent.', confirm: 'Tout recommencer', danger: true }))) return;
     await this.be.game.resetAdventure();
     this.game.reset();
     await this.router.navigateByUrl('/onboarding', { replaceUrl: true });

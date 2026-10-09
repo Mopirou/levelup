@@ -6,7 +6,7 @@ import { GameService } from './game.service';
 import { UiService } from './ui.service';
 import type { FeedPost } from './api/types';
 
-/** Actions communes aux cartes de publication (Place du Village, fiche d'un compagnon, détail…). */
+/** Actions communes aux cartes de publication (Fil des amis, fiche d'un ami, détail…). */
 @Injectable({ providedIn: 'root' })
 export class PostActions {
   private be = inject(BackendService);
@@ -68,7 +68,7 @@ export class PostActions {
           text: 'Supprimer',
           role: 'destructive',
           handler: async () => {
-            if (await this.ui.confirm({ title: 'Supprimer cette publication ?', message: 'Elle disparaîtra du Village.', confirm: 'Supprimer', danger: true })) {
+            if (await this.ui.confirm({ title: 'Supprimer cette publication ?', message: 'Elle disparaîtra du fil.', confirm: 'Supprimer', danger: true })) {
               await this.be.social.deletePost(post.id);
               resolve('deleted');
             } else resolve(null);

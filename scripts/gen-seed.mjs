@@ -32,7 +32,9 @@ sql += quests
   .join(',\n');
 sql += `\non conflict (id) do update set ability = excluded.ability, difficulty = excluded.difficulty, periods = excluded.periods,
   title = excluded.title, flavor = excluded.flavor, objective = excluded.objective, tips = excluded.tips,
-  validation = excluded.validation, tags = excluded.tags, theme = excluded.theme, secondary = excluded.secondary;\n\n`;
+  validation = excluded.validation, tags = excluded.tags, theme = excluded.theme, secondary = excluded.secondary, is_active = true;\n\n`;
+// Une quête retirée du catalogue est désactivée, jamais supprimée : des instances existantes y font référence.
+sql += `update public.quest_templates set is_active = false where source = 'catalog' and is_active and id <> all (${arr(quests.map((t) => t.id))});\n\n`;
 
 sql += '-- ═══ Trophées ═══\n';
 sql += 'insert into public.achievements (id, category, name, description, hint, condition, xp_bonus, title_unlocked, is_secret) values\n';

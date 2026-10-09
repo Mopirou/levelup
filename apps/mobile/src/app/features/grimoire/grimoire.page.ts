@@ -44,11 +44,11 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
-      <lu-page-header [back]="true" eyebrow="Le Grimoire" icon="library" title="Toutes les quêtes" />
+      <lu-page-header [back]="true" eyebrow="Catalogue" icon="library" title="Toutes les quêtes" />
       <div class="lu-page">
         <div class="search">
           <lu-icon name="search" [size]="17" />
-          <input type="search" class="inp" placeholder="Chercher dans le Grimoire…" [value]="query()" (input)="query.set($any($event.target).value)" aria-label="Recherche plein texte" />
+          <input type="search" class="inp" placeholder="Chercher une quête…" [value]="query()" (input)="query.set($any($event.target).value)" aria-label="Recherche plein texte" />
         </div>
         <div class="filters">
           <button type="button" class="lu-chip big" [class.mint]="!!period()" (click)="pickPeriod()">{{ period() ? periodName(period()!) : 'Période' }} ⌄</button>
@@ -68,7 +68,7 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
             <section class="chapter" [class.open]="opened().has(a) || filtered()">
               <button type="button" class="chead" (click)="toggle(a)" [attr.aria-expanded]="opened().has(a) || filtered()">
                 <lu-ability-badge [ability]="a" [size]="52" />
-                <span class="ct"><strong>{{ label(a) }}</strong><span class="xs muted">{{ discovered(a) }} / {{ total(a) }} quêtes découvertes</span></span>
+                <span class="ct"><strong>{{ label(a) }}</strong><span class="xs muted">{{ discovered(a) }} / {{ total(a) }} quêtes essayées</span></span>
                 <lu-icon [name]="opened().has(a) || filtered() ? 'chevron-down' : 'chevron-right'" [size]="18" />
               </button>
               @if (opened().has(a) || filtered()) {
@@ -91,7 +91,7 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
             <section class="chapter" [class.open]="openedThemes().has(th.id) || filtered()">
               <button type="button" class="chead" (click)="toggleTheme(th.id)" [attr.aria-expanded]="openedThemes().has(th.id) || filtered()">
                 <lu-ability-badge [ability]="th.ability" [size]="52" />
-                <span class="ct"><strong>{{ th.label }}</strong><span class="xs muted">{{ themeDiscovered(th.id) }} / {{ themeTotal(th.id) }} quêtes découvertes</span></span>
+                <span class="ct"><strong>{{ th.label }}</strong><span class="xs muted">{{ themeDiscovered(th.id) }} / {{ themeTotal(th.id) }} quêtes essayées</span></span>
                 <lu-icon [name]="openedThemes().has(th.id) || filtered() ? 'chevron-down' : 'chevron-right'" [size]="18" />
               </button>
               @if (openedThemes().has(th.id) || filtered()) {
@@ -111,7 +111,7 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
           }
         }
         @if (game.unlocks().forge) {
-          <button type="button" class="fab lu-btn mint" (click)="ui.go('/forge')"><lu-icon name="hammer" [size]="18" /> Forger une quête</button>
+          <button type="button" class="fab lu-btn mint" (click)="ui.go('/forge')"><lu-icon name="hammer" [size]="18" /> Créer une quête</button>
         }
       </div>
 
@@ -146,7 +146,7 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
             <button type="button" class="lu-btn ghost small" (click)="fav(t)"><lu-icon name="star" [size]="15" /> {{ pref(t.id)?.isFavorite ? 'Favorite' : 'Favori' }}</button>
             <button type="button" class="lu-btn ghost small" (click)="exclude(t)"><lu-icon name="ban" [size]="15" /> {{ pref(t.id)?.isExcluded ? 'Exclue' : 'Exclure' }}</button>
           </div>
-          @if (game.unlocks().forge) { <button type="button" class="lu-btn" (click)="duplicate(t)"><lu-icon name="hammer" [size]="16" /> Dupliquer dans la Forge</button> }
+          @if (game.unlocks().forge) { <button type="button" class="lu-btn" (click)="duplicate(t)"><lu-icon name="hammer" [size]="16" /> Dupliquer et modifier</button> }
         </lu-modal>
       }
     </ion-content>

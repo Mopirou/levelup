@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { BackendService } from './backend.service';
 import type { FeedPost, LeaderRow, PendingRequest } from './api/types';
 
-/** Compteurs et aperçus partagés (pastille du Corbeau, demandes d'amis, nouvelles du Village) + temps réel. */
+/** Compteurs et aperçus partagés (pastille des notifications, demandes d'amis, nouvelles du Village) + temps réel. */
 @Injectable({ providedIn: 'root' })
 export class SocialService {
   private be = inject(BackendService);

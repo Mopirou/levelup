@@ -6,7 +6,7 @@ import { AvatarComponent, AbilityBadgeComponent } from './ui';
 import { relativeTime } from './format';
 import { CLASSES } from '@levelup/engine';
 
-/** Carte de publication de la Place du Village : quête accomplie, photo, montée de niveau, trophée, série. */
+/** Carte de publication de la Fil des amis : quête accomplie, photo, montée de niveau, succès, série. */
 @Component({
   selector: 'lu-post-card',
   imports: [IconComponent, AvatarComponent, AbilityBadgeComponent],
@@ -148,7 +148,7 @@ export class PostCardComponent {
   readonly isEvent = computed(() => ['level_up', 'achievement', 'streak'].includes(this.post().type));
   readonly firstName = computed(() => this.post().author.name.split(' ')[0]);
   readonly total = computed(() => REACTION_KINDS.reduce((n, k) => n + this.post().reactions[k], 0));
-  readonly className = computed(() => CLASSES.find((c) => c.id === this.post().author.classId)?.name ?? 'Aventurier');
+  readonly className = computed(() => CLASSES.find((c) => c.id === this.post().author.classId)?.name ?? '');
   readonly when = computed(() => relativeTime(this.post().createdAt, this.now()));
   abilityLabel = (a: AbilityId) => ABILITY_LABEL[a];
   diffLabel = (d: keyof typeof DIFFICULTY_LABEL) => DIFFICULTY_LABEL[d];

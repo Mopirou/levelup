@@ -40,7 +40,7 @@ import { fmt } from './format';
         <textarea id="bn" class="lu-input area" rows="3" [value]="note()" (input)="saveNote($any($event.target).value)" placeholder="Ce que je retiens, ce que je veux changer…"></textarea>
         <span class="hint">Privé : enregistré uniquement sur cet appareil.</span>
       </div>
-      <button type="button" class="lu-btn" (click)="close.emit()">Continuer vers la Taverne</button>
+      <button type="button" class="lu-btn" (click)="close.emit()">Continuer</button>
     </lu-modal>
   `,
   styles: `

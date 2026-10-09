@@ -22,7 +22,7 @@ interface Row {
   requestId?: string;
 }
 
-/** Le Corbeau : demandes d'amis, encouragements, commentaires, niveaux d'amis, rappels. */
+/** Notifications : demandes d'amis, encouragements, commentaires, niveaux d'amis, rappels. */
 @Component({
   selector: 'app-messenger',
   imports: [IonContent, IonRefresher, IonRefresherContent, PageHeaderComponent, EmptyComponent, IconComponent],
@@ -30,7 +30,7 @@ interface Row {
   template: `
     <ion-content [fullscreen]="true">
       <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
-      <lu-page-header [back]="true" eyebrow="Le Corbeau" icon="bell" title="Notifications">
+      <lu-page-header [back]="true" eyebrow="Activité" icon="bell" title="Notifications">
         <div actions><button type="button" class="lu-btn small ghost" [disabled]="!unread()" (click)="markAll()">Tout marquer comme lu</button></div>
       </lu-page-header>
       <div class="lu-page">
@@ -55,7 +55,7 @@ interface Row {
             </article>
           }
         } @empty {
-          <lu-empty icon="bell" title="Rien pour le moment" text="Quand un compagnon t’encouragera ou t’écrira, le corbeau viendra te le dire." />
+          <lu-empty icon="bell" title="Rien pour le moment" text="Quand un ami t’encouragera ou t’écrira, tu le verras ici." />
         }
       </div>
     </ion-content>
@@ -96,7 +96,7 @@ export class MessengerPage {
       const p = n.payload;
       switch (n.type) {
         case 'friend_request':
-          out.push({ key: n.id, icon: 'user-plus', text: `${p['username']} souhaite rejoindre ta compagnie.`, at: n.createdAt, unread: !n.readAt, ids: [n.id], actions: true, requestId: p['request'], go: () => this.ui.go('/companions') });
+          out.push({ key: n.id, icon: 'user-plus', text: `${p['username']} souhaite devenir ton ami.`, at: n.createdAt, unread: !n.readAt, ids: [n.id], actions: true, requestId: p['request'], go: () => this.ui.go('/companions') });
           break;
         case 'friend_accepted':
           out.push({ key: n.id, icon: 'users', text: `${p['username']} a accepté ta demande.`, at: n.createdAt, unread: !n.readAt, ids: [n.id], go: () => this.ui.go(['/companions', p['username']]) });
@@ -170,7 +170,7 @@ export class MessengerPage {
     if (!r.requestId) return;
     // En cloud l'identifiant de demande est celui de la ligne friendships ; en local, celui du profil.
     const res = await this.be.social.respond(r.requestId, accept);
-    if (res === 'accepted') this.game.toast('Nouveau compagnon !', 'success');
+    if (res === 'accepted') this.game.toast('Nouvel ami !', 'success');
     await Promise.all(r.ids.map((id) => this.be.social.markRead(id)));
     await Promise.all([this.load(), this.social.loadUnread(), this.social.loadRequests()]);
   }

@@ -34,9 +34,9 @@ const PERIODS: Period[] = ['daily', 'weekly', 'monthly'];
     <ion-content [fullscreen]="true">
       <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
 
-      <lu-page-header eyebrow="Un pas à la fois" icon="swords" title="Tableau des quêtes">
+      <lu-page-header eyebrow="À faire" icon="swords" title="Mes quêtes">
         <div actions>
-          <button type="button" class="lu-icon-btn" aria-label="Le Grimoire : toutes les quêtes" (click)="ui.go('/grimoire')"><lu-icon name="library" [size]="17" /></button>
+          <button type="button" class="lu-icon-btn" aria-label="Catalogue : toutes les quêtes" (click)="ui.go('/grimoire')"><lu-icon name="library" [size]="17" /></button>
           <button type="button" class="lu-icon-btn" aria-label="Créer ma propre quête" (click)="forge()"><lu-icon name="circle-plus" [size]="17" /></button>
         </div>
       </lu-page-header>
@@ -100,7 +100,7 @@ const PERIODS: Period[] = ['daily', 'weekly', 'monthly'];
               <span class="lu-link" style="color: var(--lu-text-2)">{{ period() === 'daily' ? 'Quêtes libres' : 'Engagement' }}</span>
             </div>
             <p class="small muted">
-              {{ period() === 'daily' ? 'Sans obligation, sans pression. Des aventures à choisir quand tu en as l’envie.' : 'Accepter une quête crée un engagement : choisis celles qui te donnent envie.' }}
+              {{ period() === 'daily' ? 'Sans obligation, sans pression. À choisir quand tu en as envie.' : 'Accepter une quête crée un engagement : choisis celles qui te donnent envie.' }}
             </p>
             @for (q of optional(); track q.id) {
               <lu-quest-card [inst]="q" [rerollable]="true" (open)="open(q)" (primary)="primary(q)" (reroll)="reroll(q)" />
@@ -112,7 +112,7 @@ const PERIODS: Period[] = ['daily', 'weekly', 'monthly'];
           @if (game.of(period()).length) {
             <lu-empty icon="search" title="Aucune quête ne correspond" text="Essaie d’effacer les filtres ou de modifier ta recherche." />
           } @else {
-            <lu-empty icon="swords" title="Rien pour le moment" text="Le Tableau d’Affichage se remplit au prochain renouvellement. Reviens bientôt !" />
+            <lu-empty icon="swords" title="Rien pour le moment" text="Les quêtes se renouvellent bientôt. Reviens bientôt !" />
           }
         }
 
@@ -214,7 +214,7 @@ export class QuestBoardPage {
     const left = this.game.dailyLeft();
     const done = this.game.dailyDone();
     if (left === 0) return 'Journée accomplie';
-    return done === 0 ? 'Une journée qui commence' : 'Une belle journée en route';
+    return done === 0 ? 'Rien de fait pour l’instant' : `${done} faite${done > 1 ? 's' : ''}, ${left} à faire`;
   });
   readonly renewal = computed(() => {
     const p = this.period();
@@ -297,7 +297,7 @@ export class QuestBoardPage {
 
   forge(): void {
     if (this.game.unlocks().forge) this.ui.go('/forge');
-    else this.game.toast('La Forge s’ouvre au niveau 2.', 'info');
+    else this.game.toast('Créer ses propres quêtes s’ouvre au niveau 2.', 'info');
   }
 
   async refresh(ev: CustomEvent): Promise<void> {

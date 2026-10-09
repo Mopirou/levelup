@@ -19,12 +19,12 @@ import { relativeTime } from '../../shared/format';
 
 const REQUEST_MESSAGES: Record<string, string> = {
   sent: 'Demande envoyée.',
-  accepted: 'Vous êtes maintenant compagnons !',
-  already_friends: 'Vous êtes déjà compagnons.',
+  accepted: 'Vous êtes maintenant amis !',
+  already_friends: 'Vous êtes déjà amis.',
   already_sent: 'Ta demande est déjà en attente.',
-  not_found: 'Aucun aventurier trouvé.',
+  not_found: 'Aucun utilisateur trouvé.',
   rate_limit: 'Tu as atteint la limite de 50 demandes par jour.',
-  limit_reached: 'Tu as atteint la limite de 200 compagnons.',
+  limit_reached: 'Tu as atteint la limite de 200 amis.',
 };
 
 @Component({
@@ -34,14 +34,14 @@ const REQUEST_MESSAGES: Record<string, string> = {
   template: `
     <ion-content [fullscreen]="true">
       <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
-      <lu-page-header [back]="true" eyebrow="Village / Ton cercle" title="Tes compagnons">
+      <lu-page-header [back]="true" eyebrow="Amis" title="Tes amis">
         <p class="lead">Des visages familiers, des encouragements sincères. Ici, on avance côte à côte.</p>
       </lu-page-header>
 
       <div class="lu-page">
         <!-- Ajouter -->
         <section class="lu-section">
-          <div class="lu-section-title"><h2>Ajouter un compagnon</h2></div>
+          <div class="lu-section-title"><h2>Ajouter un ami</h2></div>
           <div class="search">
             <lu-icon name="search" [size]="17" />
             <input type="search" class="inp" placeholder="Rechercher par pseudo…" [value]="query()" (input)="onQuery($any($event.target).value)" aria-label="Rechercher par pseudo" autocapitalize="none" />
@@ -50,12 +50,12 @@ const REQUEST_MESSAGES: Record<string, string> = {
             <div class="lu-card flat person">
               <lu-avatar [name]="r.name ?? r.username" [size]="42" />
               <div class="pm"><strong>{{ r.name }}</strong><span class="xs muted">&#64;{{ r.username }} · Niv. {{ r.level }}</span></div>
-              @if (r.isFriend) { <span class="lu-chip mint">Compagnon</span> }
+              @if (r.isFriend) { <span class="lu-chip mint">Ami</span> }
               @else if (r.requestStatus === 'sent') { <span class="lu-chip">Demande envoyée</span> }
               @else { <button type="button" class="lu-btn small mint" (click)="request(r)">Demander</button> }
             </div>
           } @empty {
-            @if (query().trim().length >= 3 && !searching()) { <p class="small muted">Aucun aventurier trouvé.</p> }
+            @if (query().trim().length >= 3 && !searching()) { <p class="small muted">Aucun utilisateur trouvé.</p> }
           }
           <div class="row2">
             <button type="button" class="lu-btn ghost small" (click)="codeEntry.set(true)"><lu-icon name="key" [size]="15" /> Saisir un code ami</button>
@@ -65,7 +65,7 @@ const REQUEST_MESSAGES: Record<string, string> = {
 
         <!-- Inviter -->
         <section class="lu-card invite">
-          <h3>Inviter à ton aventure</h3>
+          <h3>Inviter un ami</h3>
           <div class="codewrap">
             <img [src]="qr()" alt="QR code de ton invitation" class="qr" />
             <div class="code"><span class="xs muted">TON CODE AMI</span><strong>{{ code() }}</strong></div>
@@ -80,7 +80,7 @@ const REQUEST_MESSAGES: Record<string, string> = {
         <!-- Demandes -->
         @if (received().length || sent().length) {
           <section class="lu-section">
-            <div class="lu-section-title"><h2>On frappe à la porte</h2><span class="lu-link" style="color: var(--lu-text-2)">{{ received().length }} demande{{ received().length > 1 ? 's' : '' }}</span></div>
+            <div class="lu-section-title"><h2>Demandes d’amis</h2><span class="lu-link" style="color: var(--lu-text-2)">{{ received().length }} demande{{ received().length > 1 ? 's' : '' }}</span></div>
             @for (r of received(); track r.id) {
               <article class="lu-card req">
                 <div class="person">
@@ -106,7 +106,7 @@ const REQUEST_MESSAGES: Record<string, string> = {
 
         <!-- Cercle -->
         <section class="lu-section">
-          <div class="lu-section-title"><h2>Ton cercle proche</h2><span class="lu-link" style="color: var(--lu-text-2)">{{ friends().length }} compagnon{{ friends().length > 1 ? 's' : '' }}</span></div>
+          <div class="lu-section-title"><h2>Ton cercle proche</h2><span class="lu-link" style="color: var(--lu-text-2)">{{ friends().length }} ami{{ friends().length > 1 ? 's' : '' }}</span></div>
           @if (friends().length > 1) {
             <div class="lu-seg"><button type="button" [class.on]="sort() === 'activity'" (click)="sort.set('activity')">Activité</button><button type="button" [class.on]="sort() === 'level'" (click)="sort.set('level')">Niveau</button></div>
           }
@@ -117,9 +117,9 @@ const REQUEST_MESSAGES: Record<string, string> = {
               <span class="lvl">Niv. {{ f.level }}</span>
             </button>
           } @empty {
-            <lu-empty icon="users" title="Pas encore de compagnons" text="Invite un proche avec ton code ami, ton QR ou ton lien d’invitation." />
+            <lu-empty icon="users" title="Pas encore d’amis" text="Invite un proche avec ton code ami, ton QR ou ton lien d’invitation." />
           }
-          <p class="xs dim center">Pas d’abonnés publics. Juste tes compagnons.</p>
+          <p class="xs dim center">Pas d’abonnés publics. Juste tes amis.</p>
         </section>
       </div>
 
@@ -189,7 +189,7 @@ export class CompanionsPage implements OnDestroy {
   readonly sent = computed(() => this.pending().filter((p) => p.direction === 'sent'));
   readonly sorted = computed(() => [...this.friends()].sort((a, b) => (this.sort() === 'level' ? b.level - a.level : (b.lastAt ?? '').localeCompare(a.lastAt ?? ''))));
   ago = (iso: string) => relativeTime(iso, this.game.now()).toLowerCase().replace('à l’instant', 'à l’instant');
-  className = (id: string) => CLASSES.find((c) => c.id === id)?.name ?? 'Aventurier';
+  className = (id: string) => CLASSES.find((c) => c.id === id)?.name ?? '';
 
   constructor() {
     void this.load();
@@ -241,7 +241,7 @@ export class CompanionsPage implements OnDestroy {
   }
 
   private notify(res: string): void {
-    this.game.toast(REQUEST_MESSAGES[res] ?? 'Aucun aventurier trouvé.', res === 'sent' || res === 'accepted' ? 'success' : 'info');
+    this.game.toast(REQUEST_MESSAGES[res] ?? 'Aucun utilisateur trouvé.', res === 'sent' || res === 'accepted' ? 'success' : 'info');
   }
 
   async request(r: ProfileCard): Promise<void> {
@@ -266,7 +266,7 @@ export class CompanionsPage implements OnDestroy {
 
   async respond(r: PendingRequest, accept: boolean): Promise<void> {
     const res = await this.be.social.respond(r.id, accept);
-    if (res === 'accepted') this.game.toast(`${r.card.name ?? r.card.username} rejoint ta compagnie !`, 'success');
+    if (res === 'accepted') this.game.toast(`${r.card.name ?? r.card.username} est maintenant ton ami !`, 'success');
     else if (res === 'limit_reached') this.game.toast(REQUEST_MESSAGES['limit_reached'], 'error');
     await Promise.all([this.load(), this.social.loadRequests()]);
   }
@@ -288,7 +288,7 @@ export class CompanionsPage implements OnDestroy {
   async share(): Promise<void> {
     const text = `Rejoins-moi sur Level Up ! Mon code ami : ${this.code()}`;
     try {
-      if (Capacitor.isNativePlatform()) await Share.share({ title: 'Level Up', text, url: this.link(), dialogTitle: 'Inviter un compagnon' });
+      if (Capacitor.isNativePlatform()) await Share.share({ title: 'Level Up', text, url: this.link(), dialogTitle: 'Inviter un ami' });
       else if (navigator.share) await navigator.share({ title: 'Level Up', text, url: this.link() });
       else {
         await navigator.clipboard.writeText(`${text} ${this.link()}`);

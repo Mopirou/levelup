@@ -217,6 +217,11 @@ function questLock(difficulty, score, level, abilityLabel = "caract\xE9ristique"
   }
   return { locked: false };
 }
+function xpShares(primary, secondary) {
+  const others = (secondary ?? []).filter((s) => s.ability !== primary && s.pct > 0);
+  const rest = 100 - others.reduce((n, s) => n + s.pct, 0);
+  return [{ ability: primary, pct: rest }, ...others];
+}
 
 // packages/engine/src/dates.ts
 var pad = (n) => String(n).padStart(2, "0");
@@ -863,7 +868,7 @@ var VALIDATION_LABEL = {
   journal: "Journal"
 };
 var REACTION_LABEL = {
-  bravo: "Bravo, aventurier",
+  bravo: "Bravo",
   inspirant: "Inspirant",
   respect: "Respect",
   rire: "Rire"
@@ -1006,7 +1011,7 @@ var classes_fr_default = [
     icon: "footsteps-outline",
     masteries: ["FOR", "CON"],
     profile: "Sportif endurant, salle et cardio",
-    description: "L\u2019\xC9claireur avance devant, l\xE9ger et r\xE9sistant. Il aime le souffle court, la sueur propre et les chemins qu\u2019il n\u2019a pas encore parcourus. Pour lui, chaque s\xE9ance est une carte qu\u2019il remplit, et son corps est sa meilleure boussole.",
+    description: "Pour les sportifs d\u2019endurance : course, salle, cardio. Tu progresses surtout en Force et en Constitution.",
     favoredQuests: ["Marche rapide, 30 minutes", "Cardio, 150 minutes dans la semaine", "Haut du corps, 20 minutes"],
     paths: [
       { id: "eclaireur-sentier", name: "Voie du Sentier", ability: "SAG", title: "Marcheur des cimes", description: "Tu cours pour entendre le vent. Ta voie ajoute une affinit\xE9 Sagesse : chaque sortie en nature te rapporte un petit suppl\xE9ment d\u2019XP." },
@@ -1019,7 +1024,7 @@ var classes_fr_default = [
     icon: "compass-outline",
     masteries: ["FOR", "DEX"],
     profile: "Arts martiaux, yoga, discipline du corps",
-    description: "L\u2019Aventurier ose. Il apprend un nouveau sport comme on ouvre une porte, avec un sourire et un peu de peur. Son corps est un instrument qu\u2019il accorde par la discipline, la souplesse et le geste pr\xE9cis.",
+    description: "Pour ceux qui aiment les arts martiaux, le yoga ou toute discipline du corps. Tu progresses surtout en Force et en Dext\xE9rit\xE9.",
     favoredQuests: ["S\xE9ance de force compl\xE8te, 30 minutes", "Activit\xE9 de coordination, 45 minutes", "Parcours d\u2019agilit\xE9, 20 minutes"],
     paths: [
       { id: "aventurier-ombre", name: "Voie de l\u2019Ombre", ability: "SAG", title: "Ma\xEEtre du calme", description: "L\u2019art martial est d\u2019abord un art du souffle. Ta voie ajoute une affinit\xE9 Sagesse." },
@@ -1032,7 +1037,7 @@ var classes_fr_default = [
     icon: "hammer-outline",
     masteries: ["DEX", "INT"],
     profile: "Bricoleur ing\xE9nieux, apprend par la pratique",
-    description: "L\u2019Artisan comprend avec ses mains. Il d\xE9monte, r\xE9pare, invente, recommence. Pour lui, un projet vaut mieux qu\u2019un cours : on apprend en faisant, en se trompant, en finissant.",
+    description: "Pour ceux qui apprennent en pratiquant : bricolage, projets, techniques. Tu progresses surtout en Dext\xE9rit\xE9 et en Intelligence.",
     favoredQuests: ["Geste pr\xE9cis, 90 minutes dans la semaine", "Tutoriel d\u2019une comp\xE9tence, 15 minutes", "Programmation, 30 minutes"],
     paths: [
       { id: "artisan-inventeur", name: "Voie de l\u2019Inventeur", ability: "INT", title: "Esprit d\u2019atelier", description: "Tu cherches comment les choses fonctionnent. Ta voie ajoute une affinit\xE9 Intelligence." },
@@ -1045,7 +1050,7 @@ var classes_fr_default = [
     icon: "musical-notes-outline",
     masteries: ["DEX", "CHA"],
     profile: "Artiste, musicien, aime la sc\xE8ne",
-    description: "Le Troubadour transforme ce qu\u2019il vit en chansons, dessins ou histoires. Il a besoin de public autant que de silence, et sait que la cr\xE9ation se partage.",
+    description: "Pour les artistes et les musiciens qui aiment la sc\xE8ne. Tu progresses surtout en Dext\xE9rit\xE9 et en Charisme.",
     favoredQuests: ["Habilet\xE9 manuelle, 120 minutes", "Prise de parole, 15 minutes", "Jonglage progressif, 15 minutes"],
     paths: [
       { id: "troubadour-conteur", name: "Voie du Conteur", ability: "INT", title: "M\xE9moire vivante", description: "Tu aimes les histoires bien construites. Ta voie ajoute une affinit\xE9 Intelligence." },
@@ -1058,7 +1063,7 @@ var classes_fr_default = [
     icon: "people-outline",
     masteries: ["CON", "CHA"],
     profile: "\xC9nergie naturelle, sociable et r\xE9sistant",
-    description: "Le Rassembleur a de l\u2019\xE9nergie pour deux et ne s\u2019en sert pas qu\u2019\xE0 son profit. Il aime les tabl\xE9es pleines, les randonn\xE9es en groupe et les d\xE9fis qu\u2019on rel\xE8ve \xE0 plusieurs.",
+    description: "Pour les personnes sociables et pleines d\u2019\xE9nergie. Tu progresses surtout en Constitution et en Charisme.",
     favoredQuests: ["Repas partag\xE9, 45 minutes", "Temps social, 180 minutes dans la semaine", "Marche et discussion, 30 minutes"],
     paths: [
       { id: "rassembleur-feu", name: "Voie du Feu de camp", ability: "DEX", title: "\xC2me des veill\xE9es", description: "Tu cr\xE9es des moments qui comptent. Ta voie ajoute une affinit\xE9 Dext\xE9rit\xE9." },
@@ -1071,7 +1076,7 @@ var classes_fr_default = [
     icon: "library-outline",
     masteries: ["INT", "SAG"],
     profile: "\xC9tudiant permanent, lecteur, r\xE9fl\xE9chi",
-    description: "L\u2019\xC9rudit lit, note, relie. Il avance par la compr\xE9hension et croit que chaque question ouvre un royaume. Son d\xE9fi est de mettre ce qu\u2019il sait en pratique, pas seulement en m\xE9moire.",
+    description: "Pour les \xE9tudiants permanents, les lecteurs et les curieux. Tu progresses surtout en Intelligence et en Sagesse.",
     favoredQuests: ["Lecture, 30 minutes", "Langue \xE9trang\xE8re, 20 minutes", "M\xE9ditation, 15 minutes"],
     paths: [
       { id: "erudit-savant", name: "Voie du Savant", ability: "INT", title: "Gardien des savoirs", description: "Tu creuses chaque sujet jusqu\u2019au fond. Ta voie ajoute une affinit\xE9 Intelligence." },
@@ -1084,7 +1089,7 @@ var classes_fr_default = [
     icon: "heart-outline",
     masteries: ["SAG", "CHA"],
     profile: "Bienveillant, tourn\xE9 vers les autres",
-    description: "Le Gardien veille : sur lui-m\xEAme, sur ses proches, sur l\u2019\xE9quilibre fragile des jours. Il \xE9coute plus qu\u2019il ne parle, et sait que la douceur est une force.",
+    description: "Pour ceux qui prennent soin des autres et d\u2019eux-m\xEAmes. Tu progresses surtout en Sagesse et en Charisme.",
     favoredQuests: ["M\xE9ditation, 15 minutes", "\xC9coute active, 20 minutes", "Gratitude, 5 minutes"],
     paths: [
       { id: "gardien-guerisseur", name: "Voie du Gu\xE9risseur", ability: "CON", title: "Main qui apaise", description: "Tu prends soin des corps autant que des c\u0153urs. Ta voie ajoute une affinit\xE9 Constitution." },
@@ -1097,7 +1102,7 @@ var classes_fr_default = [
     icon: "leaf-outline",
     masteries: ["CON", "SAG"],
     profile: "Proche de la nature, curieux du vivant",
-    description: "L\u2019Explorateur du quotidien trouve de l\u2019aventure dans une marche, un jardin, un ciel. Il cultive la r\xE9gularit\xE9 et le souffle, et progresse sans bruit, un pas apr\xE8s l\u2019autre.",
+    description: "Pour les amoureux de nature et de grands espaces. Tu progresses surtout en Constitution et en Sagesse.",
     favoredQuests: ["Nature sans \xE9cran, 30 minutes", "Sortie en ext\xE9rieur, 45 minutes", "Marche, 150 minutes dans la semaine"],
     paths: [
       { id: "explorateur-druide", name: "Voie du Sentier vert", ability: "INT", title: "Lecteur du vivant", description: "Tu observes, tu notes, tu apprends de la nature. Ta voie ajoute une affinit\xE9 Intelligence." },
@@ -1183,14 +1188,14 @@ var achievements_fr_default = [
   {
     id: "mille-quetes",
     category: "constance",
-    name: "Le Mill\xE9naire",
+    name: "1 000 qu\xEAtes",
     description: "Accomplir 1 000 qu\xEAtes.",
     condition: {
       kind: "quests_total",
       target: 1e3
     },
     xpBonus: 500,
-    titleUnlocked: "L\xE9gende des mille qu\xEAtes"
+    titleUnlocked: "1 000 qu\xEAtes"
   },
   {
     id: "serie-3",
@@ -1207,19 +1212,19 @@ var achievements_fr_default = [
   {
     id: "feu-sacre",
     category: "constance",
-    name: "Feu sacr\xE9",
+    name: "Une semaine d\u2019affil\xE9e",
     description: "Tenir une s\xE9rie de 7 jours.",
     condition: {
       kind: "streak_best",
       target: 7
     },
     xpBonus: 50,
-    titleUnlocked: "Gardien du feu"
+    titleUnlocked: "R\xE9gulier"
   },
   {
     id: "serie-14",
     category: "constance",
-    name: "Deux semaines de flamme",
+    name: "Deux semaines d\u2019affil\xE9e",
     description: "Tenir une s\xE9rie de 14 jours.",
     condition: {
       kind: "streak_best",
@@ -1243,7 +1248,7 @@ var achievements_fr_default = [
   {
     id: "serie-60",
     category: "constance",
-    name: "Deux lunes",
+    name: "Deux mois d\u2019affil\xE9e",
     description: "Tenir une s\xE9rie de 60 jours.",
     condition: {
       kind: "streak_best",
@@ -1267,7 +1272,7 @@ var achievements_fr_default = [
   {
     id: "serie-200",
     category: "constance",
-    name: "Roc dans la temp\xEAte",
+    name: "200 jours d\u2019affil\xE9e",
     description: "Tenir une s\xE9rie de 200 jours.",
     condition: {
       kind: "streak_best",
@@ -1279,14 +1284,14 @@ var achievements_fr_default = [
   {
     id: "annee-heros",
     category: "constance",
-    name: "L\u2019Ann\xE9e du H\xE9ros",
+    name: "Une ann\xE9e compl\xE8te",
     description: "Tenir une s\xE9rie de 365 jours.",
     condition: {
       kind: "streak_best",
       target: 365
     },
     xpBonus: 500,
-    titleUnlocked: "H\xE9ros de l\u2019ann\xE9e"
+    titleUnlocked: "Une ann\xE9e compl\xE8te"
   },
   {
     id: "journee-parfaite",
@@ -1519,14 +1524,14 @@ var achievements_fr_default = [
   {
     id: "niveau-5",
     category: "maitrise",
-    name: "H\xE9ros du royaume",
+    name: "Niveau 5",
     description: "Atteindre le niveau 5.",
     condition: {
       kind: "level",
       target: 5
     },
     xpBonus: 100,
-    titleUnlocked: "H\xE9ros du royaume"
+    titleUnlocked: "Niveau 5"
   },
   {
     id: "niveau-10",
@@ -1543,14 +1548,14 @@ var achievements_fr_default = [
   {
     id: "niveau-11",
     category: "maitrise",
-    name: "Ma\xEEtre du royaume",
+    name: "Niveau 11",
     description: "Atteindre le niveau 11.",
     condition: {
       kind: "level",
       target: 11
     },
     xpBonus: 250,
-    titleUnlocked: "Ma\xEEtre du royaume"
+    titleUnlocked: "Niveau 11"
   },
   {
     id: "niveau-15",
@@ -1567,26 +1572,26 @@ var achievements_fr_default = [
   {
     id: "niveau-17",
     category: "maitrise",
-    name: "L\xE9gende vivante",
+    name: "Niveau 17",
     description: "Atteindre le niveau 17.",
     condition: {
       kind: "level",
       target: 17
     },
     xpBonus: 400,
-    titleUnlocked: "La L\xE9gende"
+    titleUnlocked: "Niveau 17"
   },
   {
     id: "niveau-20",
     category: "maitrise",
-    name: "La Fiche dor\xE9e",
+    name: "Niveau 20",
     description: "Atteindre le niveau 20.",
     condition: {
       kind: "level",
       target: 20
     },
     xpBonus: 500,
-    titleUnlocked: "L\xE9gende des L\xE9gendes"
+    titleUnlocked: "Niveau maximum"
   },
   {
     id: "rang-legendaire",
@@ -1615,7 +1620,7 @@ var achievements_fr_default = [
   {
     id: "decouvreur-50",
     category: "exploration",
-    name: "Explorateur du Grimoire",
+    name: "Explorateur du catalogue",
     description: "Accomplir 50 qu\xEAtes diff\xE9rentes.",
     condition: {
       kind: "discovered",
@@ -1639,14 +1644,14 @@ var achievements_fr_default = [
   {
     id: "decouvreur-200",
     category: "exploration",
-    name: "Le Grimoire complet",
+    name: "Catalogue complet",
     description: "Accomplir 200 qu\xEAtes diff\xE9rentes.",
     condition: {
       kind: "discovered",
       target: 200
     },
     xpBonus: 500,
-    titleUnlocked: "Biblioth\xE9caire du royaume"
+    titleUnlocked: "Biblioth\xE9caire"
   },
   {
     id: "premier-journal",
@@ -1663,7 +1668,7 @@ var achievements_fr_default = [
   {
     id: "journal-10",
     category: "exploration",
-    name: "Le Carnet se remplit",
+    name: "Le journal se remplit",
     description: "\xC9crire 10 entr\xE9es de journal.",
     condition: {
       kind: "journal_entries",
@@ -1675,19 +1680,19 @@ var achievements_fr_default = [
   {
     id: "journal-50",
     category: "exploration",
-    name: "Chroniqueur du royaume",
+    name: "Assidu du journal",
     description: "\xC9crire 50 entr\xE9es de journal.",
     condition: {
       kind: "journal_entries",
       target: 50
     },
     xpBonus: 250,
-    titleUnlocked: "Chroniqueur"
+    titleUnlocked: "Assidu du journal"
   },
   {
     id: "forgeron",
     category: "exploration",
-    name: "Premier coup de marteau",
+    name: "Premi\xE8re qu\xEAte cr\xE9\xE9e",
     description: "Forger ta premi\xE8re qu\xEAte personnalis\xE9e.",
     condition: {
       kind: "custom_quests",
@@ -1699,19 +1704,19 @@ var achievements_fr_default = [
   {
     id: "maitre-forgeron",
     category: "exploration",
-    name: "Ma\xEEtre forgeron",
+    name: "Cr\xE9ateur de qu\xEAtes",
     description: "Forger 5 qu\xEAtes personnalis\xE9es.",
     condition: {
       kind: "custom_quests",
       target: 5
     },
     xpBonus: 150,
-    titleUnlocked: "Ma\xEEtre forgeron"
+    titleUnlocked: "Cr\xE9ateur de qu\xEAtes"
   },
   {
     id: "premiere-publication",
     category: "exploration",
-    name: "La Plume du Crieur",
+    name: "Premi\xE8re publication",
     description: "Publier ta premi\xE8re victoire au Village.",
     condition: {
       kind: "posts_shared",
@@ -1723,7 +1728,7 @@ var achievements_fr_default = [
   {
     id: "dix-publications",
     category: "exploration",
-    name: "Voix du Village",
+    name: "Dix publications",
     description: "Publier 10 victoires au Village.",
     condition: {
       kind: "posts_shared",
@@ -1735,14 +1740,14 @@ var achievements_fr_default = [
   {
     id: "cinquante-publications",
     category: "exploration",
-    name: "Barde du Village",
+    name: "Cinquante publications",
     description: "Publier 50 victoires au Village.",
     condition: {
       kind: "posts_shared",
       target: 50
     },
     xpBonus: 250,
-    titleUnlocked: "Barde du Village"
+    titleUnlocked: "Cinquante publications"
   },
   {
     id: "premier-compagnon",
@@ -1759,7 +1764,7 @@ var achievements_fr_default = [
   {
     id: "cinq-compagnons",
     category: "exploration",
-    name: "La Compagnie",
+    name: "Cinq amis",
     description: "Avoir 5 compagnons.",
     condition: {
       kind: "friends",
@@ -1771,7 +1776,7 @@ var achievements_fr_default = [
   {
     id: "vingt-compagnons",
     category: "exploration",
-    name: "La Grande Compagnie",
+    name: "Vingt amis",
     description: "Avoir 20 compagnons.",
     condition: {
       kind: "friends",
@@ -1795,7 +1800,7 @@ var achievements_fr_default = [
   {
     id: "tueur-de-dragons-1",
     category: "exploits",
-    name: "Premier Dragon",
+    name: "Premi\xE8re qu\xEAte l\xE9gendaire",
     description: "Accomplir une qu\xEAte L\xE9gendaire.",
     condition: {
       kind: "quests_by_difficulty",
@@ -1808,7 +1813,7 @@ var achievements_fr_default = [
   {
     id: "tueur-de-dragons-5",
     category: "exploits",
-    name: "Chasseur de dragons",
+    name: "5 qu\xEAtes l\xE9gendaires",
     description: "Accomplir 5 qu\xEAtes L\xE9gendaires.",
     condition: {
       kind: "quests_by_difficulty",
@@ -1821,7 +1826,7 @@ var achievements_fr_default = [
   {
     id: "tueur-de-dragons",
     category: "exploits",
-    name: "Tueur de Dragons",
+    name: "10 qu\xEAtes l\xE9gendaires",
     description: "Accomplir 10 qu\xEAtes L\xE9gendaires.",
     condition: {
       kind: "quests_by_difficulty",
@@ -1829,12 +1834,12 @@ var achievements_fr_default = [
       target: 10
     },
     xpBonus: 400,
-    titleUnlocked: "Tueur de Dragons"
+    titleUnlocked: "10 qu\xEAtes l\xE9gendaires"
   },
   {
     id: "tueur-de-dragons-25",
     category: "exploits",
-    name: "Fl\xE9au des dragons",
+    name: "25 qu\xEAtes l\xE9gendaires",
     description: "Accomplir 25 qu\xEAtes L\xE9gendaires.",
     condition: {
       kind: "quests_by_difficulty",
@@ -1860,7 +1865,7 @@ var achievements_fr_default = [
   {
     id: "audacieux-50",
     category: "exploits",
-    name: "Le T\xE9m\xE9raire",
+    name: "50 qu\xEAtes audacieuses",
     description: "Accomplir 50 qu\xEAtes Audacieuses.",
     condition: {
       kind: "quests_by_difficulty",
@@ -1868,7 +1873,7 @@ var achievements_fr_default = [
       target: 50
     },
     xpBonus: 300,
-    titleUnlocked: "Le T\xE9m\xE9raire"
+    titleUnlocked: "50 qu\xEAtes audacieuses"
   },
   {
     id: "semainier",
@@ -1885,7 +1890,7 @@ var achievements_fr_default = [
   {
     id: "moissonneur",
     category: "exploits",
-    name: "Le Moissonneur",
+    name: "6 qu\xEAtes mensuelles",
     description: "Accomplir 6 qu\xEAtes mensuelles.",
     condition: {
       kind: "monthly_done",
@@ -1897,7 +1902,7 @@ var achievements_fr_default = [
   {
     id: "dix-heures-silence",
     category: "exploits",
-    name: "Dix heures de silence",
+    name: "Dix heures chronom\xE9tr\xE9es",
     description: "Cumuler 10 heures sur le chronom\xE8tre int\xE9gr\xE9.",
     condition: {
       kind: "timer_minutes",
@@ -1909,7 +1914,7 @@ var achievements_fr_default = [
   {
     id: "cinquante-heures",
     category: "exploits",
-    name: "Cinquante heures de pr\xE9sence",
+    name: "Cinquante heures chronom\xE9tr\xE9es",
     description: "Cumuler 50 heures sur le chronom\xE8tre int\xE9gr\xE9.",
     condition: {
       kind: "timer_minutes",
@@ -1981,7 +1986,7 @@ var achievements_fr_default = [
   {
     id: "equilibre-16",
     category: "equilibre",
-    name: "H\xE9ros complet",
+    name: "Profil complet",
     description: "Avoir toutes les caract\xE9ristiques \xE0 16 ou plus.",
     condition: {
       kind: "all_scores_min",
@@ -2017,21 +2022,21 @@ var achievements_fr_default = [
   {
     id: "retour-du-roi",
     category: "secrets",
-    name: "Le Retour du Roi",
+    name: "De retour",
     description: "Reprendre apr\xE8s 14 jours d\u2019absence.",
     condition: {
       kind: "comeback",
       target: 14
     },
     xpBonus: 100,
-    titleUnlocked: "Le Revenant",
+    titleUnlocked: "De retour",
     isSecret: true,
-    hint: "Les rois partent parfois. Les grands reviennent."
+    hint: "Reprendre apr\xE8s une pause compte aussi."
   },
   {
     id: "retour-30",
     category: "secrets",
-    name: "Le Long Exil",
+    name: "Retour apr\xE8s 30 jours",
     description: "Reprendre apr\xE8s 30 jours d\u2019absence.",
     condition: {
       kind: "comeback",
@@ -2045,7 +2050,7 @@ var achievements_fr_default = [
   {
     id: "dix-mille-xp",
     category: "secrets",
-    name: "Dix mille voix",
+    name: "10 000 XP",
     description: "Gagner 10 000 XP au total.",
     condition: {
       kind: "total_xp",
@@ -2059,7 +2064,7 @@ var achievements_fr_default = [
   {
     id: "cinquante-mille-xp",
     category: "secrets",
-    name: "Un royaume d\u2019XP",
+    name: "50 000 XP",
     description: "Gagner 50 000 XP au total.",
     condition: {
       kind: "total_xp",
@@ -2068,7 +2073,7 @@ var achievements_fr_default = [
     xpBonus: 400,
     titleUnlocked: null,
     isSecret: true,
-    hint: "Peu de h\xE9ros vont jusque-l\xE0."
+    hint: "Peu de joueurs vont jusque-l\xE0."
   },
   {
     id: "repos-10",
@@ -2087,7 +2092,7 @@ var achievements_fr_default = [
   {
     id: "inspire-30",
     category: "secrets",
-    name: "C\u0153ur d\u2019\xE9tincelles",
+    name: "30 Inspirations",
     description: "Utiliser 30 points d\u2019Inspiration.",
     condition: {
       kind: "inspiration_used",
@@ -2096,7 +2101,7 @@ var achievements_fr_default = [
     xpBonus: 250,
     titleUnlocked: null,
     isSecret: true,
-    hint: "Une \xE9tincelle a grandi."
+    hint: "Une habitude s\u2019est install\xE9e."
   }
 ];
 
@@ -3335,5 +3340,6 @@ export {
   validationTarget,
   weekStartOf,
   weightedPick,
-  xpBonusForMastery
+  xpBonusForMastery,
+  xpShares
 };

@@ -10,14 +10,14 @@ import { PageHeaderComponent, PortraitComponent, RadarComponent, AvatarComponent
 import { IconComponent } from '../../shared/icon.component';
 import { PostCardComponent } from '../../shared/post-card.component';
 
-/** La Fiche d'un compagnon : lecture seule. Le serment et le journal ne sont jamais visibles. */
+/** La Fiche d'un ami : lecture seule. L’engagement et le journal ne sont jamais visibles. */
 @Component({
   selector: 'app-companion-profile',
   imports: [IonContent, PageHeaderComponent, PortraitComponent, RadarComponent, AvatarComponent, AbilityBadgeComponent, IconComponent, PostCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
-      <lu-page-header [back]="true" eyebrow="Fiche d’un compagnon" [title]="sheet()?.card?.name ?? username()">
+      <lu-page-header [back]="true" eyebrow="Profil d’un ami" [title]="sheet()?.card?.name ?? username()">
         <div actions><button type="button" class="lu-icon-btn" aria-label="Plus d’options" (click)="menu()"><lu-icon name="ellipsis" [size]="17" /></button></div>
       </lu-page-header>
       @if (loading()) {
@@ -41,7 +41,7 @@ import { PostCardComponent } from '../../shared/post-card.component';
             </div>
             @if (s.trophies.length) {
               <section class="lu-section">
-                <div class="lu-section-title"><h2>Trophées</h2></div>
+                <div class="lu-section-title"><h2>Succès</h2></div>
                 <div class="troph">@for (t of trophies(); track t.id) { <span class="lu-chip gold"><lu-icon name="award" [size]="12" /> {{ t.name }}</span> }</div>
               </section>
             }
@@ -56,7 +56,7 @@ import { PostCardComponent } from '../../shared/post-card.component';
               <lu-avatar [name]="s.card.name ?? s.card.username" [size]="80" />
               <h2>{{ s.card.name ?? s.card.username }}</h2>
               <p class="small muted">&#64;{{ s.card.username }} · Niv. {{ s.card.level }}</p>
-              <p class="small muted">Seuls tes compagnons voient sa fiche complète et ses publications.</p>
+              <p class="small muted">Seuls tes amis voient sa fiche complète et ses publications.</p>
               @if (s.card.requestStatus === 'sent') { <span class="lu-chip">Demande envoyée</span> }
               @else if (s.card.requestStatus === 'received') { <button type="button" class="lu-btn mint" (click)="accept()">Accepter sa demande</button> }
               @else { <button type="button" class="lu-btn mint" (click)="request()"><lu-icon name="user-plus" [size]="17" /> Demander à rejoindre sa compagnie</button> }
@@ -64,7 +64,7 @@ import { PostCardComponent } from '../../shared/post-card.component';
           }
         </div>
       } @else {
-        <div class="lu-page"><p class="muted">Aucun aventurier trouvé.</p></div>
+        <div class="lu-page"><p class="muted">Aucun utilisateur trouvé.</p></div>
       }
     </ion-content>
   `,
@@ -118,7 +118,7 @@ export class CompanionProfilePage {
     const id = this.sheet()?.card.profileId;
     if (!id) return;
     const r = await this.be.social.sendRequest(id);
-    this.game.toast(r === 'sent' || r === 'accepted' ? 'Demande envoyée.' : 'Aucun aventurier trouvé.', r === 'sent' || r === 'accepted' ? 'success' : 'info');
+    this.game.toast(r === 'sent' || r === 'accepted' ? 'Demande envoyée.' : 'Aucun utilisateur trouvé.', r === 'sent' || r === 'accepted' ? 'success' : 'info');
     await this.load();
   }
 
@@ -144,11 +144,11 @@ export class CompanionProfilePage {
     const s = this.sheet();
     if (!s?.card.profileId) return;
     const buttons: { label: string; value: string }[] = [];
-    if (s.card.isFriend) buttons.push({ label: 'Retirer des compagnons', value: 'remove' });
+    if (s.card.isFriend) buttons.push({ label: 'Retirer des amis', value: 'remove' });
     buttons.push({ label: 'Signaler', value: 'report' }, { label: 'Bloquer', value: 'block' });
     const v = await this.ui.choose(s.card.name ?? s.card.username, buttons.map((b) => ({ text: b.label, value: b.value })));
     const id = s.card.profileId;
-    if (v === 'remove' && (await this.ui.confirm({ title: 'Retirer ce compagnon ?', message: 'C’est silencieux : il ne sera pas prévenu.', confirm: 'Retirer', danger: true }))) {
+    if (v === 'remove' && (await this.ui.confirm({ title: 'Retirer cet ami ?', message: 'C’est silencieux : il ne sera pas prévenu.', confirm: 'Retirer', danger: true }))) {
       await this.be.social.removeFriend(id);
       this.ui.nav.navigateBack('/companions');
     } else if (v === 'block' && (await this.ui.confirm({ title: 'Bloquer cet utilisateur ?', message: 'Vous ne verrez plus vos publications respectives.', confirm: 'Bloquer', danger: true }))) {

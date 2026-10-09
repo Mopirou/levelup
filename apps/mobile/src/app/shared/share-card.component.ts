@@ -39,10 +39,10 @@ export interface ShareDraft {
         <span class="xs dim count">{{ text().length }}/500</span>
       </div>
       <div class="lu-seg" role="radiogroup" aria-label="Visibilité">
-        <button type="button" role="radio" [attr.aria-checked]="visibility() === 'friends'" [class.on]="visibility() === 'friends'" (click)="setVis('friends')">Compagnons</button>
+        <button type="button" role="radio" [attr.aria-checked]="visibility() === 'friends'" [class.on]="visibility() === 'friends'" (click)="setVis('friends')">Amis</button>
         <button type="button" role="radio" [attr.aria-checked]="visibility() === 'private'" [class.on]="visibility() === 'private'" (click)="setVis('private')">Privé</button>
       </div>
-      <p class="xs muted">{{ visibility() === 'friends' ? 'Visible uniquement par tes compagnons.' : 'Souvenir privé : visible seulement dans ta Chronique.' }}</p>
+      <p class="xs muted">{{ visibility() === 'friends' ? 'Visible uniquement par tes amis.' : 'Souvenir privé : visible seulement dans ton historique.' }}</p>
       @if (error()) {
         <p class="err">{{ error() }}</p>
       }
