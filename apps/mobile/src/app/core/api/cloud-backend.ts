@@ -54,6 +54,11 @@ function mapAuthor(p: any) {
   };
 }
 
+// `comments` est embarquée deux fois (compteur + derniers commentaires). PostgREST applique `order`/`limit`
+// au premier embed dont le nom OU l'alias correspond : sans alias propre à la liste, l'ordre tombait sur
+// l'agrégat `count` (« column comments_1.created_at must appear in the GROUP BY clause »).
+const RECENT_COMMENTS = 'recent_comments';
+
 const POST_SELECT = `
   id, type, text, visibility, payload, created_at, edited_at, instance_id,
   author:profiles!author_id ( id, username, characters ( name, level, class_id, portrait_id, frame_color ) ),
@@ -61,7 +66,7 @@ const POST_SELECT = `
   media:post_media ( id, storage_path, width, height, alt, position ),
   reactions ( kind, profile_id ),
   comment_count:comments ( count ),
-  comments ( id, post_id, author_id, text, created_at,
+  ${RECENT_COMMENTS}:comments ( id, post_id, author_id, text, created_at,
     author:profiles!author_id ( username, characters ( name, level ) ) )
 `;
 
@@ -306,7 +311,7 @@ export function createCloudBackend(): Backend {
     }
     const media = [...(r.media ?? [])].sort((a: any, b: any) => a.position - b.position);
     const urls = media.length ? await signedUrls(media.map((m: any) => m.storage_path)) : {};
-    const comments: PostComment[] = [...(r.comments ?? [])]
+    const comments: PostComment[] = [...(r[RECENT_COMMENTS] ?? [])]
       .sort((a: any, b: any) => a.created_at.localeCompare(b.created_at))
       .map((c: any) => {
         const ch = unwrapCharacter(c.author?.characters);
@@ -434,7 +439,7 @@ export function createCloudBackend(): Backend {
     async companionPosts(profileId) {
       const { data, error } = await sb
         .from('posts').select(POST_SELECT).eq('author_id', profileId).is('deleted_at', null).order('created_at', { ascending: false }).limit(20)
-        .order('created_at', { referencedTable: 'comments', ascending: false }).limit(2, { referencedTable: 'comments' });
+        .order('created_at', { referencedTable: RECENT_COMMENTS, ascending: false }).limit(2, { referencedTable: RECENT_COMMENTS });
       if (error) throw error;
       return Promise.all((data ?? []).map(mapPost));
     },
@@ -443,7 +448,7 @@ export function createCloudBackend(): Backend {
       let q = sb
         .from('posts').select(POST_SELECT).is('deleted_at', null).eq('visibility', 'friends')
         .order('created_at', { ascending: false }).limit(limit + 1)
-        .order('created_at', { referencedTable: 'comments', ascending: false }).limit(2, { referencedTable: 'comments' });
+        .order('created_at', { referencedTable: RECENT_COMMENTS, ascending: false }).limit(2, { referencedTable: RECENT_COMMENTS });
       if (before) q = q.lt('created_at', before);
       const { data, error } = await q;
       if (error) throw error;

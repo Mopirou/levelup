@@ -73,7 +73,8 @@ export class ShareFormComponent {
   readonly text = signal('');
   readonly visibility = signal<Visibility>(this.game.settings()?.defaultVisibility ?? 'friends');
   readonly error = signal('');
-  readonly change = output<ShareDraft>();
+  /** Ne pas l'appeler `change` : Angular écouterait aussi l'événement DOM natif, qui remonte du textarea et écraserait le brouillon par un Event. */
+  readonly draftChange = output<ShareDraft>();
 
   readonly draft = computed<ShareDraft>(() => ({ text: this.text(), visibility: this.visibility(), photos: this.photos() }));
 
@@ -82,7 +83,7 @@ export class ShareFormComponent {
   }
 
   changed(): void {
-    this.change.emit(this.draft());
+    this.draftChange.emit(this.draft());
   }
   setVis(v: Visibility): void {
     this.visibility.set(v);
