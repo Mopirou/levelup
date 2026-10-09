@@ -101,7 +101,7 @@ describe('tirage sur le vrai catalogue', () => {
 
   it('remplit toujours les quêtes demandées, de 1 à 20, sur un an de jours/semaines/mois', () => {
     for (const level of [1, 2, 5, 10, 17, 20]) {
-      const scores = scoresAt(level < 5 ? 10 : 14);
+      const scores = scoresAt(level < 5 ? 4 : 8);
       const history: { templateId: string; period: Period; periodStart: string }[] = [];
       let day = '2026-01-01';
       let relaxedTotal = 0;
@@ -130,7 +130,7 @@ describe('tirage sur le vrai catalogue', () => {
     for (let i = 0; i < 100; i++) {
       const r = drawQuests({
         characterId: 'zz', period: 'daily', periodStart: addDays('2026-03-01', i), count: 3, level: 1,
-        scores: scoresAt(10), masteries, templates: quests, preferences: {}, lastDrawn: {},
+        scores: scoresAt(4), masteries, templates: quests, preferences: {}, lastDrawn: {},
       });
       expect(r.picks.every((p) => p.difficulty === 'easy' || p.difficulty === 'medium')).toBe(true);
     }

@@ -195,7 +195,7 @@ export function scoresFromAssessment(
     const avg = vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 3;
     scores[a] = Math.min(Math.max(Math.round(MIN_SCORE + ((avg - 1) * (POINT_BUY_MAX - MIN_SCORE)) / 4), MIN_SCORE), POINT_BUY_MAX);
   }
-  // Réduit les plus hauts scores jusqu'à respecter le budget de 27 points.
+  // Réduit les plus hauts scores jusqu'à respecter le budget de points à répartir.
   let guard = 0;
   while (pointBuySpent(scores) > POINT_BUY_BUDGET && guard++ < 100) {
     const top = [...ABILITIES].sort((a, b) => scores[b] - scores[a])[0];

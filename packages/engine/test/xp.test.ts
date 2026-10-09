@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  abilityModifier,
   abilityProgress,
   abilityUpgradeCost,
   tierUnlocked,
@@ -19,6 +18,8 @@ import {
   tierAt,
   unlocksAt,
   BALANCED_SCORES,
+  hasLegacyBaseScores,
+  rescaleLegacyBaseScores,
 } from '../src';
 
 describe('niveaux', () => {
@@ -66,48 +67,64 @@ describe('niveaux', () => {
 });
 
 describe('caractéristiques', () => {
-  it('modificateur D&D', () => {
-    expect(abilityModifier(8)).toBe(-1);
-    expect(abilityModifier(10)).toBe(0);
-    expect(abilityModifier(14)).toBe(2);
-    expect(abilityModifier(20)).toBe(5);
-  });
-  it('coût de progression', () => {
-    expect(abilityUpgradeCost(8)).toBe(100);
-    expect(abilityUpgradeCost(14)).toBe(700);
-    expect(abilityUpgradeCost(19)).toBe(1200);
+  it('coût de progression : 50, 100, 150… puis 2 000 au plafond', () => {
+    expect(abilityUpgradeCost(2)).toBe(50);
+    expect(abilityUpgradeCost(3)).toBe(100);
+    expect(abilityUpgradeCost(14)).toBe(650);
+    expect(abilityUpgradeCost(19)).toBe(900);
     expect(abilityUpgradeCost(20)).toBe(2000);
   });
-  it('passer de 10 à 20 coûte 7 500 XP', () => {
-    expect(abilityProgress(10, 7499).score).toBe(19);
-    expect(abilityProgress(10, 7500).score).toBe(20);
+  it('le départ à 2 donne des points vite : 50, 150 puis 300 XP', () => {
+    expect(abilityProgress(2, 0)).toMatchObject({ score: 2, current: 0, needed: 50 });
+    expect(abilityProgress(2, 49).score).toBe(2);
+    expect(abilityProgress(2, 50).score).toBe(3);
+    expect(abilityProgress(2, 150).score).toBe(4);
+    expect(abilityProgress(2, 300).score).toBe(5);
+  });
+  it('passer de 10 à 20 coûte 6 750 XP', () => {
+    expect(abilityProgress(10, 6749).score).toBe(19);
+    expect(abilityProgress(10, 6750).score).toBe(20);
   });
   it('rang légendaire au-delà de 20', () => {
-    const p = abilityProgress(10, 7500 + 2000);
+    const p = abilityProgress(10, 6750 + 2000);
     expect(p.score).toBe(21);
     expect(p.legendary).toBe(true);
   });
   it('plafonne à 30', () => {
-    const p = abilityProgress(8, 10_000_000);
+    const p = abilityProgress(2, 10_000_000);
     expect(p.score).toBe(30);
     expect(p.ratio).toBe(1);
   });
   it('progress vers le point suivant', () => {
     const p = abilityProgress(14, 340);
-    expect(p).toMatchObject({ score: 14, current: 340, needed: 700 });
+    expect(p).toMatchObject({ score: 14, current: 340, needed: 650 });
   });
 });
 
 describe('achat de points', () => {
-  it('répartition équilibrée valide (27 points)', () => {
-    expect(pointBuySpent(BALANCED_SCORES)).toBe(27);
+  it('répartition équilibrée valide (6 points, 1 de plus partout)', () => {
+    expect(pointBuySpent(BALANCED_SCORES)).toBe(6);
     expect(isValidPointBuy(BALANCED_SCORES)).toBe(true);
   });
-  it('refuse un dépassement ou un score > 15', () => {
-    expect(isValidPointBuy({ FOR: 15, DEX: 15, CON: 15, INT: 8, SAG: 8, CHA: 8 })).toBe(true);
-    expect(isValidPointBuy({ FOR: 15, DEX: 15, CON: 15, INT: 15, SAG: 8, CHA: 8 })).toBe(false);
-    expect(isValidPointBuy({ FOR: 16, DEX: 8, CON: 8, INT: 8, SAG: 8, CHA: 8 })).toBe(false);
-    expect(isValidPointBuy({ FOR: 7, DEX: 8, CON: 8, INT: 8, SAG: 8, CHA: 8 })).toBe(false);
+  it('tout le monde part de 2 : rien à dépenser, c’est valide', () => {
+    expect(isValidPointBuy({ FOR: 2, DEX: 2, CON: 2, INT: 2, SAG: 2, CHA: 2 })).toBe(true);
+  });
+  it('refuse un dépassement ou un score > 5', () => {
+    expect(isValidPointBuy({ FOR: 5, DEX: 5, CON: 2, INT: 2, SAG: 2, CHA: 2 })).toBe(true);
+    expect(isValidPointBuy({ FOR: 5, DEX: 5, CON: 5, INT: 2, SAG: 2, CHA: 2 })).toBe(false);
+    expect(isValidPointBuy({ FOR: 6, DEX: 2, CON: 2, INT: 2, SAG: 2, CHA: 2 })).toBe(false);
+    expect(isValidPointBuy({ FOR: 1, DEX: 2, CON: 2, INT: 2, SAG: 2, CHA: 2 })).toBe(false);
+  });
+  it('ramène un ancien personnage (8 à 15) à l’échelle 2-5 en gardant ses proportions', () => {
+    const old = { FOR: 15, DEX: 8, CON: 15, INT: 8, SAG: 8, CHA: 8 };
+    expect(hasLegacyBaseScores(old)).toBe(true);
+    expect(rescaleLegacyBaseScores(old)).toEqual({ FOR: 4, DEX: 2, CON: 4, INT: 2, SAG: 2, CHA: 2 });
+    // l’ancienne répartition équilibrée devient la nouvelle
+    expect(rescaleLegacyBaseScores({ FOR: 13, DEX: 13, CON: 13, INT: 12, SAG: 12, CHA: 12 })).toEqual(BALANCED_SCORES);
+    // un personnage à la nouvelle échelle n’est jamais touché
+    expect(hasLegacyBaseScores(BALANCED_SCORES)).toBe(false);
+    expect(hasLegacyBaseScores({ FOR: 5, DEX: 2, CON: 2, INT: 2, SAG: 2, CHA: 2 })).toBe(false);
+    expect(isValidPointBuy(rescaleLegacyBaseScores({ FOR: 15, DEX: 15, CON: 15, INT: 8, SAG: 8, CHA: 8 }))).toBe(true);
   });
 });
 
@@ -134,20 +151,20 @@ describe('XP d’une quête', () => {
 
 describe('verrous', () => {
   it('niveaux 1 et 2 toujours ouverts', () => {
-    expect(tierUnlocked('easy', 8, 1)).toBe(true);
-    expect(tierUnlocked('medium', 8, 1)).toBe(true);
+    expect(tierUnlocked('easy', 2, 1)).toBe(true);
+    expect(tierUnlocked('medium', 2, 1)).toBe(true);
   });
-  it('niveau 3 (Audacieuse) : score ≥ 14 dans la caractéristique, quel que soit le niveau global', () => {
-    expect(tierUnlocked('high', 13, 20)).toBe(false);
-    expect(tierUnlocked('high', 14, 1)).toBe(true);
-    expect(questLock('high', 10, 2, 'Force')).toEqual({ locked: true, reason: 'Force 14 requis (tu es à 10)' });
-    expect(questLock('high', 14, 2, 'Force').locked).toBe(false);
+  it('niveau 3 (Audacieuse) : score ≥ 6 dans la caractéristique, quel que soit le niveau global', () => {
+    expect(tierUnlocked('high', 5, 20)).toBe(false);
+    expect(tierUnlocked('high', 6, 1)).toBe(true);
+    expect(questLock('high', 4, 2, 'Force')).toEqual({ locked: true, reason: 'Force 6 requis (tu es à 4)' });
+    expect(questLock('high', 6, 2, 'Force').locked).toBe(false);
   });
   it('niveau 4 (Légendaire) : niveau global ≥ 11, quel que soit le score', () => {
     expect(tierUnlocked('expert', 20, 10)).toBe(false);
-    expect(tierUnlocked('expert', 8, 11)).toBe(true);
+    expect(tierUnlocked('expert', 2, 11)).toBe(true);
     expect(questLock('expert', 20, 4, 'Force')).toEqual({ locked: true, reason: 'Niveau 11 requis (tu es niveau 4)' });
-    expect(questLock('expert', 8, 11).locked).toBe(false);
+    expect(questLock('expert', 2, 11).locked).toBe(false);
   });
   it('améliorations et voie en attente', () => {
     expect(pendingImprovements(3, 0)).toBe(0);

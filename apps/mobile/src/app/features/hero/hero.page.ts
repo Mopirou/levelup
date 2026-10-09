@@ -5,7 +5,6 @@ import {
   ABILITY_LABEL,
   ABILITY_TAGLINE,
   ACHIEVEMENTS,
-  abilityModifier,
   abilityProgress,
   abilityProgressOf,
   addDays,
@@ -19,7 +18,7 @@ import { BackendService } from '../../core/backend.service';
 import { AuthService } from '../../core/auth.service';
 import { GameService } from '../../core/game.service';
 import { UiService } from '../../core/ui.service';
-import { PageHeaderComponent, PortraitComponent, BarComponent, RadarComponent, AbilityBadgeComponent } from '../../shared/ui';
+import { PageHeaderComponent, PortraitComponent, BarComponent, RadarComponent, AbilityBadgeComponent, radarScale } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
 import { ModalComponent } from '../../shared/modal.component';
 import { fmt } from '../../shared/format';
@@ -67,7 +66,7 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
           <section class="lu-section">
             <div class="lu-section-title"><h2>Tes six caractéristiques</h2></div>
             <div class="lu-card radar">
-              <div class="rhead"><span class="lu-eyebrow">PROFIL ACTUEL</span><span class="xs dim">Échelle de 0 à 20 · pointillés : à ta création</span></div>
+              <div class="rhead"><span class="lu-eyebrow">PROFIL ACTUEL</span><span class="xs dim">Échelle de 0 à {{ radarMax() }} · pointillés : à ta création</span></div>
               <lu-radar [scores]="game.scores()" [base]="ch.baseScores" [highlight]="game.weakest()" />
             </div>
             <div class="grid">
@@ -76,7 +75,7 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
                   <div class="ah"><lu-ability-badge [ability]="a" [size]="30" />@if (game.masteries().includes(a)) { <span class="mast" title="Maîtrise de ta classe">★</span> }</div>
                   <span class="an">{{ label(a) }}</span>
                   <span class="av" [class.leg]="info(a).legendary">{{ game.scores()[a] }}</span>
-                  <span class="mod">Mod. {{ mod(game.scores()[a]) }}</span>
+                  <span class="mod">{{ gain(a) > 0 ? '+' + gain(a) + ' depuis le départ' : 'Au départ' }}</span>
                   @if (info(a).needed) {
                     <lu-bar [value]="info(a).current" [max]="info(a).needed" />
                     <span class="xs muted">{{ fmt(info(a).current) }} / {{ fmt(info(a).needed) }} XP</span>
@@ -84,7 +83,7 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
                 </button>
               }
             </div>
-            <p class="xs muted">Les modificateurs reflètent tes forces acquises. Chaque caractéristique évolue avec les quêtes qui lui sont liées.</p>
+            <p class="xs muted">Chaque point de plus se gagne en accomplissant des quêtes liées à la caractéristique.</p>
           </section>
 
           <!-- Série -->
@@ -154,7 +153,7 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
           <div class="dh"><lu-ability-badge [ability]="a" [size]="52" /><div><h2>{{ label(a) }}</h2><p class="xs muted">{{ tagline(a) }}</p></div></div>
           <div class="dstat">
             <div><strong>{{ game.scores()[a] }}</strong><span>Score</span></div>
-            <div><strong>{{ mod(game.scores()[a]) }}</strong><span>Modificateur</span></div>
+            <div><strong>{{ gain(a) > 0 ? '+' + gain(a) : '0' }}</strong><span>Depuis le départ</span></div>
             <div><strong>{{ fmt(c()!.abilityXp[a]) }}</strong><span>XP gagnée</span></div>
           </div>
           @if (info(a).needed) { <lu-bar [value]="info(a).current" [max]="info(a).needed" /><p class="xs muted">{{ fmt(info(a).current) }} / {{ fmt(info(a).needed) }} XP avant le point suivant</p> }
@@ -239,7 +238,9 @@ export class HeroPage {
 
   label = (a: AbilityId) => ABILITY_LABEL[a];
   tagline = (a: AbilityId) => ABILITY_TAGLINE[a];
-  mod = (s: number) => (abilityModifier(s) >= 0 ? '+' : '') + abilityModifier(s);
+  readonly radarMax = computed(() => (this.c() ? radarScale(this.game.scores(), this.c()!.baseScores) : radarScale(this.game.scores())));
+  /** Points gagnés depuis la création du personnage. */
+  gain = (a: AbilityId) => this.game.scores()[a] - (this.c()?.baseScores[a] ?? this.game.scores()[a]);
   info = (a: AbilityId) => abilityProgressOf(this.game.character()!, a);
 
   readonly since = computed(() => new Date(this.auth.profile()?.createdAt ?? this.c()?.createdAt ?? Date.now()).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }));

@@ -40,7 +40,7 @@ function makeCatalog(): QuestTemplate[] {
 }
 
 const templates = makeCatalog();
-const scores: Record<AbilityId, number> = { FOR: 12, DEX: 12, CON: 12, INT: 12, SAG: 12, CHA: 12 };
+const scores: Record<AbilityId, number> = { FOR: 4, DEX: 4, CON: 4, INT: 4, SAG: 4, CHA: 4 };
 
 const base = {
   characterId: 'char-1',
@@ -125,7 +125,7 @@ describe('tirage', () => {
     }
   });
   it('pousse vers les caractéristiques faibles', () => {
-    const lopsided: Record<AbilityId, number> = { FOR: 8, DEX: 15, CON: 15, INT: 15, SAG: 15, CHA: 15 };
+    const lopsided: Record<AbilityId, number> = { FOR: 2, DEX: 7, CON: 7, INT: 7, SAG: 7, CHA: 7 };
     let weak = 0;
     let total = 0;
     for (let d = 1; d <= 300; d++) {
@@ -137,7 +137,7 @@ describe('tirage', () => {
   });
   it('niveau 1 : pas d’Expert dans une caractéristique faible, pas d’Élevé en journalier', () => {
     for (let d = 1; d <= 40; d++) {
-      const r = drawQuests({ ...base, level: 1, count: 3, scores: { ...scores, FOR: 10 }, periodStart: `2027-01-${String((d % 28) + 1).padStart(2, '0')}` });
+      const r = drawQuests({ ...base, level: 1, count: 3, scores: { ...scores, FOR: 3 }, periodStart: `2027-01-${String((d % 28) + 1).padStart(2, '0')}` });
       expect(r.picks.every((t) => t.difficulty !== 'expert' && t.difficulty !== 'high')).toBe(true);
     }
   });
@@ -146,17 +146,17 @@ describe('tirage', () => {
     expect(w.picks.every((t) => t.periods.includes('weekly') && t.difficulty !== 'easy')).toBe(true);
     const m = drawQuests({ ...base, period: 'monthly', periodStart: '2026-10-01', count: 2, level: 10 });
     expect(m.picks.every((t) => t.difficulty === 'high' || t.difficulty === 'expert')).toBe(true);
-    const lowM = drawQuests({ ...base, period: 'monthly', periodStart: '2026-10-01', count: 1, level: 1, scores: { ...scores, FOR: 8, DEX: 8, CON: 8, INT: 8, SAG: 8, CHA: 8 } });
+    const lowM = drawQuests({ ...base, period: 'monthly', periodStart: '2026-10-01', count: 1, level: 1, scores: { ...scores, FOR: 2, DEX: 2, CON: 2, INT: 2, SAG: 2, CHA: 2 } });
     expect(lowM.picks.every((t) => t.difficulty === 'high')).toBe(true);
   });
   it('quêtes libres : plan de difficultés', () => {
-    const strong = { FOR: 14, DEX: 14, CON: 14, INT: 14, SAG: 14, CHA: 14 };
+    const strong = { FOR: 8, DEX: 8, CON: 8, INT: 8, SAG: 8, CHA: 8 };
     const r = drawQuests({ ...base, scores: strong, difficultyPlan: ['medium', 'high'], period: 'weekly', exclude: ['x'], seedSuffix: 'free' });
     expect(r.picks.map((t) => t.difficulty)).toEqual(['medium', 'high']);
   });
-  it('niveau 3 : jamais tiré tant que le score de sa caractéristique est sous 14, sauf si rien d’autre n’est possible', () => {
-    const weakScores: Record<AbilityId, number> = { FOR: 10, DEX: 10, CON: 10, INT: 10, SAG: 10, CHA: 10 };
-    const open = { ...weakScores, INT: 14 };
+  it('niveau 3 : jamais tiré tant que le score de sa caractéristique est sous 6, sauf si rien d’autre n’est possible', () => {
+    const weakScores: Record<AbilityId, number> = { FOR: 3, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 };
+    const open = { ...weakScores, INT: 6 };
     for (let d = 1; d <= 30; d++) {
       const r = drawQuests({ ...base, period: 'monthly', periodStart: `2027-02-${String(d).padStart(2, '0')}`, count: 1, level: 3, scores: open, characterId: `m${d}` });
       expect(r.picks).toHaveLength(1);
@@ -166,7 +166,7 @@ describe('tirage', () => {
     }
   });
   it('quête mensuelle d’un début de partie : le créneau n’est jamais vide, il puise dans la caractéristique la plus haute', () => {
-    const start: Record<AbilityId, number> = { FOR: 10, DEX: 10, CON: 13, INT: 10, SAG: 10, CHA: 10 };
+    const start: Record<AbilityId, number> = { FOR: 3, DEX: 3, CON: 5, INT: 3, SAG: 3, CHA: 3 };
     const r = drawQuests({ ...base, period: 'monthly', periodStart: '2027-02-01', count: 1, level: 1, scores: start });
     expect(r.picks).toHaveLength(1);
     expect(r.picks[0].ability).toBe('CON');

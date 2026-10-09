@@ -48,18 +48,14 @@ var PERIOD_MULTIPLIER = {
   monthly: 8,
   epic: 20
 };
-var MIN_SCORE = 8;
-var POINT_BUY_BUDGET = 27;
-var POINT_BUY_MAX = 15;
+var MIN_SCORE = 2;
+var POINT_BUY_BUDGET = 6;
+var POINT_BUY_MAX = 5;
 var POINT_BUY_COST = {
-  8: 0,
-  9: 1,
-  10: 2,
-  11: 3,
-  12: 4,
-  13: 5,
-  14: 7,
-  15: 9
+  2: 0,
+  3: 1,
+  4: 2,
+  5: 3
 };
 function levelFromXp(totalXp) {
   let level = 1;
@@ -88,16 +84,14 @@ function levelProgress(totalXp) {
 function proficiencyBonus(level) {
   return 2 + Math.floor((Math.min(Math.max(level, 1), MAX_LEVEL) - 1) / 4);
 }
-function abilityModifier(score) {
-  return Math.floor((score - 10) / 2);
-}
-function abilityUpgradeCost(score) {
-  if (score < 20) return 100 * (score - 7);
-  return 2e3;
-}
 var MAX_SCORE = 30;
 var SOFT_CAP_SCORE = 20;
-var costAt = (k, bonus) => k + bonus >= SOFT_CAP_SCORE ? 2e3 : 100 * (k - 7);
+var UPGRADE_XP_STEP = 50;
+function abilityUpgradeCost(score) {
+  if (score < SOFT_CAP_SCORE) return UPGRADE_XP_STEP * (score - MIN_SCORE + 1);
+  return 2e3;
+}
+var costAt = (k, bonus) => k + bonus >= SOFT_CAP_SCORE ? 2e3 : abilityUpgradeCost(k);
 function abilityProgress(baseScore, abilityXp, bonus = 0) {
   let k = Math.max(baseScore, MIN_SCORE);
   let xp = Math.max(abilityXp, 0);
@@ -129,13 +123,27 @@ function isValidPointBuy(scores) {
   return pointBuySpent(scores) <= POINT_BUY_BUDGET;
 }
 var BALANCED_SCORES = {
-  FOR: 13,
-  DEX: 13,
-  CON: 13,
-  INT: 12,
-  SAG: 12,
-  CHA: 12
+  FOR: 3,
+  DEX: 3,
+  CON: 3,
+  INT: 3,
+  SAG: 3,
+  CHA: 3
 };
+var LEGACY_POINT_BUY_COST = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 };
+var LEGACY_POINT_BUY_BUDGET = 27;
+function hasLegacyBaseScores(scores) {
+  return ABILITIES.some((a) => scores[a] > POINT_BUY_MAX);
+}
+function rescaleLegacyBaseScores(scores) {
+  const out = emptyAbilityRecord(MIN_SCORE);
+  for (const a of ABILITIES) {
+    const spent = LEGACY_POINT_BUY_COST[Math.min(Math.max(scores[a], 8), 15)];
+    const points = Math.round(spent * POINT_BUY_BUDGET / LEGACY_POINT_BUY_BUDGET);
+    out[a] = Math.min(MIN_SCORE + points, POINT_BUY_MAX);
+  }
+  return out;
+}
 function xpBonusForMastery(proficiency) {
   return proficiency * 5;
 }
@@ -208,7 +216,7 @@ function tierAt(level) {
   if (level >= 5) return { index: 2, name: "R\xE9gulier" };
   return { index: 1, name: "D\xE9butant" };
 }
-var TIER3_MIN_SCORE = 14;
+var TIER3_MIN_SCORE = 6;
 var TIER4_MIN_LEVEL = EPIC_LEVEL;
 function tierUnlocked(difficulty, score, level) {
   if (difficulty === "high") return score >= TIER3_MIN_SCORE;
@@ -791,7 +799,7 @@ function emptyStats() {
     streakBest: 0,
     level: 1,
     totalXp: 0,
-    scores: { FOR: 8, DEX: 8, CON: 8, INT: 8, SAG: 8, CHA: 8 },
+    scores: emptyAbilityRecord(MIN_SCORE),
     earlyQuests: 0,
     lateQuests: 0,
     comebackGap: 0,
@@ -3491,9 +3499,9 @@ export {
   TIER3_MIN_SCORE,
   TIER4_MIN_LEVEL,
   UNDO_WINDOW_MS,
+  UPGRADE_XP_STEP,
   VALIDATION_LABEL,
   abandonQuest,
-  abilityModifier,
   abilityProgress,
   abilityProgressOf,
   abilityScores,
@@ -3535,6 +3543,7 @@ export {
   expiredPartialXp,
   gameDate,
   hardcorePenalty,
+  hasLegacyBaseScores,
   hashString,
   inspirationAfterStreak,
   interpolate,
@@ -3571,6 +3580,7 @@ export {
   questXp,
   recomputeCharacter,
   rerollQuest,
+  rescaleLegacyBaseScores,
   scoresFromAssessment,
   shuffle,
   splitXp,

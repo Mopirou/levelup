@@ -35,7 +35,7 @@ const hero = (over: Partial<CharacterCore> = {}): CharacterCore => ({
   name: 'Aldric',
   classId: 'barbare',
   pathId: null,
-  baseScores: { FOR: 15, DEX: 8, CON: 15, INT: 8, SAG: 8, CHA: 8 },
+  baseScores: { FOR: 5, DEX: 2, CON: 5, INT: 2, SAG: 2, CHA: 2 },
   improvements: { FOR: 0, DEX: 0, CON: 0, INT: 0, SAG: 0, CHA: 0 },
   improvementsChosen: 0,
   totalXp: 0,
@@ -120,10 +120,11 @@ describe('validation et XP', () => {
   });
   it('la hausse de score est détectée', () => {
     const r = applyXp(hero({ abilityXp: { FOR: 0, DEX: 0, CON: 690, INT: 0, SAG: 0, CHA: 0 } }), 'CON', 20);
-    // CON part de 15 : 15->16 coûte 800, donc pas encore
+    // CON part de 5 : 690 XP donnent 2 points (200 + 250) ; le 3e coûte 300 et il n'en a que 260, donc pas encore
     expect(r.abilityUps).toEqual([]);
-    const r2 = applyXp(hero({ abilityXp: { FOR: 0, DEX: 0, INT: 90, CON: 0, SAG: 0, CHA: 0 } }), 'INT', 20);
-    expect(r2.abilityUps).toEqual([{ ability: 'INT', from: 8, to: 9 }]);
+    const r2 = applyXp(hero({ abilityXp: { FOR: 0, DEX: 0, INT: 40, CON: 0, SAG: 0, CHA: 0 } }), 'INT', 20);
+    // INT part de 2 : le premier point coûte 50 XP
+    expect(r2.abilityUps).toEqual([{ ability: 'INT', from: 2, to: 3 }]);
   });
   it('l’annulation (XP négative) recalcule le niveau (RG-06)', () => {
     const up = applyXp(hero(), 'INT', 70);
@@ -258,7 +259,7 @@ describe('auto-évaluation', () => {
     const allMax = Object.fromEntries(qs.map((q) => [q.id, 5]));
     expect(isValidPointBuy(scoresFromAssessment(qs, allMax))).toBe(true);
     const allMin = Object.fromEntries(qs.map((q) => [q.id, 1]));
-    expect(scoresFromAssessment(qs, allMin)).toEqual({ FOR: 8, DEX: 8, CON: 8, INT: 8, SAG: 8, CHA: 8 });
+    expect(scoresFromAssessment(qs, allMin)).toEqual({ FOR: 2, DEX: 2, CON: 2, INT: 2, SAG: 2, CHA: 2 });
     expect(isValidPointBuy(scoresFromAssessment(qs, {}))).toBe(true);
     const mixed = { FOR1: 5, FOR2: 5, INT1: 4, INT2: 4, CHA1: 1, CHA2: 2 };
     const s = scoresFromAssessment(qs, mixed);

@@ -154,16 +154,24 @@ export class AbilityBadgeComponent {
 
 const AXES: AbilityId[] = ['CON', 'SAG', 'INT', 'CHA', 'DEX', 'FOR'];
 
+const RADAR_SCALES = [8, 12, 16, 20, 30];
+
+/** Échelle du radar : le plus petit palier qui contient tous les scores, pour que le profil reste lisible dès le départ. */
+export function radarScale(...scores: Record<AbilityId, number>[]): number {
+  const top = Math.max(...scores.flatMap((s) => AXES.map((a) => s[a] ?? 0)));
+  return RADAR_SCALES.find((m) => top <= m) ?? RADAR_SCALES[RADAR_SCALES.length - 1];
+}
+
 @Component({
   selector: 'lu-radar',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <svg viewBox="0 0 300 280" role="img" [attr.aria-label]="aria()" class="radar">
-      @for (r of rings; track r) {
-        <polygon [attr.points]="ring(r)" fill="none" stroke="var(--lu-border-strong)" stroke-width="1" [attr.opacity]="r === max() ? 0.9 : 0.5" />
+      @for (r of rings(); track r) {
+        <polygon [attr.points]="ring(r)" fill="none" stroke="var(--lu-border-strong)" stroke-width="1" [attr.opacity]="r === scale() ? 0.9 : 0.5" />
       }
       @for (a of axes; track a; let i = $index) {
-        <line x1="150" y1="140" [attr.x2]="pt(i, max())[0]" [attr.y2]="pt(i, max())[1]" stroke="var(--lu-border)" stroke-width="1" />
+        <line x1="150" y1="140" [attr.x2]="pt(i, scale())[0]" [attr.y2]="pt(i, scale())[1]" stroke="var(--lu-border)" stroke-width="1" />
       }
       @if (base()) {
         <polygon [attr.points]="poly(base()!)" fill="var(--lu-muted)" fill-opacity="0.12" stroke="var(--lu-muted)" stroke-width="1.5" stroke-dasharray="4 4" />
@@ -187,10 +195,12 @@ const AXES: AbilityId[] = ['CON', 'SAG', 'INT', 'CHA', 'DEX', 'FOR'];
 export class RadarComponent {
   readonly scores = input.required<Record<AbilityId, number>>();
   readonly base = input<Record<AbilityId, number> | null>(null);
-  readonly max = input(20);
+  /** Échelle imposée ; par défaut, elle s'adapte aux scores affichés (voir radarScale). */
+  readonly max = input<number | null>(null);
   readonly highlight = input<AbilityId | null>(null);
   readonly axes = AXES;
-  readonly rings = [5, 10, 15, 20];
+  readonly scale = computed(() => this.max() ?? radarScale(this.scores(), ...(this.base() ? [this.base()!] : [])));
+  readonly rings = computed(() => [0.25, 0.5, 0.75, 1].map((f) => this.scale() * f));
   readonly aria = computed(() => 'Radar : ' + AXES.map((a) => `${ABILITY_LABEL[a]} ${this.scores()[a]}`).join(', '));
 
   label(a: AbilityId): string {
@@ -198,7 +208,7 @@ export class RadarComponent {
   }
   pt(i: number, v: number): [number, number] {
     const ang = (-90 + i * 60) * (Math.PI / 180);
-    const r = (Math.min(v, this.max()) / this.max()) * 100;
+    const r = (Math.min(v, this.scale()) / this.scale()) * 100;
     return [150 + r * Math.cos(ang), 140 + r * Math.sin(ang)];
   }
   lab(i: number): [number, number] {

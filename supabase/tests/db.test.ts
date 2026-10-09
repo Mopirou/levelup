@@ -64,6 +64,7 @@ beforeAll(async () => {
   await db.exec(read('migrations/20261008000003_cron.sql'));
   await db.exec(read('migrations/20261008000004_friend_code.sql'));
   await db.exec(read('migrations/20261009000001_quest_themes.sql'));
+  await db.exec(read('migrations/20261009000002_rescale_base_scores.sql'));
   await db.exec(read('seed.sql'));
   await mkUser(ids.alice, 'alice');
   await mkUser(ids.bob, 'bob');
@@ -387,5 +388,29 @@ describe('notifications et suppression de compte', () => {
   it('les fonctions de purge ne sont pas appelables par un utilisateur', async () => {
     // (sur PGlite le défaut PUBLIC est révoqué ; sur Supabase, les droits par défaut sont aussi retirés explicitement)
     await expect(as(ids.alice, `select purge_deleted_accounts()`)).rejects.toThrow();
+  });
+});
+
+describe('migration des scores de départ (échelle 8-15 → 2-5)', () => {
+  const legacy = '00000000-0000-0000-0000-0000000000e1';
+  const current = '00000000-0000-0000-0000-0000000000e2';
+  const scoresOf = async (id: string) => (await admin(`select base_scores s from public.characters where profile_id = $1`, [id]))[0].s;
+
+  it('ramène un ancien personnage à 2-5 en gardant ses proportions, sans toucher aux nouveaux', async () => {
+    await mkUser(legacy, 'legacy');
+    await mkUser(current, 'current');
+    await admin(`update public.characters set base_scores = '{"FOR":13,"DEX":13,"CON":13,"INT":12,"SAG":12,"CHA":12}' where profile_id = $1`, [legacy]);
+    await admin(`update public.characters set base_scores = '{"FOR":5,"DEX":2,"CON":5,"INT":2,"SAG":2,"CHA":2}' where profile_id = $1`, [current]);
+
+    await db.exec(read('migrations/20261009000002_rescale_base_scores.sql'));
+    expect(await scoresOf(legacy)).toEqual({ FOR: 3, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 });
+    expect(await scoresOf(current)).toEqual({ FOR: 5, DEX: 2, CON: 5, INT: 2, SAG: 2, CHA: 2 });
+    // les personnages créés avec l'ancienne répartition de test (15/8) passent aussi à l'échelle 2-5
+    expect(await scoresOf(ids.alice)).toEqual({ FOR: 4, DEX: 2, CON: 4, INT: 2, SAG: 2, CHA: 2 });
+
+    // rejouer la migration ne change plus rien
+    await db.exec(read('migrations/20261009000002_rescale_base_scores.sql'));
+    expect(await scoresOf(legacy)).toEqual({ FOR: 3, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 });
+    expect(await scoresOf(ids.alice)).toEqual({ FOR: 4, DEX: 2, CON: 4, INT: 2, SAG: 2, CHA: 2 });
   });
 });

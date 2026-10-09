@@ -3,9 +3,10 @@ import {
   ABILITIES,
   ABILITY_LABEL,
   IMPROVEMENT_LEVELS,
+  MIN_SCORE,
   PATH_LEVEL,
-  abilityModifier,
   abilityScores,
+  emptyAbilityRecord,
   tierAt,
   unlocksAt,
   type AbilityId,
@@ -111,7 +112,7 @@ function unlocksText(level: number): string[] {
             <lu-ability-badge [ability]="o.up.ability" [size]="36" />
             <div>
               <strong>{{ label(o.up.ability) }} {{ o.up.from }} → {{ o.up.to }}</strong>
-              <span class="xs muted">Modificateur {{ mod(o.up.to) }}</span>
+              <span class="xs muted">Gagné grâce à tes quêtes</span>
             </div>
           </div>
         }
@@ -167,7 +168,7 @@ export class OverlayHostComponent {
   readonly mode = signal<'two' | 'one'>('two');
   readonly picked = signal<AbilityId[]>([]);
   readonly busy = signal(false);
-  readonly scores = computed(() => (this.game.character() ? abilityScores(this.game.character()!) : ({ FOR: 8, DEX: 8, CON: 8, INT: 8, SAG: 8, CHA: 8 } as Record<AbilityId, number>)));
+  readonly scores = computed(() => (this.game.character() ? abilityScores(this.game.character()!) : emptyAbilityRecord(MIN_SCORE)));
   readonly preview = computed(() => {
     const s = { ...this.scores() };
     const add = this.mode() === 'two' ? 2 : 1;
@@ -203,7 +204,6 @@ export class OverlayHostComponent {
   }
 
   label = (a: AbilityId) => ABILITY_LABEL[a];
-  mod = (s: number) => (abilityModifier(s) >= 0 ? '+' : '') + abilityModifier(s);
   tierName = (l: number) => tierAt(l).name;
   levelText = (l: number) => levels.find((x) => x.level === l)?.text ?? '';
   unlocks = (l: number) => unlocksText(l);

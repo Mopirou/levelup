@@ -12,7 +12,8 @@ import {
   POINT_BUY_BUDGET,
   POINT_BUY_COST,
   POINT_BUY_MAX,
-  abilityModifier,
+  emptyAbilityRecord,
+  isValidPointBuy,
   pointBuySpent,
   scoresFromAssessment,
   type AbilityId,
@@ -163,6 +164,7 @@ function loadDraft(): Draft | null {
                 <button type="button" [class.on]="tab() === 'quiz'" (click)="tab.set('quiz')">Auto-évaluation</button>
               </div>
               @if (tab() === 'buy') {
+                <p class="lead">Tout le monde démarre à {{ min }} partout. Répartis {{ budget }} points pour donner une première couleur à ton personnage : tout le reste, tu le gagneras en jouant.</p>
                 <div class="remaining" [class.zero]="remaining() === 0">Points restants : <strong>{{ remaining() }}</strong></div>
                 <div class="abil">
                   @for (a of abilities; track a) {
@@ -171,7 +173,7 @@ function loadDraft(): Draft | null {
                       <div class="atxt"><strong>{{ label(a) }}</strong><span class="xs muted">{{ tagline(a) }}</span></div>
                       <div class="stepper">
                         <button type="button" (click)="bump(a, -1)" [disabled]="scores()[a] <= min" [attr.aria-label]="'Moins de ' + label(a)">−</button>
-                        <b>{{ scores()[a] }}</b><em>{{ mod(scores()[a]) }}</em>
+                        <b>{{ scores()[a] }}</b>
                         <button type="button" (click)="bump(a, 1)" [disabled]="!canBump(a)" [attr.aria-label]="'Plus de ' + label(a)">+</button>
                       </div>
                     </div>
@@ -189,7 +191,7 @@ function loadDraft(): Draft | null {
                 }
                 <button type="button" class="lu-btn mint" (click)="applyQuiz()">Calculer ma répartition</button>
               }
-              <lu-radar [scores]="scores()" [max]="15" />
+              <lu-radar [scores]="scores()" />
               <button type="button" class="lu-btn" (click)="next()">Continuer</button>
             </section>
           }
@@ -225,7 +227,7 @@ function loadDraft(): Draft | null {
                 <p class="small muted">{{ chosenClass()?.name }} · @{{ username() }}</p>
                 @if (motto()) { <p class="mot">« {{ motto() }} »</p> }
               </div>
-              <lu-radar [scores]="scores()" [max]="15" />
+              <lu-radar [scores]="scores()" />
               <div class="lu-field">
                 <label for="oa">Pourquoi entreprends-tu cette quête ? · facultatif</label>
                 <textarea id="oa" class="lu-input area" rows="3" [value]="oath()" (input)="oath.set($any($event.target).value)" placeholder="Pour retrouver de l’énergie, pour apprendre à me connaître…"></textarea>
@@ -289,7 +291,6 @@ function loadDraft(): Draft | null {
     .stepper button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--lu-border-strong); background: var(--lu-surface-2); color: var(--lu-text); font-size: 20px; cursor: pointer; }
     .stepper button:disabled { opacity: .3; }
     .stepper b { font-family: var(--lu-font-title); font-size: 22px; min-width: 28px; text-align: center; font-weight: 500; }
-    .stepper em { font-style: normal; font-size: 11px; color: var(--lu-gold); width: 24px; }
     .q { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--lu-border); }
     .qt { font-size: 13px; line-height: 1.4; }
     .q input[type='range'] { width: 100%; accent-color: var(--lu-accent); height: 32px; }
@@ -320,6 +321,7 @@ export class OnboardingPage {
   readonly portraits = PORTRAIT_IDS;
   readonly frames = FRAMES;
   readonly min = MIN_SCORE;
+  readonly budget = POINT_BUY_BUDGET;
   readonly quiz = assessment as SelfAssessmentQuestion[];
   readonly principle = [
     { i: 'swords', t: 'Accomplis des quêtes réelles', d: 'Marcher, lire, respirer, appeler un ami : chaque action concrète devient une quête.' },
@@ -335,7 +337,7 @@ export class OnboardingPage {
   readonly openClass = signal<ClassDef | null>(null);
   readonly username = signal(this.d?.username ?? '');
   readonly userState = signal<'idle' | 'checking' | 'ok' | 'taken' | 'bad'>('idle');
-  readonly scores = signal<Record<AbilityId, number>>(this.d?.scores ?? { FOR: 8, DEX: 8, CON: 8, INT: 8, SAG: 8, CHA: 8 });
+  readonly scores = signal<Record<AbilityId, number>>(this.d?.scores && isValidPointBuy(this.d.scores) ? this.d.scores : emptyAbilityRecord(MIN_SCORE));
   readonly tab = signal<'buy' | 'quiz'>('buy');
   readonly answers = signal<Record<string, number>>(this.d?.answers ?? {});
   readonly portraitId = signal(this.d?.portraitId ?? 'p01');
@@ -371,7 +373,6 @@ export class OnboardingPage {
   short = (a: AbilityId) => ABILITY_LABEL[a];
   color = (a: AbilityId) => ABILITY_COLOR[a];
   tagline = (a: AbilityId) => ABILITY_TAGLINE[a];
-  mod = (s: number) => (abilityModifier(s) >= 0 ? '+' : '') + abilityModifier(s);
   iconFor(c: ClassDef): string {
     return ({ aventurier: 'compass', artisan: 'hammer', troubadour: 'music', rassembleur: 'users', erudit: 'library', gardien: 'heart', explorateur: 'leaf', eclaireur: 'footprints' } as Record<string, string>)[c.id] ?? 'sparkles';
   }

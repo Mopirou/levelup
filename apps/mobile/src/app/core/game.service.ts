@@ -3,11 +3,13 @@ import {
   ABILITIES,
   ACHIEVEMENTS,
   CLASSES,
+  MIN_SCORE,
   abilityProgressOf,
   abilityScores,
   addDays,
   completeQuest as engineComplete,
   daysLeft,
+  emptyAbilityRecord,
   endOfIsoWeek,
   gameDate,
   levelProgress,
@@ -99,7 +101,7 @@ export class GameService {
   readonly tier = computed(() => tierAt(this.level()));
   readonly proficiency = computed(() => proficiencyBonus(this.level()));
   readonly unlocks = computed(() => unlocksAt(this.level()));
-  readonly scores = computed(() => (this.character() ? abilityScores(this.character()!) : ({ FOR: 8, DEX: 8, CON: 8, INT: 8, SAG: 8, CHA: 8 } as Record<AbilityId, number>)));
+  readonly scores = computed(() => (this.character() ? abilityScores(this.character()!) : emptyAbilityRecord(MIN_SCORE)));
   readonly masteries = computed(() => (this.character() ? masteriesFor(this.character()!) : []));
   readonly pathAbility = computed(() => (this.character() ? pathAbilityFor(this.character()!) : null));
   readonly classDef = computed(() => CLASSES.find((c) => c.id === this.character()?.classId));

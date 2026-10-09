@@ -46,7 +46,7 @@ function setup(startIso = '2026-10-05T09:00:00+02:00') {
 const heroInput = {
   name: 'Aldric',
   classId: 'eclaireur',
-  scores: { FOR: 15, DEX: 8, CON: 15, INT: 8, SAG: 8, CHA: 8 },
+  scores: { FOR: 5, DEX: 2, CON: 5, INT: 2, SAG: 2, CHA: 2 },
   portraitId: 'p1',
   frameColor: '#2f5a47',
   motto: 'Un pas après l’autre',
@@ -101,7 +101,7 @@ describe('création du personnage', () => {
     const s = setup();
     expect((await createCharacter(s.ctx, U, { ...heroInput, name: 'A' })).ok).toBe(false);
     expect((await createCharacter(s.ctx, U, { ...heroInput, classId: 'x' })).ok).toBe(false);
-    expect((await createCharacter(s.ctx, U, { ...heroInput, scores: { ...heroInput.scores, INT: 15, SAG: 15 } })).ok).toBe(false);
+    expect((await createCharacter(s.ctx, U, { ...heroInput, scores: { ...heroInput.scores, INT: 5, SAG: 5 } })).ok).toBe(false);
     expect((await createCharacter(s.ctx, U, { ...heroInput, motto: 'x'.repeat(81) })).ok).toBe(false);
     expect((await createCharacter(s.ctx, U, heroInput)).ok).toBe(true);
     expect(await createCharacter(s.ctx, U, heroInput)).toMatchObject({ ok: false, error: 'already-has-character' });
@@ -481,24 +481,24 @@ describe('niveau, voie, améliorations, titres', () => {
     const r = await chooseImprovement(s.ctx, U, { plus2: 'INT' });
     expect(r.ok).toBe(true);
     const c = (await s.store.getCharacter(U))!;
-    expect(abilityScores(c).INT).toBe(10);
+    expect(abilityScores(c).INT).toBe(4); // 2 au départ + 2 de l’amélioration
     expect(await chooseImprovement(s.ctx, U, { plus2: 'INT' })).toMatchObject({ ok: false, error: 'nothing-pending' });
   });
   it('l’amélioration conserve la progression d’XP (additive)', async () => {
     const s = await started();
     await levelTo(s, 600);
     const c0 = (await s.store.getCharacter(U))!;
-    await s.store.saveCharacter(U, { ...c0, abilityXp: { ...c0.abilityXp, INT: 150 } });
-    const before = abilityScores((await s.store.getCharacter(U))!).INT; // 8 + 1 point (100 XP) = 9
-    expect(before).toBe(9);
+    await s.store.saveCharacter(U, { ...c0, abilityXp: { ...c0.abilityXp, INT: 120 } });
+    const before = abilityScores((await s.store.getCharacter(U))!).INT; // 2 + 1 point (50 XP) = 3, il reste 70 XP vers le suivant (100)
+    expect(before).toBe(3);
     await chooseImprovement(s.ctx, U, { plus2: 'INT' });
-    expect(abilityScores((await s.store.getCharacter(U))!).INT).toBe(11);
+    expect(abilityScores((await s.store.getCharacter(U))!).INT).toBe(5);
   });
   it('plafond de 20 par amélioration', async () => {
     const s = await started();
     await levelTo(s, 600);
     const c = (await s.store.getCharacter(U))!;
-    await s.store.saveCharacter(U, { ...c, baseScores: { ...c.baseScores, FOR: 15 }, improvements: { ...c.improvements, FOR: 4 } });
+    await s.store.saveCharacter(U, { ...c, baseScores: { ...c.baseScores, FOR: 5 }, improvements: { ...c.improvements, FOR: 12 } });
     expect(await chooseImprovement(s.ctx, U, { plus2: 'FOR' })).toMatchObject({ ok: false, error: 'invalid' });
     expect((await chooseImprovement(s.ctx, U, { plus1: ['FOR', 'DEX'] })).ok).toBe(true);
   });

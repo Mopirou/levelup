@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { IonContent } from '@ionic/angular';
-import { ABILITIES, ABILITY_LABEL, ACHIEVEMENTS, CLASSES, abilityModifier, abilityScores, type AbilityId, type ReactionKind } from '@levelup/engine';
+import { ABILITIES, ABILITY_LABEL, ACHIEVEMENTS, CLASSES, MIN_SCORE, abilityScores, emptyAbilityRecord, type AbilityId, type ReactionKind } from '@levelup/engine';
 import { BackendService } from '../../core/backend.service';
 import { GameService } from '../../core/game.service';
 import { PostActions } from '../../core/post-actions';
@@ -36,7 +36,7 @@ import { PostCardComponent } from '../../shared/post-card.component';
             <section class="lu-card"><lu-radar [scores]="scores()" /></section>
             <div class="grid">
               @for (a of order; track a) {
-                <div class="lu-card flat ab"><lu-ability-badge [ability]="a" [size]="26" /><strong>{{ scores()[a] }}</strong><span class="xs muted">{{ label(a) }} · {{ mod(scores()[a]) }}</span></div>
+                <div class="lu-card flat ab"><lu-ability-badge [ability]="a" [size]="26" /><strong>{{ scores()[a] }}</strong><span class="xs muted">{{ label(a) }}</span></div>
               }
             </div>
             @if (s.trophies.length) {
@@ -88,10 +88,9 @@ export class CompanionProfilePage {
   readonly order: AbilityId[] = ['CON', 'SAG', 'INT', 'CHA', 'DEX', 'FOR'];
   readonly abilities = ABILITIES;
   label = (a: AbilityId) => ABILITY_LABEL[a];
-  mod = (s: number) => (abilityModifier(s) >= 0 ? '+' : '') + abilityModifier(s);
   readonly scores = computed(() => {
     const ch = this.sheet()?.character;
-    return ch ? abilityScores({ baseScores: ch.baseScores, improvements: ch.improvements, abilityXp: ch.abilityXp }) : ({ FOR: 8, DEX: 8, CON: 8, INT: 8, SAG: 8, CHA: 8 } as Record<AbilityId, number>);
+    return ch ? abilityScores({ baseScores: ch.baseScores, improvements: ch.improvements, abilityXp: ch.abilityXp }) : emptyAbilityRecord(MIN_SCORE);
   });
   readonly className = computed(() => CLASSES.find((c) => c.id === this.sheet()?.character?.classId)?.name ?? '');
   readonly pathName = computed(() => CLASSES.flatMap((c) => c.paths).find((p) => p.id === this.sheet()?.character?.pathId)?.name ?? '');

@@ -1,4 +1,5 @@
-import { AbilityId, Difficulty } from './types';
+import { AbilityId, Difficulty, emptyAbilityRecord } from './types';
+import { MIN_SCORE } from './xp';
 
 export type AchievementCondition =
   | { kind: 'quests_total'; target: number }
@@ -150,7 +151,7 @@ export function emptyStats(): PlayerStats {
     streakBest: 0,
     level: 1,
     totalXp: 0,
-    scores: { FOR: 8, DEX: 8, CON: 8, INT: 8, SAG: 8, CHA: 8 },
+    scores: emptyAbilityRecord(MIN_SCORE),
     earlyQuests: 0,
     lateQuests: 0,
     comebackGap: 0,

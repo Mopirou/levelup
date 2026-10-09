@@ -114,6 +114,11 @@ export async function createLocalBackend(): Promise<Backend> {
     }, 150);
   };
   store.onChange = persist;
+  // Ancien personnage local (scores de départ de 8 à 15) : ramené à l'échelle actuelle, une seule fois.
+  const legacy = await store.getCharacter(LOCAL_ID);
+  if (legacy && engine.hasLegacyBaseScores(legacy.baseScores)) {
+    await store.saveCharacter(LOCAL_ID, { ...legacy, baseScores: engine.rescaleLegacyBaseScores(legacy.baseScores) });
+  }
   // Enregistre immédiatement quand la page se ferme ou passe en arrière-plan.
   const flush = () => void db.kv.put({ key: 'game', value: store.snapshot() }).catch(() => undefined);
   window.addEventListener('pagehide', flush);

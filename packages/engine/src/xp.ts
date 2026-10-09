@@ -26,11 +26,14 @@ export const PERIOD_MULTIPLIER: Record<Period, number> = {
   epic: 20,
 };
 
-export const MIN_SCORE = 8;
-export const POINT_BUY_BUDGET = 27;
-export const POINT_BUY_MAX = 15;
+/** Score de départ de chaque caractéristique : tout le monde commence ici, puis répartit quelques points. */
+export const MIN_SCORE = 2;
+/** Points à répartir à la création (1 point = +1 de score). */
+export const POINT_BUY_BUDGET = 6;
+/** Score maximum à la création (+3 sur une seule caractéristique). */
+export const POINT_BUY_MAX = 5;
 export const POINT_BUY_COST: Record<number, number> = {
-  8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9,
+  2: 0, 3: 1, 4: 2, 5: 3,
 };
 
 export function levelFromXp(totalXp: number): number {
@@ -72,18 +75,16 @@ export function proficiencyBonus(level: number): number {
   return 2 + Math.floor((Math.min(Math.max(level, 1), MAX_LEVEL) - 1) / 4);
 }
 
-export function abilityModifier(score: number): number {
-  return Math.floor((score - 10) / 2);
-}
-
-/** Coût en XP de caractéristique pour passer de s à s + 1. */
-export function abilityUpgradeCost(score: number): number {
-  if (score < 20) return 100 * (score - 7);
-  return 2000;
-}
-
 export const MAX_SCORE = 30;
 export const SOFT_CAP_SCORE = 20;
+/** XP de caractéristique pour le premier point (de 2 à 3) ; chaque point suivant coûte un palier de plus. */
+export const UPGRADE_XP_STEP = 50;
+
+/** Coût en XP de caractéristique pour passer de s à s + 1 : 50, 100, 150… puis 2 000 au-delà du plafond de 20. */
+export function abilityUpgradeCost(score: number): number {
+  if (score < SOFT_CAP_SCORE) return UPGRADE_XP_STEP * (score - MIN_SCORE + 1);
+  return 2000;
+}
 
 export interface AbilityProgress {
   score: number;
@@ -95,11 +96,11 @@ export interface AbilityProgress {
   legendary: boolean;
 }
 
-const costAt = (k: number, bonus: number): number => (k + bonus >= SOFT_CAP_SCORE ? 2000 : 100 * (k - 7));
+const costAt = (k: number, bonus: number): number => (k + bonus >= SOFT_CAP_SCORE ? 2000 : abilityUpgradeCost(k));
 
 /**
  * Score courant d'une caractéristique. Les améliorations (bonus) s'ajoutent au score sans refaire payer l'XP déjà gagnée :
- * le k-ième point gagné par l'XP coûte 100 × (k - 7) sur la trajectoire de départ, ou 2 000 XP une fois le score réel ≥ 20.
+ * le point suivant (de k à k + 1) coûte 50 × (k - 1) sur la trajectoire de départ, ou 2 000 XP une fois le score réel ≥ 20.
  */
 export function abilityProgress(baseScore: number, abilityXp: number, bonus = 0): AbilityProgress {
   let k = Math.max(baseScore, MIN_SCORE);
@@ -140,8 +141,28 @@ export function isValidPointBuy(scores: Record<AbilityId, number>): boolean {
 }
 
 export const BALANCED_SCORES: Record<AbilityId, number> = {
-  FOR: 13, DEX: 13, CON: 13, INT: 12, SAG: 12, CHA: 12,
+  FOR: 3, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3,
 };
+
+// Anciens personnages : scores de départ de 8 à 15 (27 points d'achat), avant le passage à l'échelle 2-5.
+const LEGACY_POINT_BUY_COST: Record<number, number> = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 };
+const LEGACY_POINT_BUY_BUDGET = 27;
+
+/** Vrai pour un personnage créé avec l'ancienne échelle (aucun score de départ n'excède POINT_BUY_MAX sur la nouvelle). */
+export function hasLegacyBaseScores(scores: Record<AbilityId, number>): boolean {
+  return ABILITIES.some((a) => scores[a] > POINT_BUY_MAX);
+}
+
+/** Ramène des scores de départ 8-15 à l'échelle actuelle en gardant les proportions de points investis. */
+export function rescaleLegacyBaseScores(scores: Record<AbilityId, number>): Record<AbilityId, number> {
+  const out = emptyAbilityRecord(MIN_SCORE);
+  for (const a of ABILITIES) {
+    const spent = LEGACY_POINT_BUY_COST[Math.min(Math.max(scores[a], 8), 15)];
+    const points = Math.round((spent * POINT_BUY_BUDGET) / LEGACY_POINT_BUY_BUDGET);
+    out[a] = Math.min(MIN_SCORE + points, POINT_BUY_MAX);
+  }
+  return out;
+}
 
 export function xpBonusForMastery(proficiency: number): number {
   return proficiency * 5;
@@ -271,7 +292,7 @@ export function tierAt(level: number): Tier {
 }
 
 /** Niveau 3 (quêtes Audacieuses, mensuelles) : score minimum dans la caractéristique concernée. */
-export const TIER3_MIN_SCORE = 14;
+export const TIER3_MIN_SCORE = 6;
 /** Niveau 4 (quêtes Légendaires, épiques) : niveau global minimum. */
 export const TIER4_MIN_LEVEL = EPIC_LEVEL;
 

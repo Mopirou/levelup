@@ -61,7 +61,7 @@ function setup(startIso: string) {
 const input = {
   name: 'Aldric',
   classId: 'eclaireur',
-  scores: { FOR: 15, DEX: 8, CON: 15, INT: 8, SAG: 8, CHA: 8 },
+  scores: { FOR: 5, DEX: 2, CON: 5, INT: 2, SAG: 2, CHA: 2 },
   portraitId: 'p03',
   frameColor: '#2f5a47',
   motto: 'Un pas après l’autre',
@@ -84,7 +84,7 @@ const complete = (s: ReturnType<typeof setup>, q: QuestInstance, extra: Record<s
 beforeAll(async () => {
   pg = await PGlite.create({ extensions: { citext, pgcrypto } });
   await pg.exec(PLATFORM);
-  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql']) await pg.exec(read(`migrations/${f}`));
+  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql', '20261009000002_rescale_base_scores.sql']) await pg.exec(read(`migrations/${f}`));
   await pg.exec(read('seed.sql'));
   await pg.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'a@ex.fr', '{"username":"aldric","birth_year":1994}')`, [U]);
 }, 120_000);
@@ -100,7 +100,7 @@ describe('logique de jeu sur le vrai schéma (adaptateur SupabaseStore)', () => 
     expect(r.ok).toBe(true);
     const c = (await s.store.getCharacter(U))!;
     expect(c).toMatchObject({ name: 'Aldric', classId: 'eclaireur', level: 1, totalXp: 0, oath: input.oath, portraitId: 'p03' });
-    expect(abilityScores(c).FOR).toBe(15);
+    expect(abilityScores(c).FOR).toBe(5);
     const settings = await s.store.getSettings(U);
     expect(settings).toMatchObject({ resetHour: 4, timezone: 'Europe/Paris', hardcore: false });
     const inst = await s.store.listInstances(U);
@@ -211,7 +211,7 @@ describe('logique de jeu sur le vrai schéma (adaptateur SupabaseStore)', () => 
     expect(await chooseImprovement(s.ctx, U, { plus2: 'INT' })).toMatchObject({ ok: true });
     const after = (await s.store.getCharacter(U))!;
     expect(after.improvements.INT).toBe(2);
-    expect(abilityScores(after).INT).toBe(10);
+    expect(abilityScores(after).INT).toBe(4);
     const progress = await achievementProgress(s.ctx, U);
     expect(progress).toHaveLength(98);
     expect((await s.store.listUnlocked(U)).map((u: { achievementId: string }) => u.achievementId)).toContain('premier-pas');
