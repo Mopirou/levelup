@@ -38,7 +38,8 @@
       "Jambes et fessiers",
       "Dos et tirage",
       "Corps entier haltères",
-      "Kettlebell"
+      "Kettlebell",
+      "Pompes"
     ]
   },
   {
@@ -532,6 +533,29 @@
       "Mobilité des épaules",
       "Mobilité du dos",
       "Grand écart"
+    ]
+  },
+  {
+    "id": "culture",
+    "label": "Culture générale",
+    "blurb": "Comprendre le monde : histoire, sciences, géographie et idées.",
+    "ability": "INT",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ],
+    "activities": [
+      "Histoire",
+      "Sciences",
+      "Géographie",
+      "Philosophie",
+      "Arts et patrimoine"
     ]
   }
 ]

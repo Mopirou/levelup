@@ -6960,6 +6960,134 @@
     ]
   },
   {
+    "id": "g-musculation-pompes-t1",
+    "ability": "FOR",
+    "difficulty": "easy",
+    "periods": [
+      "daily"
+    ],
+    "title": "Pompes, 10 répétitions",
+    "flavor": "Les pompes renforcent pectoraux, épaules, bras et gainage sans aucun matériel.",
+    "objective": "Faire 10 pompes en une ou plusieurs séries, corps bien gainé (sur les genoux si besoin).",
+    "tips": [
+      "Déroulé conseillé : échauffement des poignets et des épaules, séries de pompes avec repos, étirements.",
+      "Garde le corps aligné de la tête aux talons et descends la poitrine vers le sol."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 10,
+      "unit": "pompes"
+    },
+    "tags": [
+      "guidé",
+      "musculation",
+      "sport"
+    ],
+    "theme": "musculation",
+    "secondary": [
+      {
+        "ability": "CON",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-musculation-pompes-t2",
+    "ability": "FOR",
+    "difficulty": "medium",
+    "periods": [
+      "weekly"
+    ],
+    "title": "Pompes, 3 séances",
+    "flavor": "Les pompes renforcent pectoraux, épaules, bras et gainage sans aucun matériel. Quelques séances par semaine donnent des progrès visibles.",
+    "objective": "Faire 3 séances de pompes dans la semaine.",
+    "tips": [
+      "Garde le corps aligné de la tête aux talons et descends la poitrine vers le sol.",
+      "Répartis tes séances sur plusieurs jours et coche-les au fur et à mesure."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 3,
+      "unit": "séances"
+    },
+    "tags": [
+      "guidé",
+      "musculation",
+      "sport"
+    ],
+    "theme": "musculation",
+    "secondary": [
+      {
+        "ability": "CON",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-musculation-pompes-t3",
+    "ability": "FOR",
+    "difficulty": "high",
+    "periods": [
+      "monthly"
+    ],
+    "title": "Pompes, 12 fois ce mois-ci",
+    "flavor": "Les pompes renforcent pectoraux, épaules, bras et gainage sans aucun matériel. Un mois de pratique régulière installe l’habitude et le niveau.",
+    "objective": "Faire 12 séances de pompes sur le mois, à raison de quelques-uns par semaine.",
+    "tips": [
+      "Garde le corps aligné de la tête aux talons et descends la poitrine vers le sol.",
+      "Planifie tes créneaux à l’avance et note ta progression chaque semaine."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 12,
+      "unit": "séances de pompes"
+    },
+    "tags": [
+      "guidé",
+      "musculation",
+      "sport"
+    ],
+    "theme": "musculation",
+    "secondary": [
+      {
+        "ability": "CON",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-musculation-pompes-t4",
+    "ability": "FOR",
+    "difficulty": "expert",
+    "periods": [
+      "epic"
+    ],
+    "title": "Pompes, 40 fois au total",
+    "flavor": "Les pompes renforcent pectoraux, épaules, bras et gainage sans aucun matériel. Un grand objectif, qui demande de la constance sur la durée.",
+    "objective": "Faire 40 séances de pompes sur la durée, jusqu’à enchaîner 30 pompes d’affilée. Adapte à ta condition et consulte un professionnel au besoin.",
+    "tips": [
+      "Garde le corps aligné de la tête aux talons et descends la poitrine vers le sol.",
+      "Fixe-toi un point d’étape toutes les deux semaines pour mesurer ta progression."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 40,
+      "unit": "séances de pompes"
+    },
+    "tags": [
+      "guidé",
+      "musculation",
+      "sport"
+    ],
+    "theme": "musculation",
+    "secondary": [
+      {
+        "ability": "CON",
+        "pct": 20
+      }
+    ]
+  },
+  {
     "id": "g-pilates-pilates-debutant-t1",
     "ability": "DEX",
     "difficulty": "easy",
@@ -22561,6 +22689,716 @@
       {
         "ability": "CON",
         "pct": 40
+      }
+    ]
+  },
+  {
+    "id": "g-culture-histoire-t1",
+    "ability": "INT",
+    "difficulty": "easy",
+    "periods": [
+      "daily"
+    ],
+    "title": "Histoire, 20 minutes de découverte",
+    "flavor": "L’histoire aide à comprendre le présent et à relier les événements entre eux.",
+    "objective": "Lire, regarder ou écouter pendant 20 minutes un contenu d’histoire sérieux : article, vidéo ou podcast.",
+    "tips": [
+      "Déroulé conseillé : choisir une période, lire ou regarder, noter trois idées, les raconter à voix haute.",
+      "Place chaque événement sur une frise pour garder le fil."
+    ],
+    "validation": {
+      "type": "timer",
+      "minutes": 20
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-histoire-t2",
+    "ability": "INT",
+    "difficulty": "medium",
+    "periods": [
+      "weekly"
+    ],
+    "title": "Histoire, un documentaire raconté",
+    "flavor": "L’histoire aide à comprendre le présent et à relier les événements entre eux. Quelques séances par semaine donnent des progrès visibles.",
+    "objective": "Regarder un documentaire d’histoire, noter cinq idées clés, puis les raconter à quelqu’un.",
+    "tips": [
+      "Place chaque événement sur une frise pour garder le fil.",
+      "Répartis tes séances sur plusieurs jours et coche-les au fur et à mesure."
+    ],
+    "validation": {
+      "type": "steps",
+      "steps": [
+        "Regarder un documentaire d’histoire",
+        "Noter cinq idées clés",
+        "Les raconter à quelqu’un"
+      ]
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-histoire-t3",
+    "ability": "INT",
+    "difficulty": "high",
+    "periods": [
+      "monthly"
+    ],
+    "title": "Histoire, 12 fois ce mois-ci",
+    "flavor": "L’histoire aide à comprendre le présent et à relier les événements entre eux. Un mois de pratique régulière installe l’habitude et le niveau.",
+    "objective": "Faire 12 séances d’histoire sur le mois, à raison de quelques-uns par semaine.",
+    "tips": [
+      "Place chaque événement sur une frise pour garder le fil.",
+      "Planifie tes créneaux à l’avance et note ta progression chaque semaine."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 12,
+      "unit": "séances d’histoire"
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-histoire-t4",
+    "ability": "INT",
+    "difficulty": "expert",
+    "periods": [
+      "epic"
+    ],
+    "title": "Histoire, 40 fois au total",
+    "flavor": "L’histoire aide à comprendre le présent et à relier les événements entre eux. Un grand objectif, qui demande de la constance sur la durée.",
+    "objective": "Faire 40 séances d’histoire sur la durée, jusqu’à raconter une période de l’histoire à quelqu’un sans notes.",
+    "tips": [
+      "Place chaque événement sur une frise pour garder le fil.",
+      "Fixe-toi un point d’étape toutes les deux semaines pour mesurer ta progression."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 40,
+      "unit": "séances d’histoire"
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-sciences-t1",
+    "ability": "INT",
+    "difficulty": "easy",
+    "periods": [
+      "daily"
+    ],
+    "title": "Sciences, 20 minutes de découverte",
+    "flavor": "La science change le regard sur le monde et affûte l’esprit critique.",
+    "objective": "Lire, regarder ou écouter pendant 20 minutes un contenu de sciences sérieux : article, vidéo de vulgarisation ou podcast.",
+    "tips": [
+      "Déroulé conseillé : choisir une question, lire ou regarder, reformuler avec tes mots, vérifier une source.",
+      "Cherche la source avant de croire une affirmation."
+    ],
+    "validation": {
+      "type": "timer",
+      "minutes": 20
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-sciences-t2",
+    "ability": "INT",
+    "difficulty": "medium",
+    "periods": [
+      "weekly"
+    ],
+    "title": "Sciences, un phénomène expliqué",
+    "flavor": "La science change le regard sur le monde et affûte l’esprit critique. Quelques séances par semaine donnent des progrès visibles.",
+    "objective": "Choisir un phénomène scientifique, te documenter, puis l’expliquer simplement à quelqu’un.",
+    "tips": [
+      "Cherche la source avant de croire une affirmation.",
+      "Répartis tes séances sur plusieurs jours et coche-les au fur et à mesure."
+    ],
+    "validation": {
+      "type": "steps",
+      "steps": [
+        "Choisir un phénomène qui t’intrigue",
+        "Me documenter sur deux sources",
+        "L’expliquer simplement à quelqu’un"
+      ]
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-sciences-t3",
+    "ability": "INT",
+    "difficulty": "high",
+    "periods": [
+      "monthly"
+    ],
+    "title": "Sciences, 12 fois ce mois-ci",
+    "flavor": "La science change le regard sur le monde et affûte l’esprit critique. Un mois de pratique régulière installe l’habitude et le niveau.",
+    "objective": "Faire 12 séances de sciences sur le mois, à raison de quelques-uns par semaine.",
+    "tips": [
+      "Cherche la source avant de croire une affirmation.",
+      "Planifie tes créneaux à l’avance et note ta progression chaque semaine."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 12,
+      "unit": "séances de sciences"
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-sciences-t4",
+    "ability": "INT",
+    "difficulty": "expert",
+    "periods": [
+      "epic"
+    ],
+    "title": "Sciences, 40 fois au total",
+    "flavor": "La science change le regard sur le monde et affûte l’esprit critique. Un grand objectif, qui demande de la constance sur la durée.",
+    "objective": "Faire 40 séances de sciences sur la durée, jusqu’à expliquer un phénomène scientifique simplement à quelqu’un.",
+    "tips": [
+      "Cherche la source avant de croire une affirmation.",
+      "Fixe-toi un point d’étape toutes les deux semaines pour mesurer ta progression."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 40,
+      "unit": "séances de sciences"
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-geographie-t1",
+    "ability": "INT",
+    "difficulty": "easy",
+    "periods": [
+      "daily"
+    ],
+    "title": "Géographie, 20 minutes de découverte",
+    "flavor": "Savoir où et comment vivent les autres peuples ouvre l’esprit.",
+    "objective": "Lire, regarder ou écouter pendant 20 minutes un contenu de géographie : carte, article, reportage ou podcast.",
+    "tips": [
+      "Déroulé conseillé : ouvrir une carte, choisir un pays ou une région, lire ou regarder, situer sur la carte.",
+      "Repère d’abord les grands ensembles (fleuves, montagnes) avant les détails."
+    ],
+    "validation": {
+      "type": "timer",
+      "minutes": 20
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-geographie-t2",
+    "ability": "INT",
+    "difficulty": "medium",
+    "periods": [
+      "weekly"
+    ],
+    "title": "Géographie, un pays présenté",
+    "flavor": "Savoir où et comment vivent les autres peuples ouvre l’esprit. Quelques séances par semaine donnent des progrès visibles.",
+    "objective": "Choisir un pays ou une région, te documenter, puis le présenter à quelqu’un avec une carte.",
+    "tips": [
+      "Repère d’abord les grands ensembles (fleuves, montagnes) avant les détails.",
+      "Répartis tes séances sur plusieurs jours et coche-les au fur et à mesure."
+    ],
+    "validation": {
+      "type": "steps",
+      "steps": [
+        "Choisir un pays ou une région",
+        "Me documenter et le repérer sur une carte",
+        "Le présenter à quelqu’un"
+      ]
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-geographie-t3",
+    "ability": "INT",
+    "difficulty": "high",
+    "periods": [
+      "monthly"
+    ],
+    "title": "Géographie, 12 fois ce mois-ci",
+    "flavor": "Savoir où et comment vivent les autres peuples ouvre l’esprit. Un mois de pratique régulière installe l’habitude et le niveau.",
+    "objective": "Faire 12 séances de géographie sur le mois, à raison de quelques-uns par semaine.",
+    "tips": [
+      "Repère d’abord les grands ensembles (fleuves, montagnes) avant les détails.",
+      "Planifie tes créneaux à l’avance et note ta progression chaque semaine."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 12,
+      "unit": "séances de géographie"
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-geographie-t4",
+    "ability": "INT",
+    "difficulty": "expert",
+    "periods": [
+      "epic"
+    ],
+    "title": "Géographie, 40 fois au total",
+    "flavor": "Savoir où et comment vivent les autres peuples ouvre l’esprit. Un grand objectif, qui demande de la constance sur la durée.",
+    "objective": "Faire 40 séances de géographie sur la durée, jusqu’à présenter un pays ou une région à quelqu’un avec une carte.",
+    "tips": [
+      "Repère d’abord les grands ensembles (fleuves, montagnes) avant les détails.",
+      "Fixe-toi un point d’étape toutes les deux semaines pour mesurer ta progression."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 40,
+      "unit": "séances de géographie"
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-philosophie-t1",
+    "ability": "INT",
+    "difficulty": "easy",
+    "periods": [
+      "daily"
+    ],
+    "title": "Philosophie, 20 minutes de réflexion",
+    "flavor": "La philosophie apprend à poser les bonnes questions et à argumenter.",
+    "objective": "Lire ou écouter pendant 20 minutes un texte ou un échange de philosophie, puis noter ta propre question.",
+    "tips": [
+      "Déroulé conseillé : choisir une question, lire un court texte, écrire ton avis, comparer avec un autre point de vue.",
+      "Écris l’argument inverse du tien pour mieux le comprendre."
+    ],
+    "validation": {
+      "type": "timer",
+      "minutes": 20
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-philosophie-t2",
+    "ability": "INT",
+    "difficulty": "medium",
+    "periods": [
+      "weekly"
+    ],
+    "title": "Philosophie, une idée défendue",
+    "flavor": "La philosophie apprend à poser les bonnes questions et à argumenter. Quelques séances par semaine donnent des progrès visibles.",
+    "objective": "Choisir une grande question, lire un court texte, écrire ton avis, puis en discuter avec quelqu’un.",
+    "tips": [
+      "Écris l’argument inverse du tien pour mieux le comprendre.",
+      "Répartis tes séances sur plusieurs jours et coche-les au fur et à mesure."
+    ],
+    "validation": {
+      "type": "steps",
+      "steps": [
+        "Choisir une grande question",
+        "Lire un court texte et écrire mon avis",
+        "En discuter avec quelqu’un"
+      ]
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-philosophie-t3",
+    "ability": "INT",
+    "difficulty": "high",
+    "periods": [
+      "monthly"
+    ],
+    "title": "Philosophie, 12 fois ce mois-ci",
+    "flavor": "La philosophie apprend à poser les bonnes questions et à argumenter. Un mois de pratique régulière installe l’habitude et le niveau.",
+    "objective": "Faire 12 séances de philosophie sur le mois, à raison de quelques-uns par semaine.",
+    "tips": [
+      "Écris l’argument inverse du tien pour mieux le comprendre.",
+      "Planifie tes créneaux à l’avance et note ta progression chaque semaine."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 12,
+      "unit": "séances de philosophie"
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-philosophie-t4",
+    "ability": "INT",
+    "difficulty": "expert",
+    "periods": [
+      "epic"
+    ],
+    "title": "Philosophie, 40 fois au total",
+    "flavor": "La philosophie apprend à poser les bonnes questions et à argumenter. Un grand objectif, qui demande de la constance sur la durée.",
+    "objective": "Faire 40 séances de philosophie sur la durée, jusqu’à défendre une idée devant quelqu’un en répondant à ses objections.",
+    "tips": [
+      "Écris l’argument inverse du tien pour mieux le comprendre.",
+      "Fixe-toi un point d’étape toutes les deux semaines pour mesurer ta progression."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 40,
+      "unit": "séances de philosophie"
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-arts-et-patrimoine-t1",
+    "ability": "INT",
+    "difficulty": "easy",
+    "periods": [
+      "daily"
+    ],
+    "title": "Arts et patrimoine, 20 minutes",
+    "flavor": "Les œuvres racontent des époques et affinent la sensibilité.",
+    "objective": "Observer, lire ou écouter pendant 20 minutes un contenu sur une œuvre, un monument ou un artiste.",
+    "tips": [
+      "Déroulé conseillé : choisir une œuvre ou un lieu, l’observer, lire sa notice, noter ce qu’elle t’inspire.",
+      "Observe une minute en silence avant de lire la notice."
+    ],
+    "validation": {
+      "type": "timer",
+      "minutes": 20
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-arts-et-patrimoine-t2",
+    "ability": "INT",
+    "difficulty": "medium",
+    "periods": [
+      "weekly"
+    ],
+    "title": "Arts et patrimoine, une œuvre présentée",
+    "flavor": "Les œuvres racontent des époques et affinent la sensibilité. Quelques séances par semaine donnent des progrès visibles.",
+    "objective": "Choisir une œuvre ou un monument, te documenter, puis le présenter à quelqu’un.",
+    "tips": [
+      "Observe une minute en silence avant de lire la notice.",
+      "Répartis tes séances sur plusieurs jours et coche-les au fur et à mesure."
+    ],
+    "validation": {
+      "type": "steps",
+      "steps": [
+        "Choisir une œuvre ou un monument",
+        "Me documenter et noter trois détails",
+        "Le présenter à quelqu’un"
+      ]
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-arts-et-patrimoine-t3",
+    "ability": "INT",
+    "difficulty": "high",
+    "periods": [
+      "monthly"
+    ],
+    "title": "Arts et patrimoine, 12 fois ce mois-ci",
+    "flavor": "Les œuvres racontent des époques et affinent la sensibilité. Un mois de pratique régulière installe l’habitude et le niveau.",
+    "objective": "Faire 12 séances d’art et de patrimoine sur le mois, à raison de quelques-uns par semaine.",
+    "tips": [
+      "Observe une minute en silence avant de lire la notice.",
+      "Planifie tes créneaux à l’avance et note ta progression chaque semaine."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 12,
+      "unit": "séances d’art et de patrimoine"
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
+      }
+    ]
+  },
+  {
+    "id": "g-culture-arts-et-patrimoine-t4",
+    "ability": "INT",
+    "difficulty": "expert",
+    "periods": [
+      "epic"
+    ],
+    "title": "Arts et patrimoine, 40 fois au total",
+    "flavor": "Les œuvres racontent des époques et affinent la sensibilité. Un grand objectif, qui demande de la constance sur la durée.",
+    "objective": "Faire 40 séances d’art et de patrimoine sur la durée, jusqu’à présenter une œuvre ou un monument à quelqu’un.",
+    "tips": [
+      "Observe une minute en silence avant de lire la notice.",
+      "Fixe-toi un point d’étape toutes les deux semaines pour mesurer ta progression."
+    ],
+    "validation": {
+      "type": "counter",
+      "target": 40,
+      "unit": "séances d’art et de patrimoine"
+    },
+    "tags": [
+      "guidé",
+      "culture"
+    ],
+    "theme": "culture",
+    "secondary": [
+      {
+        "ability": "SAG",
+        "pct": 30
+      },
+      {
+        "ability": "CHA",
+        "pct": 20
       }
     ]
   }

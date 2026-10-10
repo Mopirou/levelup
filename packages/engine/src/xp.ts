@@ -248,6 +248,109 @@ export function splitXp(total: number, primary: AbilityId, secondary?: readonly 
   return parts.filter((p) => p.amount !== 0);
 }
 
+// ───────────────────────── Équilibrage des caractéristiques ─────────────────────────
+
+/**
+ * Économie d'XP : monter très haut une seule caractéristique devient plus dur, rattraper les faibles est plus rapide.
+ * L'écart se mesure entre le score d'une caractéristique et la MOYENNE DES 5 AUTRES (scores avant l'attribution).
+ */
+/** Écart (≤) sous la moyenne des autres à partir duquel le rattrapage s'applique. */
+export const BALANCE_CATCHUP_GAP = -1;
+/** Écart (≥) au-dessus de la moyenne des autres : première réduction de spécialisation. */
+export const BALANCE_SPECIALIZE_GAP = 4;
+/** Écart (≥) au-dessus de la moyenne des autres : forte réduction de spécialisation. */
+export const BALANCE_HEAVY_SPECIALIZE_GAP = 7;
+export const BALANCE_CATCHUP_FACTOR = 1.5;
+export const BALANCE_SPECIALIZE_FACTOR = 0.75;
+export const BALANCE_HEAVY_SPECIALIZE_FACTOR = 0.5;
+
+/** Écart du score de `ability` à la moyenne des 5 autres (négatif = en retard). */
+export function balanceGap(ability: AbilityId, scores: Readonly<Record<AbilityId, number>>): number {
+  let others = 0;
+  let n = 0;
+  for (const a of ABILITIES) {
+    if (a === ability) continue;
+    others += scores[a];
+    n++;
+  }
+  return scores[ability] - others / n;
+}
+
+/**
+ * Facteur d'XP pour `ability` : ×1,5 sous la moyenne des autres (écart ≤ −1), ×0,75 au-dessus de +4, ×0,5 au-dessus de +7, sinon ×1.
+ * La comparaison se fait en entiers (écart × 5) pour éviter toute imprécision flottante sur les seuils.
+ */
+export function xpBalanceFactor(ability: AbilityId, scores: Readonly<Record<AbilityId, number>>): number {
+  const n = ABILITIES.length - 1;
+  let others = 0;
+  for (const a of ABILITIES) if (a !== ability) others += scores[a];
+  const gapTimesN = scores[ability] * n - others;
+  if (gapTimesN <= BALANCE_CATCHUP_GAP * n) return BALANCE_CATCHUP_FACTOR;
+  if (gapTimesN >= BALANCE_HEAVY_SPECIALIZE_GAP * n) return BALANCE_HEAVY_SPECIALIZE_FACTOR;
+  if (gapTimesN >= BALANCE_SPECIALIZE_GAP * n) return BALANCE_SPECIALIZE_FACTOR;
+  return 1;
+}
+
+/** Applique le facteur d'équilibrage à un montant versé (arrondi, minimum 1 pour un gain ≥ 1 ; retrait ou zéro : inchangé). */
+export function balanceAmount(amount: number, factor: number): number {
+  if (amount < 1 || factor === 1) return amount;
+  return Math.max(1, Math.round(amount * factor));
+}
+
+/**
+ * Applique l'équilibrage à chaque part d'une quête (scores AVANT attribution, les mêmes pour toutes les parts).
+ * Un retrait (montant négatif) n'est jamais modifié : l'annulation rejoue les montants réellement versés.
+ */
+export function applyBalance(parts: readonly XpPart[], scores: Readonly<Record<AbilityId, number>>): XpPart[] {
+  return parts.map((p) => ({ ability: p.ability, amount: balanceAmount(p.amount, xpBalanceFactor(p.ability, scores)) }));
+}
+
+export interface BalanceDetail {
+  ability: AbilityId;
+  factor: number;
+  /** Part avant équilibrage */
+  base: number;
+  /** Part effectivement versée */
+  awarded: number;
+}
+
+/** Détail de l'équilibrage pour l'affichage : seulement les parts dont le facteur n'est pas 1. */
+export function balanceDetails(parts: readonly XpPart[], scores: Readonly<Record<AbilityId, number>>): BalanceDetail[] {
+  const out: BalanceDetail[] = [];
+  for (const p of parts) {
+    const factor = xpBalanceFactor(p.ability, scores);
+    if (factor !== 1 && p.amount >= 1) out.push({ ability: p.ability, factor, base: p.amount, awarded: balanceAmount(p.amount, factor) });
+  }
+  return out;
+}
+
+export interface BalancePreview {
+  /** Facteur de chaque caractéristique concernée (principale en tête) avec sa part en % */
+  entries: { ability: AbilityId; pct: number; factor: number }[];
+  /** Facteur moyen pondéré par les parts (1 = aucun effet) */
+  factor: number;
+  kind: 'catchup' | 'specialization' | 'none';
+  /** Variation en % annoncée (ex. +50, −25), 0 si aucun effet */
+  percent: number;
+  /** Libellé prêt à afficher, ex. « +50 % XP en rattrapage » ; null si aucun effet */
+  label: string | null;
+}
+
+/** Annonce à l'avance l'effet de l'équilibrage pour une quête (caractéristique principale + secondaires en %). */
+export function previewBalance(
+  scores: Readonly<Record<AbilityId, number>>,
+  ability: AbilityId,
+  secondary?: readonly { ability: AbilityId; pct: number }[],
+): BalancePreview {
+  const entries = xpShares(ability, secondary).map((s) => ({ ability: s.ability, pct: s.pct, factor: xpBalanceFactor(s.ability, scores) }));
+  const factor = entries.reduce((n, e) => n + (e.factor * e.pct) / 100, 0);
+  const percent = Math.round((factor - 1) * 100);
+  const kind = percent > 0 ? 'catchup' : percent < 0 ? 'specialization' : 'none';
+  const label =
+    kind === 'catchup' ? `+${percent} % XP en rattrapage` : kind === 'specialization' ? `−${-percent} % XP (spécialisation)` : null;
+  return { entries, factor, kind, percent, label };
+}
+
 /** XP au prorata pour un compteur expiré (>= 50 %), sinon 0. */
 export function partialXp(fullXp: number, progress: number, target: number): number {
   if (target <= 0) return 0;

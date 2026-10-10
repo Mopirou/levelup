@@ -24,6 +24,16 @@ Discipline (25 existantes) → **parcours** (= une activité de la discipline, 5
 | XP | `questXp` avec `period: 'daily'` et la `difficulty` de l'échelon : échelons 1-3 `easy`, 4-6 `medium`, 7-9 `high`, 10 `expert`. Les secondaires du parcours (`secondary`) sont utilisés par `splitXp`. Pas de verrou de niveau global pour `expert` sur un échelon. |
 | Quête d'échelon | Gabarit en base : `quest_templates` avec `track_id` et `rung` renseignés, id `{trackId}-r{NN}` (NN sur 2 chiffres, ex. `musculation-muscu-haut-du-corps-r03`). **Jamais tirée par `drawQuests`, jamais dans le catalogue libre du Grimoire** (filtre sur `trackId`). |
 
+### Précisions après revue
+
+- **Série de transition** : la règle « parcours » ne vaut qu'à partir du jour de jeu du premier démarrage de parcours (plus ancien `startedAt`). Avant cette date, n'importe quelle quête validée du jour compte (un joueur en série ne retombe pas à 0). Série record et Inspiration en héritent.
+- **Abandon interdit** : une quête de parcours ne s'abandonne pas (`invalid` : « Mets le parcours en pause plutôt que d'abandonner sa quête »). L'arrêt d'un parcours retire sa quête « proposée » du jour (jamais une quête validée ou déjà acceptée).
+- **« Trop dur / trop facile » interdit** sur une quête de parcours (`invalid`) : la progression d'échelon remplace ce réglage, et une ancienne préférence `tune` sur un gabarit d'échelon est ignorée.
+- **Validation hors ligne** d'une quête de parcours expirée : refusée (`too-late`) si son jour est déjà réglé (`lastCheckedDate` ≥ jour de la quête, parcours actif), sauf le jour de démarrage qui n'est jamais évalué.
+- **XP partielle à l'expiration** : une quête de parcours à compteur expirée à ≥ 50 % verse l'XP au prorata comme les autres quêtes, sans équilibrage (rattrapage / spécialisation non appliqués).
+- **Parcours orphelins** (état sans aucun gabarit d'échelon) : ne comptent plus dans la limite de 3 et sont supprimés au passage de `ensureQuests` (sauf si aucun gabarit de parcours n'existe du tout).
+- **« Propositions par jour »** (`dailyQuestCount`, défaut 2) pilote le nombre de suggestions « Pour aller plus loin » (plafond `MAX_FREE_QUESTS_PER_DAY` = 4 ; 0 = aucune).
+
 ### « Pour aller plus loin » (ancien tirage)
 
 `drawQuests` ne sert plus qu'à proposer des quêtes **facultatives** (`origin = 'draw'`, `free = true`, `status = 'proposed'`, jamais acceptées d'office, pas de pénalité, ne comptent ni pour la série ni pour les échelons). Les poids d'intérêts (`interestWeight`) et le bonus « favori » sont retirés ; le tirage privilégie les caractéristiques **les plus basses**. Les périodes hebdo/mensuelle/épique restent tirées mais toutes `proposed`. Le mode hardcore est retiré.

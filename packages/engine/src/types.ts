@@ -61,6 +61,11 @@ export type QuestSnapshot = Pick<
   tune?: -1 | 1;
   /** Cible d'origine avant ajustement (sert à calculer l'XP proportionnelle). */
   baseTarget?: number;
+  /**
+   * Quête de parcours validée : état du parcours juste avant cette validation, uniquement si elle a réellement fait avancer
+   * le parcours. L'annulation s'en sert pour restaurer l'état à l'identique (absent = rien à défaire).
+   */
+  trackBefore?: { rung: number; hits: number; bestRung: number; lastDoneDate: string | null };
 };
 
 export interface QuestPreference {

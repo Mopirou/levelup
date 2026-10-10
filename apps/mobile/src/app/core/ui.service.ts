@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { ActionSheetController, AlertController, NavController } from '@ionic/angular';
+import { trackDef } from '../shared/tracks';
 import { GameService } from './game.service';
 
 /** Navigation, menu secondaire, confirmations. */
@@ -30,6 +31,20 @@ export class UiService {
       ],
     });
     await sheet.present();
+  }
+
+  /** Arrêter un parcours : confirmation (l'échelon est perdu), puis arrêt. Renvoie true si le parcours a été arrêté. */
+  async stopTrack(trackId: string): Promise<boolean> {
+    const def = trackDef(trackId);
+    const rung = this.game.trackState(trackId)?.rung ?? 1;
+    const label = def?.label ?? 'ce parcours';
+    const ok = await this.confirm({
+      title: `Arrêter « ${label} » ?`,
+      message: `Tu perds ton échelon (${rung}${def ? '/' + def.rungs.length : ''}) : si tu reprends ce parcours plus tard, tu repartiras de l’échelon 1. Pour le garder tel quel, mets-le plutôt en pause. Tes quêtes passées restent dans ta chronique.`,
+      confirm: 'Arrêter le parcours',
+      danger: true,
+    });
+    return ok ? this.game.stopTrack(trackId) : false;
   }
 
   /** Liste de choix (feuille d'actions). Renvoie la valeur choisie, ou null. */

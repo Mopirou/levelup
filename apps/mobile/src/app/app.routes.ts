@@ -41,6 +41,7 @@ export const routes: Routes = [
   guarded('grimoire', () => import('./features/grimoire/grimoire.page').then((m) => m.GrimoirePage)),
   guarded('forge', () => import('./features/forge/forge.page').then((m) => m.ForgePage)),
   guarded('forge/:id', () => import('./features/forge/forge.page').then((m) => m.ForgePage)),
+  guarded('tracks', () => import('./features/tracks/tracks.page').then((m) => m.TracksPage)),
   guarded('trophies', () => import('./features/trophies/trophies.page').then((m) => m.TrophiesPage)),
   guarded('settings', () => import('./features/settings/settings.page').then((m) => m.SettingsPage)),
 

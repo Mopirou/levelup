@@ -36,6 +36,7 @@ export function activityOf(t: Pick<QuestTemplate, 'id' | 'theme'>): string | nul
  * Poids d'une quête au tirage selon les centres d'intérêt.
  * Sans préférence, les disciplines guidées sont plutôt rares ; avec des préférences,
  * celles qui plaisent passent devant et les autres s'effacent presque.
+ * @deprecated n'oriente plus le tirage (les parcours de discipline remplacent les centres d'intérêt) ; conservé pour compatibilité.
  */
 export function interestWeight(t: Pick<QuestTemplate, 'id' | 'theme'>, interests: readonly string[] | undefined): number {
   if (!t.theme) return 1;

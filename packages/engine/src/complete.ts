@@ -11,6 +11,10 @@ import {
   BASE_XP,
   QuestXpBreakdown,
   abilityProgressOf,
+  abilityScores,
+  applyBalance,
+  balanceDetails,
+  type BalanceDetail,
   levelFromXp,
   partialXp,
   pendingImprovements,
@@ -156,7 +160,12 @@ export function applyXpParts(character: CharacterCore, parts: readonly XpPart[])
 }
 
 export interface CompletionResult extends XpApplication {
+  /** XP réellement versée au total = somme de `parts` (après équilibrage). `breakdown.total` reste le montant avant équilibrage. */
   xpAwarded: number;
+  /** Parts versées par caractéristique (après équilibrage) : ce sont exactement les montants des événements d'XP. */
+  parts: XpPart[];
+  /** Parts modifiées par l'équilibrage (rattrapage / spécialisation) ; vide si aucun effet. */
+  balance: BalanceDetail[];
   breakdown: QuestXpBreakdown;
   inspirationSpent: boolean;
 }
@@ -187,10 +196,22 @@ export function completeQuest(input: CompletionInput): { ok: true; result: Compl
     repeat: input.repeat,
   });
   const base = input.useInspiration ? { ...character, inspiration: character.inspiration - 1 } : character;
-  const applied = applyXpParts(base, splitXp(breakdown.total, instance.snapshot.ability, instance.snapshot.secondary));
+  // Équilibrage : les scores pris en compte sont ceux d'AVANT l'attribution, identiques pour toutes les parts.
+  const scores = abilityScores(character);
+  const baseParts = splitXp(breakdown.total, instance.snapshot.ability, instance.snapshot.secondary);
+  const parts = applyBalance(baseParts, scores);
+  const balance = balanceDetails(baseParts, scores);
+  const applied = applyXpParts(base, parts);
   return {
     ok: true,
-    result: { ...applied, xpAwarded: breakdown.total, breakdown, inspirationSpent: input.useInspiration },
+    result: {
+      ...applied,
+      xpAwarded: parts.reduce((n, p) => n + p.amount, 0),
+      parts,
+      balance,
+      breakdown,
+      inspirationSpent: input.useInspiration,
+    },
   };
 }
 

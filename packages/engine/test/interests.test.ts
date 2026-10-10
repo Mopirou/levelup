@@ -75,31 +75,26 @@ describe('centres d’intérêt', () => {
     expect(interestWeight(cuisine, ['langues'])).toBeLessThan(0.2);
   });
 
-  it('oriente le tirage : avec la cuisine cochée, les quêtes du jour viennent bien plus souvent de la cuisine', () => {
+  it('n’oriente plus le tirage : les centres d’intérêt sont ignorés (remplacés par les parcours)', () => {
     const scores = abilityScores({ baseScores: { FOR: 4, DEX: 4, CON: 4, INT: 4, SAG: 4, CHA: 4 }, improvements: { FOR: 0, DEX: 0, CON: 0, INT: 0, SAG: 0, CHA: 0 }, abilityXp: { FOR: 0, DEX: 0, CON: 0, INT: 0, SAG: 0, CHA: 0 } });
-    const count = (interests: string[]) => {
-      let n = 0;
-      for (let d = 1; d <= 60; d++) {
-        const day = `2026-11-${String((d % 28) + 1).padStart(2, '0')}`;
-        const r = drawQuests({
-          characterId: `c-${d}`, period: 'daily', periodStart: day, count: 3, level: 5, scores, masteries: [],
-          templates: catalog, preferences: {}, lastDrawn: {}, interests,
-        });
-        n += r.picks.filter((t) => t.theme === 'cuisine').length;
-      }
-      return n;
-    };
-    expect(count(['cuisine'])).toBeGreaterThan(count([]) * 2);
-    expect(count(['cuisine'])).toBeGreaterThan(count(['danse']) * 5);
+    for (let d = 1; d <= 30; d++) {
+      const input = {
+        characterId: `c-${d}`, period: 'daily' as const, periodStart: `2026-11-${String((d % 28) + 1).padStart(2, '0')}`, count: 3, level: 5, scores, masteries: [],
+        templates: catalog, preferences: {}, lastDrawn: {},
+      };
+      expect(drawQuests({ ...input, interests: ['cuisine'] }).picks.map((t) => t.id)).toEqual(drawQuests(input).picks.map((t) => t.id));
+    }
   });
 
-  it('enregistre les intérêts à la création et les prend en compte dès le premier tirage', async () => {
+  it('enregistre les intérêts à la création (sans effet sur le tirage)', async () => {
     const { store, ctx } = setup();
     const r = await createCharacter(ctx, U, { ...hero, interests: ['programmation', 'oups!'] });
     expect(r.ok).toBe(true);
     expect((await store.getSettings(U)).interests).toEqual(['programmation']);
+    // Plus de quêtes imposées : seules des propositions facultatives sont tirées.
     const dailies = await store.listInstances(U, { period: 'daily' });
     expect(dailies.length).toBeGreaterThan(0);
+    expect(dailies.every((q) => q.free && q.status === 'proposed')).toBe(true);
   });
 
   it('les anciens réglages sans intérêts restent valides', () => {

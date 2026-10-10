@@ -11,6 +11,7 @@ import { RecapComponent } from '../../shared/recap.component';
 import { BarComponent, PageHeaderComponent } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
 import { countdown, fmt, longDate, progressText } from '../../shared/format';
+import { trackDef } from '../../shared/tracks';
 
 @Component({
   selector: 'app-tavern',
@@ -48,7 +49,7 @@ import { countdown, fmt, longDate, progressText } from '../../shared/format';
             <div class="em">
               <strong>{{ ch.streakCurrent }} jour{{ ch.streakCurrent > 1 ? 's' : '' }} d’élan</strong>
               <span class="xs muted">
-                @if (keptToday()) { Élan gardé aujourd’hui } @else { Accomplis au moins 1 quête aujourd’hui pour le garder }
+                @if (keptToday()) { Élan gardé aujourd’hui } @else if (game.activeTracks().length) { Valide au moins 1 parcours aujourd’hui pour le garder } @else { Accomplis au moins 1 quête aujourd’hui pour le garder }
               </span>
             </div>
             <span class="best xs muted">Record<br /><b>{{ ch.streakBest }}</b></span>
@@ -68,13 +69,17 @@ import { countdown, fmt, longDate, progressText } from '../../shared/format';
                 </button>
                 <button type="button" class="body" (click)="ui.go(['/quest', q.id])">
                   <span class="t">{{ q.snapshot.title }}</span>
-                  <span class="s">{{ abilityLabel(q) }} · {{ progressText(q) }}</span>
+                  <span class="s">{{ subtitle(q) }} · {{ progressText(q) }}</span>
                   @if (hasBar(q) && q.status !== 'completed') { <lu-bar [value]="progressRatio(q)" /> }
                 </button>
                 <span class="xpv">+{{ q.status === 'completed' ? q.xpAwarded : xpOf(q) }} XP</span>
               </article>
             } @empty {
-              <p class="muted small">Aucune quête aujourd’hui. <button type="button" class="lu-link" (click)="ui.go('/tabs/quests')">Voir les quêtes →</button></p>
+              @if (game.activeTracks().length) {
+                <p class="muted small">Ta quête du jour arrive. <button type="button" class="lu-link" (click)="ui.go('/tabs/quests')">Voir les quêtes →</button></p>
+              } @else {
+                <p class="muted small">Aucun parcours actif : choisis où tu veux progresser et reçois chaque jour la quête de ton échelon. <button type="button" class="lu-link" (click)="ui.go('/tracks')">Choisir mes parcours →</button></p>
+              }
             }
 
             @if (game.dailies().length && game.dailyLeft() === 0) {
@@ -170,7 +175,7 @@ export class TavernPage {
     }),
   );
   /** L'élan est gardé si une quête du jour est faite, ou si un jour de repos est déclaré. */
-  readonly keptToday = computed(() => this.game.dailyDone() > 0 || this.game.restDays().includes(this.game.today()));
+  readonly keptToday = this.game.dayKept;
 
   /** Prochain palier « N quêtes de <caractéristique> » pour chaque caractéristique ; on garde les 3 plus avancés (à égalité, celles du jour). */
   readonly goals = computed(() => {
@@ -196,7 +201,11 @@ export class TavernPage {
     return g.dailyDone() === 0 && g.dailyLeft() > 0 && canDeclareRest(g.restDays(), g.today()) && !g.restDays().includes(g.today());
   });
 
-  abilityLabel = (q: QuestInstance) => ABILITY_LABEL[q.snapshot.ability];
+  /** « Muscu haut du corps · Échelon 3 » pour une quête de parcours, sinon la caractéristique. */
+  subtitle(q: QuestInstance): string {
+    const def = q.trackId ? trackDef(q.trackId) : undefined;
+    return def ? `${def.label} · Échelon ${q.rung ?? this.game.trackState(def.id)?.rung ?? 1}` : ABILITY_LABEL[q.snapshot.ability];
+  }
   hasBar = (q: QuestInstance) => ['counter', 'timer', 'steps'].includes(q.snapshot.validation.type);
   xpOf(q: QuestInstance): string {
     return fmt(this.game.xpOf(q));
@@ -204,8 +213,12 @@ export class TavernPage {
 
   async quick(q: QuestInstance, ev: Event): Promise<void> {
     ev.stopPropagation();
-    if (q.status !== 'accepted' || q.snapshot.validation.type !== 'simple') return;
+    if (q.snapshot.validation.type !== 'simple') return;
     void haptic('light');
+    // Une quête de parcours est « proposée » : cocher la case l'accepte puis la valide.
+    // (une quête de parcours se valide directement depuis sa proposition)
+    if (q.status === 'proposed' && q.origin !== 'track' && !(await this.game.accept(q))) return;
+    if (q.status !== 'accepted' && q.status !== 'proposed') return;
     const r = await this.game.complete(q, {});
     if (r.ok) {
       playSound('xp', this.game.settings()?.sounds ?? true);

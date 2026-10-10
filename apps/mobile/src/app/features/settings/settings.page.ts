@@ -13,7 +13,7 @@ import { env } from '../../core/env';
 import { authMessage } from '../auth/auth.page';
 import { PageHeaderComponent, PortraitComponent, PORTRAIT_IDS, SwitchComponent } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
-import { InterestsPickerComponent } from '../../shared/interests-picker.component';
+import { TracksPickerComponent } from '../../shared/tracks-picker.component';
 
 const ZONES = ['Europe/Paris', 'Europe/Brussels', 'Europe/Zurich', 'Europe/London', 'Europe/Lisbon', 'Europe/Madrid', 'Europe/Berlin', 'Africa/Casablanca', 'Africa/Algiers', 'Africa/Tunis', 'Africa/Dakar', 'America/Montreal', 'America/New_York', 'America/Martinique', 'America/Guadeloupe', 'Indian/Reunion', 'Pacific/Tahiti', 'Pacific/Noumea'];
 const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a', '#5f9e6e', '#a8c0b0'];
@@ -21,7 +21,7 @@ const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a'
 /** Réglages : compte, personnage, rythme, partage, notifications, confidentialité, apparence, données. */
 @Component({
   selector: 'app-settings',
-  imports: [IonContent, RouterLink, InterestsPickerComponent, PageHeaderComponent, PortraitComponent, SwitchComponent, IconComponent],
+  imports: [IonContent, RouterLink, TracksPickerComponent, PageHeaderComponent, PortraitComponent, SwitchComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
@@ -52,11 +52,11 @@ const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a'
             <p class="xs muted">Classe : {{ className() }} · Les scores ne sont pas modifiables : ils progressent avec tes quêtes.</p>
           </section>
 
-          <!-- Centres d'intérêt -->
+          <!-- Parcours -->
           <section class="lu-card">
-            <h3>Centres d’intérêt</h3>
-            <p class="xs muted">Tes quêtes sont tirées en priorité parmi ces disciplines. Les quêtes déjà tirées aujourd’hui ne changent pas : relance-les si tu veux en voir de nouvelles.</p>
-            <lu-interests-picker [value]="st.interests ?? []" (valueChange)="setInterests($event)" />
+            <h3>Mes parcours</h3>
+            <p class="small muted">Choisis jusqu’à trois activités à faire progresser. Chaque jour, tu reçois la quête de ton échelon. Mettre un parcours en pause garde ton échelon sans pénalité ; l’arrêter le remet à zéro.</p>
+            <lu-tracks-picker mode="live" />
           </section>
 
           <!-- Rythme -->
@@ -67,10 +67,12 @@ const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a'
               <span class="hint">Une quête validée avant cette heure compte pour la veille (défaut : 4 h).</span></div>
             <div class="lu-field"><label for="tz">Fuseau horaire</label>
               <select id="tz" class="lu-input" (change)="update({ timezone: $any($event.target).value })">@for (z of zones(); track z) { <option [value]="z" [selected]="z === st.timezone">{{ z }}</option> }</select></div>
-            <div class="lu-field"><label for="dq">Quêtes journalières souhaitées</label>
-              <select id="dq" class="lu-input" (change)="update({ dailyQuestCount: +$any($event.target).value })">@for (n of dailyOptions(); track n) { <option [value]="n" [selected]="n === effectiveDaily()">{{ n === 0 ? '0 — je choisis moi-même' : n }}</option> }</select>
-              <span class="hint">Limité par ton niveau. Prend effet au prochain tirage. À 0, rien n’est tiré : tu composes ta journée depuis le catalogue.</span></div>
-            <div class="lu-row"><div class="grow"><span class="label">Mode Hardcore</span><div class="sub">Une quête abandonnée ou expirée retire 10 % de son XP de base.</div></div><lu-switch [checked]="st.hardcore" label="Mode Hardcore" (changed)="toggleHardcore($event)" /></div>
+            <div class="lu-field"><label for="dq">Propositions « Pour aller plus loin » par jour</label>
+              <select id="dq" class="lu-input" (change)="update({ dailyQuestCount: +$any($event.target).value })">@for (n of dailyOptions(); track n) { <option [value]="n" [selected]="n === effectiveDaily()">{{ dailyLabel(n) }}</option> }</select>
+              <span class="hint">Des quêtes facultatives, proposées en plus de tes parcours : sans pénalité, hors série et hors échelons. De 0 à {{ dailyMax }}, dans la limite de ton niveau ; prend effet au prochain tirage. À 0, aucune proposition : tu piocheras toi-même dans le catalogue.</span></div>
+            @if (st.hardcore) {
+              <p class="xs muted">Le mode Hardcore n’existe plus : tes quêtes ne sont plus imposées.</p>
+            }
           </section>
 
           <!-- Partage -->
@@ -187,8 +189,12 @@ export class SettingsPage {
     const set = new Set([...ZONES, Intl.DateTimeFormat().resolvedOptions().timeZone, ...(cur ? [cur] : [])]);
     return [...set];
   });
-  readonly effectiveDaily = computed(() => Math.min(this.s()?.dailyQuestCount ?? 6, this.game.unlocks().dailyQuests));
-  readonly dailyOptions = computed(() => Array.from({ length: this.game.unlocks().dailyQuests + 1 }, (_, i) => i));
+  /** Propositions facultatives « Pour aller plus loin » : de 0 à 4 par jour (et jamais plus que ce que le niveau permet). */
+  readonly dailyMax = 4;
+  private readonly dailyCap = computed(() => Math.min(this.dailyMax, this.game.unlocks().dailyQuests));
+  readonly effectiveDaily = computed(() => Math.min(this.s()?.dailyQuestCount ?? this.dailyMax, this.dailyCap()));
+  readonly dailyOptions = computed(() => Array.from({ length: this.dailyCap() + 1 }, (_, i) => i));
+  dailyLabel = (n: number): string => (n === 0 ? '0 : aucune proposition' : n === 1 ? '1 proposition' : n + ' propositions');
 
   constructor() {
     void this.be.auth.linkedProviders().then((p) => this.providers.set(p)).catch(() => undefined);
@@ -202,15 +208,6 @@ export class SettingsPage {
   async update(patch: Partial<SettingsRecord>): Promise<void> {
     await this.game.saveSettings(patch);
     if (patch.dailyQuestCount !== undefined) this.game.toast('Pris en compte au prochain tirage.', 'info');
-  }
-
-  async setInterests(list: string[]): Promise<void> {
-    await this.game.saveSettings({ interests: list });
-  }
-
-  async toggleHardcore(on: boolean): Promise<void> {
-    if (on && !(await this.ui.confirm({ title: 'Activer le mode Hardcore ?', message: 'Une quête abandonnée ou expirée retirera 10 % de son XP de base.', confirm: 'Activer', danger: true }))) return;
-    await this.update({ hardcore: on });
   }
 
   async share(k: 'level' | 'achievement' | 'streak', on: boolean): Promise<void> {

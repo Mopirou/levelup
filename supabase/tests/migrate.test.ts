@@ -28,7 +28,7 @@ describe('migrations automatiques', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('applique tout sur une base vide, dans l’ordre, puis le seed', async () => {
+  it('applique tout sur une base vide, dans l’ordre, puis le seed', { timeout: 30_000 }, async () => {
     const r = await run();
     expect(r.migrations).toEqual(['20260101000001_a.sql', '20260101000002_b.sql']);
     expect(r.seeded).toBe(true);

@@ -5,6 +5,7 @@ export * from './random';
 export * from './draw';
 export * from './interests';
 export * from './complete';
+export * from './tracks';
 export * from './achievements';
 export * from './narrative';
 export * from './labels';

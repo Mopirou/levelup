@@ -12,6 +12,9 @@ var emptyAbilityRecord = (v) => ({
   SAG: v,
   CHA: v
 });
+var MAX_ACTIVE_TRACKS = 3;
+var TRACK_PROMOTE_HITS = 5;
+var TRACK_DEMOTE_MISSES = 4;
 
 // packages/engine/src/xp.ts
 var LEVEL_XP = [
@@ -179,6 +182,55 @@ function splitXp(total, primary, secondary) {
   }
   parts.unshift({ ability: primary, amount: (abs - given) * sign });
   return parts.filter((p) => p.amount !== 0);
+}
+var BALANCE_CATCHUP_GAP = -1;
+var BALANCE_SPECIALIZE_GAP = 4;
+var BALANCE_HEAVY_SPECIALIZE_GAP = 7;
+var BALANCE_CATCHUP_FACTOR = 1.5;
+var BALANCE_SPECIALIZE_FACTOR = 0.75;
+var BALANCE_HEAVY_SPECIALIZE_FACTOR = 0.5;
+function balanceGap(ability, scores) {
+  let others = 0;
+  let n = 0;
+  for (const a of ABILITIES) {
+    if (a === ability) continue;
+    others += scores[a];
+    n++;
+  }
+  return scores[ability] - others / n;
+}
+function xpBalanceFactor(ability, scores) {
+  const n = ABILITIES.length - 1;
+  let others = 0;
+  for (const a of ABILITIES) if (a !== ability) others += scores[a];
+  const gapTimesN = scores[ability] * n - others;
+  if (gapTimesN <= BALANCE_CATCHUP_GAP * n) return BALANCE_CATCHUP_FACTOR;
+  if (gapTimesN >= BALANCE_HEAVY_SPECIALIZE_GAP * n) return BALANCE_HEAVY_SPECIALIZE_FACTOR;
+  if (gapTimesN >= BALANCE_SPECIALIZE_GAP * n) return BALANCE_SPECIALIZE_FACTOR;
+  return 1;
+}
+function balanceAmount(amount, factor) {
+  if (amount < 1 || factor === 1) return amount;
+  return Math.max(1, Math.round(amount * factor));
+}
+function applyBalance(parts, scores) {
+  return parts.map((p) => ({ ability: p.ability, amount: balanceAmount(p.amount, xpBalanceFactor(p.ability, scores)) }));
+}
+function balanceDetails(parts, scores) {
+  const out = [];
+  for (const p of parts) {
+    const factor = xpBalanceFactor(p.ability, scores);
+    if (factor !== 1 && p.amount >= 1) out.push({ ability: p.ability, factor, base: p.amount, awarded: balanceAmount(p.amount, factor) });
+  }
+  return out;
+}
+function previewBalance(scores, ability, secondary) {
+  const entries = xpShares(ability, secondary).map((s) => ({ ability: s.ability, pct: s.pct, factor: xpBalanceFactor(s.ability, scores) }));
+  const factor = entries.reduce((n, e) => n + e.factor * e.pct / 100, 0);
+  const percent = Math.round((factor - 1) * 100);
+  const kind = percent > 0 ? "catchup" : percent < 0 ? "specialization" : "none";
+  const label = kind === "catchup" ? `+${percent} % XP en rattrapage` : kind === "specialization" ? `\u2212${-percent} % XP (sp\xE9cialisation)` : null;
+  return { entries, factor, kind, percent, label };
 }
 function partialXp(fullXp, progress, target) {
   if (target <= 0) return 0;
@@ -414,6 +466,114 @@ function shuffle(items, rng) {
   return a;
 }
 
+// packages/engine/src/draw.ts
+var ANTI_REPEAT_DAYS = {
+  daily: 7,
+  weekly: 28,
+  monthly: 90,
+  epic: 270
+};
+function difficultyWeights(period, level) {
+  switch (period) {
+    case "daily":
+      return { easy: 60, medium: 35, high: level >= 5 ? 5 : 0, expert: 0 };
+    case "weekly":
+      return { easy: 0, medium: 50, high: 40, expert: level >= TIER4_MIN_LEVEL ? 10 : 0 };
+    case "monthly":
+      return { easy: 0, medium: 0, high: level >= TIER4_MIN_LEVEL ? 50 : 100, expert: level >= TIER4_MIN_LEVEL ? 50 : 0 };
+    case "epic":
+      return { easy: 0, medium: 0, high: 0, expert: 100 };
+  }
+}
+function accessible(t, scores, level) {
+  return tierUnlocked(t.difficulty, scores[t.ability], level);
+}
+function balanceWeight(score, min, max) {
+  return max > min ? 1 + 3 * (max - score) / (max - min) : 1;
+}
+function drawQuests(input) {
+  const rng = createRng(`${input.characterId}|${input.period}|${input.periodStart}|${input.seedSuffix ?? ""}`);
+  const relaxed = /* @__PURE__ */ new Set();
+  const picks = [];
+  const picked = new Set(input.exclude ?? []);
+  const prefs = input.preferences;
+  const eligible = input.templates.filter((t) => t.isActive !== false && !t.trackId && t.periods.includes(input.period) && !prefs[t.id]?.isExcluded);
+  const pool = eligible.filter((t) => accessible(t, input.scores, input.level));
+  if (!input.skipPinned && !input.difficultyPlan) {
+    for (const t of pool) {
+      if (prefs[t.id]?.isPinned && !picked.has(t.id)) {
+        picks.push(t);
+        picked.add(t.id);
+      }
+    }
+  }
+  const sortedScores = ABILITIES.map((a) => input.scores[a]).sort((a, b) => a - b);
+  const minScore = sortedScores[0];
+  const maxScore = sortedScores[sortedScores.length - 1];
+  const slots = input.difficultyPlan ? input.difficultyPlan.length : Math.max(input.count - picks.length, 0);
+  const dw = difficultyWeights(input.period, input.level);
+  for (let slot = 0; slot < slots; slot++) {
+    const wantedDifficulty = input.difficultyPlan?.[slot];
+    const chosenDifficulty = wantedDifficulty ?? weightedPick(DIFFICULTIES, (d) => dw[d], rng) ?? "easy";
+    const idx = DIFFICULTIES.indexOf(chosenDifficulty);
+    const order = [...DIFFICULTIES].sort((a, b) => Math.abs(DIFFICULTIES.indexOf(a) - idx) - Math.abs(DIFFICULTIES.indexOf(b) - idx));
+    let found;
+    let source = pool;
+    for (let attempt = 0; attempt < 2 && !found; attempt++) {
+      if (attempt === 1) {
+        const open = eligible.filter((t) => !picked.has(t.id));
+        const best = Math.max(-Infinity, ...open.map((t) => input.scores[t.ability]));
+        source = open.filter((t) => input.scores[t.ability] === best);
+        if (!source.length) break;
+      }
+      for (let relax = 0; relax <= 3 && !found; relax++) {
+        const useAntiRepeat = relax < 1;
+        const useBalance = relax < 2;
+        const useNoDup = relax < 3;
+        for (const diff of order) {
+          if (wantedDifficulty && diff !== wantedDifficulty && relax < 1) continue;
+          let cands = source.filter((t) => t.difficulty === diff && !picked.has(t.id));
+          if (useAntiRepeat) {
+            const win = ANTI_REPEAT_DAYS[input.period];
+            cands = cands.filter((t) => {
+              const last = input.lastDrawn[t.id];
+              return !last || diffDays(input.periodStart, last) >= win;
+            });
+          }
+          if (useNoDup && input.period === "daily" && input.count <= 6) {
+            const used = new Set(picks.map((p) => p.ability));
+            if (used.size < ABILITIES.length) cands = cands.filter((t) => !used.has(t.ability));
+          }
+          if (!cands.length) continue;
+          found = weightedPick(cands, (t) => useBalance ? balanceWeight(input.scores[t.ability], minScore, maxScore) : 1, rng);
+          if (found) {
+            if (!useAntiRepeat) relaxed.add("anti-repeat");
+            if (!useBalance) relaxed.add("balance");
+            if (!useNoDup && input.period === "daily") relaxed.add("duplicate-ability");
+            if (attempt === 1) relaxed.add("locked");
+            break;
+          }
+        }
+      }
+    }
+    if (!found) break;
+    picks.push(found);
+    picked.add(found.id);
+  }
+  return { picks, relaxed: [...relaxed] };
+}
+function lastDrawnMap(instances, period) {
+  const out = {};
+  for (const i of instances) {
+    if (i.period !== period) continue;
+    if (!out[i.templateId] || i.periodStart > out[i.templateId]) out[i.templateId] = i.periodStart;
+  }
+  return out;
+}
+function availableAgainOn(period, lastPeriodStart) {
+  return addDays(lastPeriodStart, ANTI_REPEAT_DAYS[period]);
+}
+
 // packages/engine/src/interests.ts
 var slugify = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 var interestKey = (theme, activityName) => activityName ? `${theme}:${slugify(activityName)}` : theme;
@@ -488,130 +648,6 @@ function tuneXpScale(s) {
   const now = tunableTarget(s.validation);
   if (!base || !now) return 1;
   return Math.min(Math.max(now / base, 0.4), 1.6);
-}
-
-// packages/engine/src/draw.ts
-var ANTI_REPEAT_DAYS = {
-  daily: 7,
-  weekly: 28,
-  monthly: 90,
-  epic: 270
-};
-function difficultyWeights(period, level) {
-  switch (period) {
-    case "daily":
-      return { easy: 60, medium: 35, high: level >= 5 ? 5 : 0, expert: 0 };
-    case "weekly":
-      return { easy: 0, medium: 50, high: 40, expert: level >= TIER4_MIN_LEVEL ? 10 : 0 };
-    case "monthly":
-      return { easy: 0, medium: 0, high: level >= TIER4_MIN_LEVEL ? 50 : 100, expert: level >= TIER4_MIN_LEVEL ? 50 : 0 };
-    case "epic":
-      return { easy: 0, medium: 0, high: 0, expert: 100 };
-  }
-}
-function accessible(t, scores, level) {
-  return tierUnlocked(t.difficulty, scores[t.ability], level);
-}
-function drawQuests(input) {
-  const rng = createRng(`${input.characterId}|${input.period}|${input.periodStart}|${input.seedSuffix ?? ""}`);
-  const relaxed = /* @__PURE__ */ new Set();
-  const picks = [];
-  const picked = new Set(input.exclude ?? []);
-  const prefs = input.preferences;
-  const eligible = input.templates.filter((t) => t.isActive !== false && t.periods.includes(input.period) && !prefs[t.id]?.isExcluded);
-  const pool = eligible.filter((t) => accessible(t, input.scores, input.level));
-  if (!input.skipPinned && !input.difficultyPlan) {
-    for (const t of pool) {
-      if (prefs[t.id]?.isPinned && !picked.has(t.id)) {
-        picks.push(t);
-        picked.add(t.id);
-      }
-    }
-  }
-  const sortedScores = ABILITIES.map((a) => input.scores[a]).sort((a, b) => a - b);
-  const minScore = sortedScores[0];
-  const maxScore = sortedScores[sortedScores.length - 1];
-  const slots = input.difficultyPlan ? input.difficultyPlan.length : Math.max(input.count - picks.length, 0);
-  const dw = difficultyWeights(input.period, input.level);
-  for (let slot = 0; slot < slots; slot++) {
-    const wantedDifficulty = input.difficultyPlan?.[slot];
-    const chosenDifficulty = wantedDifficulty ?? weightedPick(DIFFICULTIES, (d) => dw[d], rng) ?? "easy";
-    const idx = DIFFICULTIES.indexOf(chosenDifficulty);
-    const order = [...DIFFICULTIES].sort((a, b) => Math.abs(DIFFICULTIES.indexOf(a) - idx) - Math.abs(DIFFICULTIES.indexOf(b) - idx));
-    let found;
-    let source = pool;
-    for (let attempt = 0; attempt < 2 && !found; attempt++) {
-      if (attempt === 1) {
-        const open = eligible.filter((t) => !picked.has(t.id));
-        const best = Math.max(-Infinity, ...open.map((t) => input.scores[t.ability]));
-        source = open.filter((t) => input.scores[t.ability] === best);
-        if (!source.length) break;
-      }
-      for (let relax = 0; relax <= 3 && !found; relax++) {
-        const useAntiRepeat = relax < 1;
-        const useBalance = relax < 2;
-        const useNoDup = relax < 3;
-        const needMastery = slot === 0 && picks.length === 0 && input.masteries.length > 0;
-        const hasMastery = picks.some((p) => input.masteries.includes(p.ability));
-        for (const diff of order) {
-          if (wantedDifficulty && diff !== wantedDifficulty && relax < 1) continue;
-          let cands = source.filter((t) => t.difficulty === diff && !picked.has(t.id));
-          if (useAntiRepeat) {
-            const win = ANTI_REPEAT_DAYS[input.period];
-            cands = cands.filter((t) => {
-              const last = input.lastDrawn[t.id];
-              return !last || diffDays(input.periodStart, last) >= win;
-            });
-          }
-          if (useNoDup && input.period === "daily" && input.count <= 6) {
-            const used = new Set(picks.map((p) => p.ability));
-            if (used.size < ABILITIES.length) cands = cands.filter((t) => !used.has(t.ability));
-          }
-          if (needMastery || !hasMastery && slot === slots - 1 && input.masteries.length > 0) {
-            const mastered = cands.filter((t) => input.masteries.includes(t.ability));
-            if (mastered.length) cands = mastered;
-          }
-          if (!cands.length) continue;
-          found = weightedPick(
-            cands,
-            (t) => {
-              let w = 1;
-              if (useBalance && maxScore > minScore) {
-                if (input.scores[t.ability] === minScore) w *= 2;
-                else if (input.scores[t.ability] === maxScore) w *= 0.5;
-              }
-              if (prefs[t.id]?.isFavorite) w *= 3;
-              w *= interestWeight(t, input.interests);
-              return w;
-            },
-            rng
-          );
-          if (found) {
-            if (!useAntiRepeat) relaxed.add("anti-repeat");
-            if (!useBalance) relaxed.add("balance");
-            if (!useNoDup && input.period === "daily") relaxed.add("duplicate-ability");
-            if (attempt === 1) relaxed.add("locked");
-            break;
-          }
-        }
-      }
-    }
-    if (!found) break;
-    picks.push(found);
-    picked.add(found.id);
-  }
-  return { picks, relaxed: [...relaxed] };
-}
-function lastDrawnMap(instances, period) {
-  const out = {};
-  for (const i of instances) {
-    if (i.period !== period) continue;
-    if (!out[i.templateId] || i.periodStart > out[i.templateId]) out[i.templateId] = i.periodStart;
-  }
-  return out;
-}
-function availableAgainOn(period, lastPeriodStart) {
-  return addDays(lastPeriodStart, ANTI_REPEAT_DAYS[period]);
 }
 
 // packages/engine/src/complete.ts
@@ -725,10 +761,21 @@ function completeQuest(input) {
     repeat: input.repeat
   });
   const base = input.useInspiration ? { ...character, inspiration: character.inspiration - 1 } : character;
-  const applied = applyXpParts(base, splitXp(breakdown.total, instance.snapshot.ability, instance.snapshot.secondary));
+  const scores = abilityScores(character);
+  const baseParts = splitXp(breakdown.total, instance.snapshot.ability, instance.snapshot.secondary);
+  const parts = applyBalance(baseParts, scores);
+  const balance = balanceDetails(baseParts, scores);
+  const applied = applyXpParts(base, parts);
   return {
     ok: true,
-    result: { ...applied, xpAwarded: breakdown.total, breakdown, inspirationSpent: input.useInspiration }
+    result: {
+      ...applied,
+      xpAwarded: parts.reduce((n, p) => n + p.amount, 0),
+      parts,
+      balance,
+      breakdown,
+      inspirationSpent: input.useInspiration
+    }
   };
 }
 function expiredPartialXp(inst, level, masteries, pathAbility) {
@@ -814,6 +861,136 @@ function weekStartOf(date) {
 }
 function totalAbilityScoreSum(scores) {
   return ABILITIES.reduce((s, a) => s + scores[a], 0);
+}
+
+// packages/engine/src/tracks.ts
+var TRACK_RUNGS = 10;
+function trackRungMinScore(rung) {
+  if (rung <= 4) return 0;
+  if (rung <= 6) return 4;
+  if (rung <= 8) return 6;
+  return 9;
+}
+function trackRungDifficulty(rung) {
+  if (rung <= 3) return "easy";
+  if (rung <= 6) return "medium";
+  if (rung <= 9) return "high";
+  return "expert";
+}
+function rungTemplateId(trackId, rung) {
+  return `${trackId}-r${String(rung).padStart(2, "0")}`;
+}
+function effectiveRung(def, state, scores) {
+  const score = scores[def.ability] ?? 0;
+  for (let r = Math.max(Math.min(state.rung, def.rungs.length), 1); r > 1; r--) {
+    if (score >= trackRungMinScore(r)) return r;
+  }
+  return 1;
+}
+function trackShapes(templates) {
+  const byTrack = /* @__PURE__ */ new Map();
+  for (const t of templates) {
+    if (!t.trackId || t.rung == null || t.isActive === false) continue;
+    const list = byTrack.get(t.trackId);
+    if (list) list.push(t);
+    else byTrack.set(t.trackId, [t]);
+  }
+  const out = /* @__PURE__ */ new Map();
+  for (const [id, list] of byTrack) {
+    list.sort((a, b) => a.rung - b.rung);
+    out.set(id, { ability: list[0].ability, rungs: list.map((t) => ({ rung: t.rung })) });
+  }
+  return out;
+}
+function buildRungTemplates(defs) {
+  const out = [];
+  for (const d of defs) {
+    for (const r of d.rungs) {
+      out.push({
+        id: rungTemplateId(d.id, r.rung),
+        source: "catalog",
+        ability: d.ability,
+        difficulty: r.difficulty,
+        periods: ["daily"],
+        title: r.title,
+        flavor: d.blurb,
+        objective: r.objective,
+        tips: r.tips,
+        validation: r.validation,
+        tags: [],
+        theme: d.theme,
+        ...d.secondary.length ? { secondary: d.secondary } : {},
+        isActive: true,
+        trackId: d.id,
+        rung: r.rung
+      });
+    }
+  }
+  return out;
+}
+function missedDays(state, today, restDays, doneDays = []) {
+  return applyMisses(state, today, restDays, doneDays).missed;
+}
+function applyMisses(state, today, restDays, doneDays = []) {
+  const yesterday = addDays(today, -1);
+  if (state.status !== "active" || !state.lastCheckedDate || state.lastCheckedDate >= yesterday) {
+    return { state, missed: [], demoted: false };
+  }
+  const rest = new Set(restDays);
+  const done = new Set(doneDays);
+  if (state.lastDoneDate) done.add(state.lastDoneDate);
+  let rung = state.rung;
+  let hits = state.hits;
+  let penalized = false;
+  let run = 0;
+  let runStart = "";
+  const missed = [];
+  for (let day = addDays(state.lastCheckedDate, 1); day <= yesterday; day = addDays(day, 1)) {
+    if (done.has(day)) {
+      run = 0;
+      continue;
+    }
+    if (rest.has(day)) continue;
+    missed.push(day);
+    if (run === 0) runStart = day;
+    run++;
+    if (run >= TRACK_DEMOTE_MISSES) {
+      if (!penalized) {
+        penalized = true;
+        rung = Math.max(rung - 1, 1);
+        hits = 0;
+      }
+      run = 0;
+    }
+  }
+  const lastCheckedDate = run > 0 ? addDays(runStart, -1) : yesterday;
+  return { state: { ...state, rung, hits, lastCheckedDate }, missed, demoted: rung < state.rung };
+}
+function advanceOnCompletion(state, day, maxRung = TRACK_RUNGS) {
+  if (state.status !== "active" || state.lastDoneDate === day) return state;
+  let { rung, hits } = state;
+  hits += 1;
+  if (hits >= TRACK_PROMOTE_HITS) {
+    if (rung < maxRung) {
+      rung += 1;
+      hits = 0;
+    } else {
+      hits = TRACK_PROMOTE_HITS;
+    }
+  }
+  const lastDoneDate = !state.lastDoneDate || day > state.lastDoneDate ? day : state.lastDoneDate;
+  return { ...state, rung, hits, bestRung: Math.max(state.bestRung, rung), lastDoneDate };
+}
+function revertCompletion(state, day, previousDoneDate = null) {
+  let { rung, hits, bestRung } = state;
+  if (hits > 0) {
+    hits -= 1;
+  } else if (rung > 1) {
+    if (bestRung === rung) bestRung = rung - 1;
+    rung -= 1;
+    hits = TRACK_PROMOTE_HITS - 1;
+  }
+  return { ...state, rung, hits, bestRung, lastDoneDate: state.lastDoneDate === day ? previousDoneDate : state.lastDoneDate };
 }
 
 // packages/engine/src/achievements.ts
@@ -1098,7 +1275,7 @@ function pathAbilityOf(classes, classId, pathId) {
 var defaultSettings = (timezone = "Europe/Paris") => ({
   resetHour: 4,
   timezone,
-  dailyQuestCount: 6,
+  dailyQuestCount: 2,
   hardcore: false,
   autoShare: { level: true, achievement: true, streak: true },
   defaultVisibility: "friends",
@@ -2453,13 +2630,19 @@ var achievements_fr_default = [
 var CLASSES = classes_fr_default;
 var ACHIEVEMENTS = achievements_fr_default;
 var STREAK_POSTS = [7, 14, 30, 60, 100, 200, 365];
-var FREE_QUESTS_PER_DAY = 2;
+var MAX_FREE_QUESTS_PER_DAY = 4;
 var fail = (error, message) => ({ ok: false, error, message });
 async function loadEnv(ctx, userId) {
   const [character, settings] = await Promise.all([ctx.store.getCharacter(userId), ctx.store.getSettings(userId)]);
   if (!character) return null;
   const nowMs = ctx.now();
-  return { ctx, userId, character, settings, nowMs, today: gameDate(nowMs, settings.timezone, settings.resetHour) };
+  return { ctx, userId, character, settings, nowMs, today: gameDate(nowMs, settings.timezone, settings.resetHour), templates: {} };
+}
+function loadTemplates(env, withRungs = true) {
+  const c = env.templates;
+  if (withRungs) return c.full ??= env.ctx.store.listTemplates(env.userId);
+  if (c.full) return c.full.then((l) => l.filter((t) => !t.trackId));
+  return c.plain ??= env.ctx.store.listTemplates(env.userId, { withRungs: false }).then((l) => l.filter((t) => !t.trackId));
 }
 function masteriesFor(c) {
   return masteriesOf(CLASSES, c.classId);
@@ -2498,6 +2681,7 @@ function newInstance(id, t, period, start, end, status, nowIso, free = false, tu
     free,
     run: meta.run ?? 1,
     origin: meta.origin ?? "draw",
+    ...meta.trackId ? { trackId: meta.trackId, rung: meta.rung ?? null } : {},
     acceptedAt: status === "accepted" ? nowIso : null,
     completedAt: null
   };
@@ -2508,10 +2692,10 @@ function eventFor(ctx, e, gameDay) {
 function mergeChar(base, core) {
   return { ...base, ...core };
 }
-async function computePlayerStats(store, userId, character, settings) {
+async function computePlayerStats(store, userId, character, settings, knownTemplates) {
   const [completed, templates, rest, journal, social] = await Promise.all([
     store.listInstances(userId, { status: "completed" }),
-    store.listTemplates(userId),
+    knownTemplates ?? store.listTemplates(userId, { withRungs: false }),
     store.listRestDays(userId),
     store.countJournal(userId),
     store.socialCounts(userId)
@@ -2572,7 +2756,7 @@ async function computePlayerStats(store, userId, character, settings) {
 async function achievementProgress(ctx, userId) {
   const env = await loadEnv(ctx, userId);
   if (!env) return [];
-  return evaluateAchievements(ACHIEVEMENTS, await computePlayerStats(ctx.store, userId, env.character, env.settings));
+  return evaluateAchievements(ACHIEVEMENTS, await computePlayerStats(ctx.store, userId, env.character, env.settings, await loadTemplates(env, false)));
 }
 async function recomputeCharacter(ctx, userId) {
   const env = await loadEnv(ctx, userId);
@@ -2595,11 +2779,25 @@ async function recomputeCharacter(ctx, userId) {
   return c;
 }
 async function streakInfo(store, userId, settings, today) {
-  const [daily, rest] = await Promise.all([
+  const [daily, rest, tracks] = await Promise.all([
     store.listInstances(userId, { period: "daily", status: "completed", from: addDays(today, -800) }),
-    store.listRestDays(userId)
+    store.listRestDays(userId),
+    store.listTracks(userId)
   ]);
-  const days = daily.filter((q) => q.completedAt).map((q) => gameDate(Date.parse(q.completedAt), settings.timezone, settings.resetHour));
+  const trackMode = tracks.some((t) => t.status === "active");
+  let trackRuleFrom = null;
+  for (const t of tracks) {
+    const ms = Date.parse(t.startedAt);
+    if (Number.isNaN(ms)) continue;
+    const d = gameDate(ms, settings.timezone, settings.resetHour);
+    if (trackRuleFrom === null || d < trackRuleFrom) trackRuleFrom = d;
+  }
+  const days = [];
+  for (const q of daily) {
+    if (!q.completedAt) continue;
+    const day = gameDate(Date.parse(q.completedAt), settings.timezone, settings.resetHour);
+    if (!trackMode || q.origin === "track" || trackRuleFrom !== null && day < trackRuleFrom) days.push(day);
+  }
   const s = computeStreak(days, rest, today);
   return { current: s.current, doneToday: s.doneToday, best: computeBestStreak(days, rest), days };
 }
@@ -2640,16 +2838,58 @@ async function createCharacter(ctx, userId, input) {
   await ensureQuests(ctx, userId);
   return { ok: true, character };
 }
+var isOrphanTrack = (t, shapes) => shapes.size > 0 && !shapes.has(t.trackId);
+var countActiveTracks = (tracks, shapes) => tracks.filter((t) => t.status === "active" && !isOrphanTrack(t, shapes)).length;
+async function settleTracks(ctx, userId, today, tracks) {
+  const { store } = ctx;
+  const yesterday = addDays(today, -1);
+  const demoted = [];
+  const pending = tracks.filter((t) => t.status === "active" && (!t.lastCheckedDate || t.lastCheckedDate < yesterday));
+  if (!pending.length) return { tracks, demoted };
+  const rest = await store.listRestDays(userId);
+  const checked = pending.map((t) => t.lastCheckedDate).filter((d) => !!d);
+  const completed = checked.length ? await store.listInstances(userId, { period: "daily", status: "completed", from: addDays(checked.reduce((a, b) => a < b ? a : b), 1) }) : [];
+  const out = [];
+  for (const t of tracks) {
+    if (!pending.includes(t)) {
+      out.push(t);
+      continue;
+    }
+    const next = t.lastCheckedDate ? applyMisses(
+      t,
+      today,
+      rest,
+      completed.filter((q) => q.trackId === t.trackId).map((q) => q.periodStart)
+    ).state : { ...t, lastCheckedDate: today };
+    if (next.rung !== t.rung || next.hits !== t.hits || next.lastCheckedDate !== t.lastCheckedDate) await store.saveTrack(userId, next);
+    if (next.rung < t.rung) demoted.push({ trackId: t.trackId, from: t.rung, to: next.rung });
+    out.push(next);
+  }
+  return { tracks: out, demoted };
+}
 async function ensureQuests(ctx, userId) {
   const env = await loadEnv(ctx, userId);
+  if (!env) return { created: [], expired: [], levelUps: [] };
+  return ensureQuestsFor(env);
+}
+async function ensureQuestsFor(env) {
+  const { ctx, userId, store } = { ...env, store: env.ctx.store };
   const result = { created: [], expired: [], levelUps: [] };
-  if (!env) return result;
-  const { store } = ctx;
   let { character } = env;
   const { settings, today } = env;
   const nowIso = new Date(env.nowMs).toISOString();
+  const allTemplates = await loadTemplates(env);
+  const shapes = trackShapes(allTemplates);
+  const stored = await store.listTracks(userId);
+  const live = [];
+  for (const t of stored) {
+    if (isOrphanTrack(t, shapes)) await store.deleteTrack(userId, t.trackId);
+    else live.push(t);
+  }
+  const settled = await settleTracks(ctx, userId, today, live);
+  const tracks = settled.tracks;
+  if (settled.demoted.length) result.demoted = settled.demoted;
   const open = await store.listInstances(userId, { status: ["proposed", "accepted"] });
-  const allTemplates = await store.listTemplates(userId);
   const customIds = new Set(allTemplates.filter((t) => t.source === "custom").map((t) => t.id));
   const masteries = masteriesFor(character);
   const pathAbility = pathAbilityFor(character);
@@ -2665,10 +2905,6 @@ async function ensureQuests(ctx, userId) {
         const applied = applyXpParts(character, parts);
         character = mergeChar(character, applied.character);
         result.levelUps.push(...applied.levelsGained);
-      } else if (settings.hardcore && (inst.origin ?? "draw") === "draw") {
-        const penalty = hardcorePenalty(inst);
-        events.push(eventFor(ctx, { instanceId: inst.id, ability: inst.snapshot.ability, amount: -penalty, reason: "hardcore" }, inst.periodEnd));
-        character = mergeChar(character, applyXp(character, inst.snapshot.ability, -penalty).character);
       }
     }
     await store.updateInstance(userId, inst.id, { status: "expired", xpAwarded: xp });
@@ -2681,15 +2917,24 @@ async function ensureQuests(ctx, userId) {
     store.listInstances(userId, { from: addDays(today, -400) })
   ]);
   const scores = abilityScores(character);
+  const toInsert = [];
+  const dayBounds = periodBounds("daily", today);
+  for (const t of tracks) {
+    if (t.status !== "active") continue;
+    const shape = shapes.get(t.trackId);
+    if (!shape) continue;
+    if (history.some((i) => i.trackId === t.trackId && i.period === "daily" && i.periodStart === dayBounds.start)) continue;
+    const rung = effectiveRung(shape, t, scores);
+    const tpl = templates.find((x) => x.id === rungTemplateId(t.trackId, rung));
+    if (!tpl) continue;
+    toInsert.push(newInstance(ctx.uuid(), tpl, "daily", dayBounds.start, dayBounds.end, "proposed", nowIso, false, 0, { origin: "track", trackId: t.trackId, rung }));
+  }
   const u = unlocksAt(character.level);
   const periods = ["daily", "weekly", "monthly"];
   if (u.epic) periods.push("epic");
-  const toInsert = [];
   for (const period of periods) {
     const b = periodBounds(period, today);
     if (history.some((i) => i.period === period && i.periodStart === b.start && (i.origin ?? "draw") === "draw")) continue;
-    const count = questCountFor(period, character.level, period === "daily" ? settings.dailyQuestCount : void 0);
-    if (count <= 0) continue;
     const already = history.filter((i) => i.period === period && i.periodStart === b.start).map((i) => i.templateId);
     const base = {
       characterId: character.id,
@@ -2697,29 +2942,32 @@ async function ensureQuests(ctx, userId) {
       periodStart: b.start,
       level: character.level,
       scores,
-      masteries,
       templates,
       preferences: prefs,
-      interests: settings.interests,
       lastDrawn: lastDrawnMap(history, period)
     };
-    const main = drawQuests({ ...base, count, exclude: already });
-    for (const t of main.picks) {
-      const pinned = !!prefs[t.id]?.isPinned;
-      const status = period === "daily" || pinned ? "accepted" : "proposed";
-      toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, status, nowIso, false, prefs[t.id]?.tune));
-    }
     if (period === "daily") {
-      const free = drawQuests({
+      const freeCount = Math.min(Math.max(Math.trunc(settings.dailyQuestCount) || 0, 0), MAX_FREE_QUESTS_PER_DAY);
+      if (freeCount === 0) continue;
+      const pinned = templates.filter(
+        (t) => !t.trackId && t.isActive !== false && prefs[t.id]?.isPinned && !prefs[t.id]?.isExcluded && t.periods.includes("daily") && !already.includes(t.id) && tierUnlocked(t.difficulty, scores[t.ability], character.level)
+      );
+      for (const t of pinned) toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, "proposed", nowIso, true, prefs[t.id]?.tune));
+      const more = drawQuests({
         ...base,
-        count: FREE_QUESTS_PER_DAY,
-        difficultyPlan: ["medium", "high"],
-        exclude: [...already, ...main.picks.map((t) => t.id)],
+        count: freeCount,
+        difficultyPlan: Array.from({ length: freeCount }, (_, i) => i % 2 === 0 ? "medium" : "high"),
+        exclude: [...already, ...pinned.map((t) => t.id)],
         seedSuffix: "free",
         skipPinned: true
       });
-      for (const t of free.picks) toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, "proposed", nowIso, true, prefs[t.id]?.tune));
+      for (const t of more.picks) toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, "proposed", nowIso, true, prefs[t.id]?.tune));
+      continue;
     }
+    const count = questCountFor(period, character.level);
+    if (count <= 0) continue;
+    const main = drawQuests({ ...base, count, exclude: already });
+    for (const t of main.picks) toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, "proposed", nowIso, false, prefs[t.id]?.tune));
   }
   if (toInsert.length) await store.insertInstances(userId, toInsert);
   result.created = toInsert;
@@ -2747,11 +2995,7 @@ async function abandonQuest(ctx, userId, instanceId) {
   const inst = await ctx.store.getInstance(userId, instanceId);
   if (!inst) return fail("not-found");
   if (inst.status !== "proposed" && inst.status !== "accepted") return fail("not-accepted");
-  if (env.settings.hardcore && inst.status === "accepted" && (inst.origin ?? "draw") === "draw") {
-    const penalty = hardcorePenalty(inst);
-    await ctx.store.insertXpEvents(userId, [eventFor(ctx, { instanceId, ability: inst.snapshot.ability, amount: -penalty, reason: "hardcore" }, env.today)]);
-    await ctx.store.saveCharacter(userId, mergeChar(env.character, applyXp(env.character, inst.snapshot.ability, -penalty).character));
-  }
+  if (inst.origin === "track") return fail("invalid", "Mets le parcours en pause plut\xF4t que d\u2019abandonner sa qu\xEAte.");
   await ctx.store.updateInstance(userId, instanceId, { status: "abandoned" });
   return { ok: true, instance: { ...inst, status: "abandoned" } };
 }
@@ -2797,7 +3041,7 @@ async function startFromTemplate(env, t, period) {
 async function startQuest(ctx, userId, input) {
   const env = await loadEnv(ctx, userId);
   if (!env) return fail("no-character");
-  const t = (await ctx.store.listTemplates(userId)).find((x) => x.id === input.templateId && x.isActive !== false);
+  const t = (await loadTemplates(env, false)).find((x) => x.id === input.templateId && x.isActive !== false && !x.trackId);
   if (!t) return fail("not-found");
   return startFromTemplate(env, t, input.period);
 }
@@ -2807,7 +3051,8 @@ async function redoQuest(ctx, userId, instanceId) {
   const inst = await ctx.store.getInstance(userId, instanceId);
   if (!inst) return fail("not-found");
   if (inst.status === "proposed" || inst.status === "accepted") return fail("already-active", "Cette qu\xEAte est d\xE9j\xE0 en cours.");
-  const t = (await ctx.store.listTemplates(userId)).find((x) => x.id === inst.templateId && x.isActive !== false);
+  if (inst.trackId) return fail("invalid", "Une qu\xEAte de parcours ne se refait pas : elle revient chaque jour.");
+  const t = (await loadTemplates(env, false)).find((x) => x.id === inst.templateId && x.isActive !== false && !x.trackId);
   if (!t) return fail("not-found", "Cette qu\xEAte n\u2019existe plus dans le catalogue.");
   return startFromTemplate(env, t, inst.period);
 }
@@ -2832,7 +3077,7 @@ async function rerollQuest(ctx, userId, instanceId) {
   }
   character.rerollsUsed += 1;
   const [templates, prefs, history, same] = await Promise.all([
-    ctx.store.listTemplates(userId),
+    loadTemplates(env, false),
     ctx.store.getPreferences(userId),
     ctx.store.listInstances(userId, { from: addDays(env.today, -400) }),
     ctx.store.listInstances(userId, { period: inst.period, from: inst.periodStart, to: inst.periodStart })
@@ -2844,10 +3089,8 @@ async function rerollQuest(ctx, userId, instanceId) {
     count: 1,
     level: character.level,
     scores: abilityScores(character),
-    masteries: masteriesFor(character),
     templates,
     preferences: prefs,
-    interests: env.settings.interests,
     lastDrawn: lastDrawnMap(history, inst.period),
     exclude: same.map((i) => i.templateId),
     difficultyPlan: [inst.snapshot.difficulty],
@@ -2866,7 +3109,8 @@ async function tuneQuest(ctx, userId, instanceId, direction) {
   const inst = await ctx.store.getInstance(userId, instanceId);
   if (!inst) return fail("not-found");
   if (inst.status !== "proposed" && inst.status !== "accepted") return fail("not-accepted");
-  const template = (await ctx.store.listTemplates(userId)).find((t) => t.id === inst.templateId);
+  if (inst.origin === "track") return fail("invalid", "L\u2019exigence d\u2019une qu\xEAte de parcours suit ton \xE9chelon : elle ne se r\xE8gle pas.");
+  const template = (await ctx.store.listTemplates(userId, { withRungs: false })).find((t) => t.id === inst.templateId);
   const base = template?.validation;
   if (!base || tunableTarget(base) === null) return fail("invalid", "Cette qu\xEAte ne peut pas \xEAtre ajust\xE9e.");
   const next = nextTune(inst.snapshot.tune, base, direction);
@@ -2918,8 +3162,16 @@ async function completeQuestAction(ctx, userId, req) {
   if (!isDateInRange(completedDay, inst.periodStart, inst.periodEnd)) {
     return fail("out-of-period", "Cette qu\xEAte n\u2019est plus valable \xE0 cette date.");
   }
-  const statusOk = inst.status === "accepted" || offline && inst.status === "expired";
+  const statusOk = inst.status === "accepted" || inst.status === "proposed" && inst.origin === "track" || offline && inst.status === "expired";
   if (!statusOk) return fail("not-accepted");
+  const trackBefore = inst.trackId ? (await store.listTracks(userId)).find((t) => t.trackId === inst.trackId) : void 0;
+  if (offline && inst.status === "expired" && trackBefore?.status === "active" && trackBefore.lastCheckedDate && inst.periodStart <= trackBefore.lastCheckedDate) {
+    const startMs = Date.parse(trackBefore.startedAt);
+    const startDay = Number.isNaN(startMs) ? null : gameDate(startMs, env.settings.timezone, env.settings.resetHour);
+    if (inst.periodStart !== startDay) {
+      return fail("too-late", "Ce jour est d\xE9j\xE0 r\xE9gl\xE9 pour ce parcours : cette validation hors ligne ne peut plus \xEAtre enregistr\xE9e.");
+    }
+  }
   const siblings = await store.listInstances(userId, { period: inst.period, from: inst.periodStart, to: inst.periodStart });
   const repeat = siblings.filter((i) => i.templateId === inst.templateId && i.id !== inst.id && i.status === "completed").length;
   const masteries = masteriesFor(env.character);
@@ -2940,22 +3192,37 @@ async function completeQuestAction(ctx, userId, req) {
   const levelUps = [...res.levelsGained];
   const abilityUps = [...res.abilityUps];
   let character = mergeChar(env.character, res.character);
-  const custom = (await store.listTemplates(userId)).some((t) => t.id === inst.templateId && t.source === "custom");
-  const events = splitXp(res.xpAwarded, inst.snapshot.ability, inst.snapshot.secondary).map(
+  const templates = await loadTemplates(env, !!inst.trackId);
+  const custom = templates.some((t) => t.id === inst.templateId && t.source === "custom");
+  const events = res.parts.map(
     (p) => eventFor(ctx, { instanceId: inst.id, ability: p.ability, amount: p.amount, reason: "quest", custom }, completedDay)
   );
+  let trackUpdate;
+  let snapshot = inst.snapshot;
+  if (trackBefore) {
+    const maxRung = trackShapes(templates).get(inst.trackId)?.rungs.length ?? TRACK_RUNGS;
+    const after = advanceOnCompletion(trackBefore, inst.periodStart, maxRung);
+    trackUpdate = { state: after, promoted: after.rung > trackBefore.rung };
+    if (after !== trackBefore) {
+      const { rung, hits, bestRung, lastDoneDate } = trackBefore;
+      snapshot = { ...inst.snapshot, trackBefore: { rung, hits, bestRung, lastDoneDate } };
+    }
+  }
   await store.updateInstance(userId, inst.id, {
     status: "completed",
+    ...snapshot !== inst.snapshot ? { snapshot } : {},
     progress: req.progress ?? inst.progress,
     stepsDone: req.stepsDone ?? inst.stepsDone,
     xpAwarded: res.xpAwarded,
     inspirationUsed: res.inspirationSpent,
-    completedAt: completedAtIso
+    completedAt: completedAtIso,
+    ...inst.acceptedAt ? {} : { acceptedAt: completedAtIso }
   });
   if (req.journalText?.trim()) {
     await store.saveJournal(userId, { id: ctx.uuid(), instanceId: inst.id, text: req.journalText.trim(), createdAt: completedAtIso });
   }
   await store.insertXpEvents(userId, events);
+  if (trackBefore && trackUpdate && trackUpdate.state !== trackBefore) await store.saveTrack(userId, trackUpdate.state);
   const prevStreak = character.streakCurrent;
   const streak = await streakInfo(store, userId, env.settings, env.today);
   let inspirationGained = false;
@@ -2972,7 +3239,7 @@ async function completeQuestAction(ctx, userId, req) {
   const unlockedNow = [];
   const already = new Set((await store.listUnlocked(userId)).map((u) => u.achievementId));
   for (let pass = 0; pass < 3; pass++) {
-    const stats = await computePlayerStats(store, userId, character, env.settings);
+    const stats = await computePlayerStats(store, userId, character, env.settings, templates);
     const fresh = newlyUnlocked(ACHIEVEMENTS, stats, already);
     if (!fresh.length) break;
     const bonusEvents = [];
@@ -3032,7 +3299,9 @@ async function completeQuestAction(ctx, userId, req) {
       inspirationGained,
       inspirationOverflow,
       streak: streak.current,
-      postId
+      postId,
+      ...res.balance.length ? { balance: res.balance } : {},
+      ...trackUpdate ? { track: trackUpdate.state, trackPromoted: trackUpdate.promoted } : {}
     }
   };
 }
@@ -3042,15 +3311,37 @@ async function undoQuest(ctx, userId, instanceId) {
   const inst = await ctx.store.getInstance(userId, instanceId);
   if (!inst) return fail("not-found");
   if (inst.status !== "completed" || !canUndo(inst.completedAt, env.nowMs)) return fail("cannot-undo", "Cette qu\xEAte ne peut plus \xEAtre annul\xE9e (24 h maximum).");
+  const paid = emptyAbilityRecord(0);
+  let hasEvents = false;
+  for (const e of await ctx.store.listXpEvents(userId)) {
+    if (e.instanceId !== instanceId || e.reason !== "quest" && e.reason !== "undo") continue;
+    paid[e.ability] += e.amount;
+    hasEvents = true;
+  }
+  const undoParts = hasEvents ? ABILITIES.filter((a) => paid[a] !== 0).map((a) => ({ ability: a, amount: paid[a] })) : splitXp(inst.xpAwarded, inst.snapshot.ability, inst.snapshot.secondary);
   await ctx.store.insertXpEvents(
     userId,
-    splitXp(inst.xpAwarded, inst.snapshot.ability, inst.snapshot.secondary).map(
-      (p) => eventFor(ctx, { instanceId, ability: p.ability, amount: -p.amount, reason: "undo" }, env.today)
-    )
+    undoParts.map((p) => eventFor(ctx, { instanceId, ability: p.ability, amount: -p.amount, reason: "undo" }, env.today))
   );
-  const patch = { status: "accepted", xpAwarded: 0, inspirationUsed: false, completedAt: null };
+  const { trackBefore: counted, ...plainSnapshot } = inst.snapshot;
+  const patch = { status: "accepted", xpAwarded: 0, inspirationUsed: false, completedAt: null, ...counted ? { snapshot: plainSnapshot } : {} };
   await ctx.store.updateInstance(userId, instanceId, patch);
   await ctx.store.detachPostsFromInstance(userId, instanceId);
+  if (inst.trackId && counted) {
+    const track = (await ctx.store.listTracks(userId)).find((t) => t.trackId === inst.trackId);
+    if (track) {
+      const maxRung = trackShapes(await loadTemplates(env)).get(inst.trackId)?.rungs.length ?? TRACK_RUNGS;
+      const expected = advanceOnCompletion({ ...track, ...counted, status: "active" }, inst.periodStart, maxRung);
+      const untouched = track.rung === expected.rung && track.hits === expected.hits && track.bestRung === expected.bestRung && track.lastDoneDate === expected.lastDoneDate;
+      if (untouched) {
+        await ctx.store.saveTrack(userId, { ...track, ...counted });
+      } else {
+        const others = await ctx.store.listInstances(userId, { period: "daily", status: "completed", from: addDays(env.today, -60) });
+        const previous = others.filter((q) => q.trackId === inst.trackId && q.id !== inst.id).map((q) => q.periodStart).sort().pop() ?? null;
+        await ctx.store.saveTrack(userId, revertCompletion(track, inst.periodStart, previous));
+      }
+    }
+  }
   let character = env.character;
   if (inst.inspirationUsed) {
     character = { ...character, inspiration: Math.min(character.inspiration + 1, MAX_INSPIRATION) };
@@ -3058,6 +3349,60 @@ async function undoQuest(ctx, userId, instanceId) {
   }
   const recomputed = await recomputeCharacter(ctx, userId) ?? character;
   return { ok: true, character: recomputed, instance: { ...inst, ...patch } };
+}
+async function startTrack(ctx, userId, input) {
+  const env = await loadEnv(ctx, userId);
+  if (!env) return fail("no-character");
+  const shapes = trackShapes(await loadTemplates(env));
+  if (!shapes.has(input.trackId)) return fail("not-found", "Parcours inconnu.");
+  const refusal = (tracks) => tracks.some((t) => t.trackId === input.trackId) ? fail("already-active", "Ce parcours est d\xE9j\xE0 suivi.") : countActiveTracks(tracks, shapes) >= MAX_ACTIVE_TRACKS ? fail("too-many-open", `Tu peux suivre ${MAX_ACTIVE_TRACKS} parcours \xE0 la fois : mets-en un en pause ou arr\xEAte-en un.`) : null;
+  const first = refusal(await ctx.store.listTracks(userId));
+  if (first) return first;
+  const track = {
+    trackId: input.trackId,
+    status: "active",
+    rung: 1,
+    hits: 0,
+    lastDoneDate: null,
+    lastCheckedDate: env.today,
+    bestRung: 1,
+    startedAt: new Date(env.nowMs).toISOString()
+  };
+  const again = refusal(await ctx.store.listTracks(userId));
+  if (again) return again;
+  await ctx.store.saveTrack(userId, track);
+  await ensureQuestsFor(env);
+  return { ok: true, track };
+}
+async function setTrackPaused(ctx, userId, input) {
+  const env = await loadEnv(ctx, userId);
+  if (!env) return fail("no-character");
+  const tracks = await ctx.store.listTracks(userId);
+  const current = tracks.find((t) => t.trackId === input.trackId);
+  if (!current) return fail("not-found", "Parcours inconnu.");
+  if (input.paused === (current.status === "paused")) return { ok: true, track: current };
+  const resumeRefused = async (list) => {
+    if (input.paused) return null;
+    return countActiveTracks(list, trackShapes(await loadTemplates(env))) >= MAX_ACTIVE_TRACKS ? fail("too-many-open", `Tu peux suivre ${MAX_ACTIVE_TRACKS} parcours \xE0 la fois : mets-en un en pause ou arr\xEAte-en un.`) : null;
+  };
+  const first = await resumeRefused(tracks);
+  if (first) return first;
+  const fresh = input.paused ? tracks : await ctx.store.listTracks(userId);
+  const again = await resumeRefused(fresh);
+  if (again) return again;
+  const track = input.paused ? { ...current, status: "paused" } : { ...current, status: "active", lastCheckedDate: env.today };
+  await ctx.store.saveTrack(userId, track);
+  if (!input.paused) await ensureQuestsFor(env);
+  return { ok: true, track };
+}
+async function stopTrack(ctx, userId, input) {
+  const env = await loadEnv(ctx, userId);
+  if (!env) return fail("no-character");
+  if (!(await ctx.store.listTracks(userId)).some((t) => t.trackId === input.trackId)) return fail("not-found", "Parcours inconnu.");
+  await ctx.store.deleteTrack(userId, input.trackId);
+  const stale = await ctx.store.listInstances(userId, { period: "daily", status: "proposed", from: env.today, to: env.today });
+  for (const q of stale) if (q.origin === "track" && q.trackId === input.trackId) await ctx.store.deleteInstance(userId, q.id);
+  return { ok: true, trackId: input.trackId };
 }
 async function choosePath(ctx, userId, pathId) {
   const env = await loadEnv(ctx, userId);
@@ -3132,7 +3477,8 @@ var emptyUserData = () => ({
   xpEvents: [],
   unlocked: [],
   restDays: [],
-  journal: []
+  journal: [],
+  tracks: []
 });
 var asArray = (v) => v === void 0 ? void 0 : Array.isArray(v) ? v : [v];
 var MemoryStore = class {
@@ -3150,6 +3496,7 @@ var MemoryStore = class {
       d = emptyUserData();
       this.users.set(userId, d);
     }
+    d.tracks ??= [];
     return d;
   }
   touch() {
@@ -3176,8 +3523,9 @@ var MemoryStore = class {
     this.data(userId).settings = structuredClone(s);
     this.touch();
   }
-  async listTemplates(userId) {
-    return [...this.catalog, ...this.data(userId).customTemplates];
+  async listTemplates(userId, opts = {}) {
+    const all = [...this.catalog, ...this.data(userId).customTemplates];
+    return opts.withRungs === false ? all.filter((t) => !t.trackId) : all;
   }
   async getPreferences(userId) {
     return structuredClone(this.data(userId).preferences);
@@ -3251,6 +3599,21 @@ var MemoryStore = class {
   }
   async listJournal(userId) {
     return structuredClone(this.data(userId).journal);
+  }
+  async listTracks(userId) {
+    return structuredClone(this.data(userId).tracks);
+  }
+  async saveTrack(userId, t) {
+    const list = this.data(userId).tracks;
+    const i = list.findIndex((x) => x.trackId === t.trackId);
+    if (i >= 0) list[i] = structuredClone(t);
+    else list.push(structuredClone(t));
+    this.touch();
+  }
+  async deleteTrack(userId, trackId) {
+    const d = this.data(userId);
+    d.tracks = d.tracks.filter((t) => t.trackId !== trackId);
+    this.touch();
   }
   async createPost(userId, draft) {
     const id = `post-${this.posts.length + 1}-${Math.random().toString(36).slice(2, 8)}`;
@@ -3362,7 +3725,7 @@ var SupabaseStore = class {
       return {
         resetHour: 4,
         timezone: "Europe/Paris",
-        dailyQuestCount: 6,
+        dailyQuestCount: 2,
         hardcore: false,
         autoShare: { level: true, achievement: true, streak: true },
         defaultVisibility: "friends",
@@ -3420,10 +3783,13 @@ var SupabaseStore = class {
     fail2(error, "settings.upsert");
   }
   // ───── Catalogue et préférences
-  async listTemplates(userId) {
-    const { data, error } = await this.db.from("quest_templates").select("*").eq("is_active", true).or(`source.eq.catalog,owner_id.eq.${userId}`);
-    fail2(error, "templates.select");
-    return (data ?? []).map((t) => ({
+  async listTemplates(userId, opts = {}) {
+    const rows = await pageAll((a, b) => {
+      let q = this.db.from("quest_templates").select("*").eq("is_active", true).or(`source.eq.catalog,owner_id.eq.${userId}`);
+      if (opts.withRungs === false) q = q.is("track_id", null);
+      return q.order("id", { ascending: true }).range(a, b);
+    }, "templates.select");
+    return rows.map((t) => ({
       id: t.id,
       source: t.source,
       ownerId: t.owner_id,
@@ -3438,7 +3804,8 @@ var SupabaseStore = class {
       tags: t.tags,
       isActive: t.is_active,
       ...t.theme ? { theme: t.theme } : {},
-      ...t.secondary?.length ? { secondary: t.secondary } : {}
+      ...t.secondary?.length ? { secondary: t.secondary } : {},
+      ...t.track_id ? { trackId: t.track_id, rung: t.rung ?? null } : {}
     }));
   }
   async getPreferences(userId) {
@@ -3477,7 +3844,8 @@ var SupabaseStore = class {
       run: r.run ?? 1,
       origin: r.origin ?? "draw",
       acceptedAt: r.accepted_at,
-      completedAt: r.completed_at
+      completedAt: r.completed_at,
+      ...r.track_id ? { trackId: r.track_id, rung: r.rung ?? null } : {}
     };
   }
   fromInstance(userId, i) {
@@ -3498,7 +3866,9 @@ var SupabaseStore = class {
       run: i.run ?? 1,
       origin: i.origin ?? "draw",
       accepted_at: i.acceptedAt ?? null,
-      completed_at: i.completedAt ?? null
+      completed_at: i.completedAt ?? null,
+      track_id: i.trackId ?? null,
+      rung: i.rung ?? null
     };
   }
   async listInstances(userId, f = {}) {
@@ -3537,6 +3907,42 @@ var SupabaseStore = class {
   async deleteInstance(userId, id) {
     const { error } = await this.db.from("quest_instances").delete().eq("profile_id", userId).eq("id", id);
     fail2(error, "instances.delete");
+  }
+  // ───── Parcours de discipline
+  async listTracks(userId) {
+    const { data, error } = await this.db.from("tracks").select("*").eq("profile_id", userId).order("track_id", { ascending: true });
+    fail2(error, "tracks.select");
+    return (data ?? []).map((r) => ({
+      trackId: r.track_id,
+      status: r.status,
+      rung: r.rung,
+      hits: r.hits,
+      lastDoneDate: r.last_done_date ?? null,
+      lastCheckedDate: r.last_checked_date ?? null,
+      bestRung: r.best_rung,
+      startedAt: r.started_at
+    }));
+  }
+  async saveTrack(userId, t) {
+    const { error } = await this.db.from("tracks").upsert(
+      {
+        profile_id: userId,
+        track_id: t.trackId,
+        status: t.status,
+        rung: t.rung,
+        hits: t.hits,
+        last_done_date: t.lastDoneDate ?? null,
+        last_checked_date: t.lastCheckedDate ?? null,
+        best_rung: t.bestRung,
+        started_at: t.startedAt
+      },
+      { onConflict: "profile_id,track_id" }
+    );
+    fail2(error, "tracks.upsert");
+  }
+  async deleteTrack(userId, trackId) {
+    const { error } = await this.db.from("tracks").delete().eq("profile_id", userId).eq("track_id", trackId);
+    fail2(error, "tracks.delete");
   }
   // ───── Registre d'XP
   async insertXpEvents(userId, events) {
@@ -3648,6 +4054,12 @@ export {
   ACHIEVEMENTS,
   ANTI_REPEAT_DAYS,
   BALANCED_SCORES,
+  BALANCE_CATCHUP_FACTOR,
+  BALANCE_CATCHUP_GAP,
+  BALANCE_HEAVY_SPECIALIZE_FACTOR,
+  BALANCE_HEAVY_SPECIALIZE_GAP,
+  BALANCE_SPECIALIZE_FACTOR,
+  BALANCE_SPECIALIZE_GAP,
   BASE_XP,
   CLASSES,
   DIFFICULTIES,
@@ -3658,6 +4070,8 @@ export {
   IMPROVEMENT_LEVELS,
   JOURNAL_MIN_CHARS,
   LEVEL_XP,
+  MAX_ACTIVE_TRACKS,
+  MAX_FREE_QUESTS_PER_DAY,
   MAX_INSPIRATION,
   MAX_INTERESTS,
   MAX_LEVEL,
@@ -3684,6 +4098,9 @@ export {
   SupabaseStore,
   TIER3_MIN_SCORE,
   TIER4_MIN_LEVEL,
+  TRACK_DEMOTE_MISSES,
+  TRACK_PROMOTE_HITS,
+  TRACK_RUNGS,
   TUNE_FACTOR,
   UNDO_WINDOW_MS,
   UPGRADE_XP_STEP,
@@ -3697,11 +4114,18 @@ export {
   achievementProgress,
   activityOf,
   addDays,
+  advanceOnCompletion,
+  applyBalance,
+  applyMisses,
   applyXp,
   applyXpParts,
   availableAgainOn,
+  balanceAmount,
+  balanceDetails,
+  balanceGap,
   baseTargetOf,
   buildRecap,
+  buildRungTemplates,
   canDeclareRest,
   canForge,
   canUndo,
@@ -3720,6 +4144,7 @@ export {
   defaultSettings,
   diffDays,
   drawQuests,
+  effectiveRung,
   emptyAbilityRecord,
   emptyStats,
   emptyUserData,
@@ -3752,6 +4177,7 @@ export {
   localMinutes,
   masteriesFor,
   masteriesOf,
+  missedDays,
   msUntilReset,
   newlyUnlocked,
   nextTune,
@@ -3765,6 +4191,7 @@ export {
   periodBounds,
   pickTavernMessage,
   pointBuySpent,
+  previewBalance,
   proficiencyBonus,
   progressRatio,
   questCountFor,
@@ -3775,8 +4202,11 @@ export {
   repeatMultiplier,
   rerollQuest,
   rescaleLegacyBaseScores,
+  revertCompletion,
+  rungTemplateId,
   sanitizeInterests,
   scoresFromAssessment,
+  setTrackPaused,
   shuffle,
   slugify,
   splitXp,
@@ -3785,10 +4215,15 @@ export {
   startOfQuarter,
   startOfWeek,
   startQuest,
+  startTrack,
+  stopTrack,
   tierAt,
   tierUnlocked,
   toDateStr,
   totalAbilityScoreSum,
+  trackRungDifficulty,
+  trackRungMinScore,
+  trackShapes,
   tunableTarget,
   tuneQuest,
   tuneXpScale,
@@ -3801,6 +4236,7 @@ export {
   weekStartOf,
   weightedPick,
   withTarget,
+  xpBalanceFactor,
   xpBonusForMastery,
   xpShares
 };

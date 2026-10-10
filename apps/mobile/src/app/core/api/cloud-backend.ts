@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { SupabaseStore, type QuestPreference, type QuestTemplate, type SettingsRecord, type ReactionKind } from '@levelup/engine';
+import { SupabaseStore, type EnsureResult, type QuestPreference, type QuestTemplate, type SettingsRecord, type ReactionKind } from '@levelup/engine';
 import { env } from '../env';
 import { uuid } from '../uuid';
 import type {
@@ -187,7 +187,8 @@ export function createCloudBackend(): Backend {
     async ensure() {
       const r = await call<any>('ensure');
       if (r && r.ok === false) throw new Error(r.error ?? 'ensure');
-      return { created: r.created ?? [], expired: r.expired ?? [], levelUps: r.levelUps ?? [] };
+      // `demoted` : descentes d'échelon constatées à ce passage (affichées en toast par le service de jeu).
+      return { created: r.created ?? [], expired: r.expired ?? [], levelUps: r.levelUps ?? [], demoted: r.demoted ?? [] } as EnsureResult;
     },
     createCharacter: (input) => cmd('create-character', input as any),
     accept: (instanceId) => cmd('accept', { instanceId }),
@@ -203,6 +204,9 @@ export function createCloudBackend(): Backend {
     chooseImprovement: (choice) => cmd('choose-improvement', { choice }),
     declareRest: () => cmd('declare-rest'),
     equipTitle: (title) => cmd('equip-title', { title }),
+    trackStart: (trackId) => cmd('track-start', { trackId }),
+    trackPause: (trackId, paused) => cmd('track-pause', { trackId, paused }),
+    trackStop: (trackId) => cmd('track-stop', { trackId }),
     async achievementProgress() {
       const r = await call<any>('achievements');
       return r.progress ?? [];

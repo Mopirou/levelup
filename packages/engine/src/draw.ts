@@ -9,7 +9,6 @@ import {
   QuestPreference,
   QuestTemplate,
 } from './types';
-import { interestWeight } from './interests';
 import { TIER4_MIN_LEVEL, tierUnlocked } from './xp';
 
 /** Délai avant qu'une quête tirée puisse revenir (en jours). */
@@ -27,10 +26,11 @@ export interface DrawInput {
   count: number;
   level: number;
   scores: Record<AbilityId, number>;
-  masteries: readonly AbilityId[];
+  /** @deprecated plus utilisé : le tirage ne force plus de quête dans une caractéristique maîtrisée */
+  masteries?: readonly AbilityId[];
   templates: readonly QuestTemplate[];
   preferences: Record<string, QuestPreference>;
-  /** Centres d'intérêt du joueur (disciplines et activités) : orientent le tirage */
+  /** @deprecated plus utilisé : les parcours remplacent les centres d'intérêt */
   interests?: readonly string[];
   /** templateId -> début de la dernière période où elle a été tirée (pour cette période) */
   lastDrawn: Record<string, string>;
@@ -46,7 +46,7 @@ export interface DrawInput {
 
 export interface DrawResult {
   picks: QuestTemplate[];
-  /** Règles relâchées faute de catalogue (RG-12) */
+  /** Règles relâchées faute de catalogue (RG-12). */
   relaxed: ('anti-repeat' | 'balance' | 'duplicate-ability' | 'locked')[];
 }
 
@@ -67,7 +67,21 @@ function accessible(t: QuestTemplate, scores: Record<AbilityId, number>, level: 
   return tierUnlocked(t.difficulty, scores[t.ability], level);
 }
 
-/** Tirage déterministe des quêtes d'une période (cahier des charges 5.5). */
+/**
+ * Poids d'équilibrage : de 1 (caractéristique la plus haute) à 4 (la plus basse), linéaire entre les deux.
+ * Tous égaux si les scores sont identiques.
+ */
+function balanceWeight(score: number, min: number, max: number): number {
+  return max > min ? 1 + (3 * (max - score)) / (max - min) : 1;
+}
+
+/**
+ * Tirage déterministe des quêtes d'une période (cahier des charges 5.5), utilisé pour « Pour aller plus loin »
+ * et pour les quêtes hebdomadaires, mensuelles et épiques. Les gabarits d'échelon d'un parcours (`trackId`) ne sont jamais tirés.
+ * Le tirage privilégie les caractéristiques les plus basses (poids de 1 à 4 selon l'écart au score le plus haut) ;
+ * il n'impose plus de quête dans une caractéristique maîtrisée (contraire à l'équilibrage voulu). La règle « pas deux fois
+ * la même caractéristique dans la journée » est conservée : elle varie les suggestions sans gêner l'équilibrage.
+ */
 export function drawQuests(input: DrawInput): DrawResult {
   const rng = createRng(`${input.characterId}|${input.period}|${input.periodStart}|${input.seedSuffix ?? ''}`);
   const relaxed = new Set<DrawResult['relaxed'][number]>();
@@ -75,7 +89,7 @@ export function drawQuests(input: DrawInput): DrawResult {
   const picked = new Set<string>(input.exclude ?? []);
   const prefs = input.preferences;
 
-  const eligible = input.templates.filter((t) => t.isActive !== false && t.periods.includes(input.period) && !prefs[t.id]?.isExcluded);
+  const eligible = input.templates.filter((t) => t.isActive !== false && !t.trackId && t.periods.includes(input.period) && !prefs[t.id]?.isExcluded);
   const pool = eligible.filter((t) => accessible(t, input.scores, input.level));
 
   // Quêtes épinglées : reviennent à chaque période sans tirage.
@@ -109,63 +123,44 @@ export function drawQuests(input: DrawInput): DrawResult {
     // Dernier recours : si rien n'est débloqué pour ce créneau (p. ex. la quête mensuelle d'un début de partie),
     // on tire parmi les quêtes verrouillées de la caractéristique la plus haute plutôt que de laisser le créneau vide.
     let source = pool;
-    // Niveaux de relâchement successifs (RG-12) : anti-répétition, équilibrage, doublon de caractéristique.
     for (let attempt = 0; attempt < 2 && !found; attempt++) {
-    if (attempt === 1) {
-      const open = eligible.filter((t) => !picked.has(t.id));
-      const best = Math.max(-Infinity, ...open.map((t) => input.scores[t.ability]));
-      source = open.filter((t) => input.scores[t.ability] === best);
-      if (!source.length) break;
-    }
-    for (let relax = 0; relax <= 3 && !found; relax++) {
-      const useAntiRepeat = relax < 1;
-      const useBalance = relax < 2;
-      const useNoDup = relax < 3;
-      const needMastery = slot === 0 && picks.length === 0 && input.masteries.length > 0;
-      const hasMastery = picks.some((p) => input.masteries.includes(p.ability));
+      if (attempt === 1) {
+        const open = eligible.filter((t) => !picked.has(t.id));
+        const best = Math.max(-Infinity, ...open.map((t) => input.scores[t.ability]));
+        source = open.filter((t) => input.scores[t.ability] === best);
+        if (!source.length) break;
+      }
+      // Niveaux de relâchement successifs (RG-12) : anti-répétition, équilibrage, doublon de caractéristique.
+      for (let relax = 0; relax <= 3 && !found; relax++) {
+        const useAntiRepeat = relax < 1;
+        const useBalance = relax < 2;
+        const useNoDup = relax < 3;
 
-      for (const diff of order) {
-        if (wantedDifficulty && diff !== wantedDifficulty && relax < 1) continue;
-        let cands = source.filter((t) => t.difficulty === diff && !picked.has(t.id));
-        if (useAntiRepeat) {
-          const win = ANTI_REPEAT_DAYS[input.period];
-          cands = cands.filter((t) => {
-            const last = input.lastDrawn[t.id];
-            return !last || diffDays(input.periodStart, last) >= win;
-          });
-        }
-        if (useNoDup && input.period === 'daily' && input.count <= 6) {
-          const used = new Set(picks.map((p) => p.ability));
-          if (used.size < ABILITIES.length) cands = cands.filter((t) => !used.has(t.ability));
-        }
-        if (needMastery || (!hasMastery && slot === slots - 1 && input.masteries.length > 0)) {
-          const mastered = cands.filter((t) => input.masteries.includes(t.ability));
-          if (mastered.length) cands = mastered;
-        }
-        if (!cands.length) continue;
-        found = weightedPick(
-          cands,
-          (t) => {
-            let w = 1;
-            if (useBalance && maxScore > minScore) {
-              if (input.scores[t.ability] === minScore) w *= 2;
-              else if (input.scores[t.ability] === maxScore) w *= 0.5;
-            }
-            if (prefs[t.id]?.isFavorite) w *= 3;
-            w *= interestWeight(t, input.interests);
-            return w;
-          },
-          rng,
-        );
-        if (found) {
-          if (!useAntiRepeat) relaxed.add('anti-repeat');
-          if (!useBalance) relaxed.add('balance');
-          if (!useNoDup && input.period === 'daily') relaxed.add('duplicate-ability');
-          if (attempt === 1) relaxed.add('locked');
-          break;
+        for (const diff of order) {
+          if (wantedDifficulty && diff !== wantedDifficulty && relax < 1) continue;
+          let cands = source.filter((t) => t.difficulty === diff && !picked.has(t.id));
+          if (useAntiRepeat) {
+            const win = ANTI_REPEAT_DAYS[input.period];
+            cands = cands.filter((t) => {
+              const last = input.lastDrawn[t.id];
+              return !last || diffDays(input.periodStart, last) >= win;
+            });
+          }
+          if (useNoDup && input.period === 'daily' && input.count <= 6) {
+            const used = new Set(picks.map((p) => p.ability));
+            if (used.size < ABILITIES.length) cands = cands.filter((t) => !used.has(t.ability));
+          }
+          if (!cands.length) continue;
+          found = weightedPick(cands, (t) => (useBalance ? balanceWeight(input.scores[t.ability], minScore, maxScore) : 1), rng);
+          if (found) {
+            if (!useAntiRepeat) relaxed.add('anti-repeat');
+            if (!useBalance) relaxed.add('balance');
+            if (!useNoDup && input.period === 'daily') relaxed.add('duplicate-ability');
+            if (attempt === 1) relaxed.add('locked');
+            break;
+          }
         }
       }
-    }
     }
     if (!found) break;
     picks.push(found);

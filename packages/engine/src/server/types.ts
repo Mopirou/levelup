@@ -50,7 +50,7 @@ export interface SettingsRecord extends SettingsCore {
 export const defaultSettings = (timezone = 'Europe/Paris'): SettingsRecord => ({
   resetHour: 4,
   timezone,
-  dailyQuestCount: 6,
+  dailyQuestCount: 2,
   hardcore: false,
   autoShare: { level: true, achievement: true, streak: true },
   defaultVisibility: 'friends',
@@ -117,7 +117,11 @@ export interface GameStore {
   getSettings(userId: string): Promise<SettingsRecord>;
   saveSettings(userId: string, s: SettingsRecord): Promise<void>;
 
-  listTemplates(userId: string): Promise<QuestTemplate[]>;
+  /**
+   * Catalogue + gabarits personnels (+ gabarits d'échelon des parcours par défaut).
+   * `withRungs: false` écarte les gabarits d'échelon (`track_id` non nul) : plus léger pour qui n'en a pas besoin.
+   */
+  listTemplates(userId: string, opts?: { withRungs?: boolean }): Promise<QuestTemplate[]>;
   getPreferences(userId: string): Promise<Record<string, QuestPreference>>;
   savePreference(userId: string, p: QuestPreference): Promise<void>;
 

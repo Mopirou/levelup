@@ -22,6 +22,19 @@ import {
   rescaleLegacyBaseScores,
   repeatMultiplier,
   REPEAT_FACTORS,
+  BALANCE_CATCHUP_FACTOR,
+  BALANCE_CATCHUP_GAP,
+  BALANCE_HEAVY_SPECIALIZE_FACTOR,
+  BALANCE_HEAVY_SPECIALIZE_GAP,
+  BALANCE_SPECIALIZE_FACTOR,
+  BALANCE_SPECIALIZE_GAP,
+  applyBalance,
+  balanceAmount,
+  balanceDetails,
+  balanceGap,
+  previewBalance,
+  xpBalanceFactor,
+  type AbilityId,
 } from '../src';
 
 describe('niveaux', () => {
@@ -215,5 +228,108 @@ describe('répartition de l’XP entre caractéristiques', () => {
   });
   it('sans secondaire, tout va à la principale', () => {
     expect(splitXp(50, 'FOR')).toEqual([{ ability: 'FOR', amount: 50 }]);
+  });
+});
+
+describe('équilibrage des caractéristiques', () => {
+  /** Scores où `ability` vaut `score` et les cinq autres valent `others`. */
+  const scoresWith = (ability: AbilityId, score: number, others: number): Record<AbilityId, number> => ({
+    FOR: others, DEX: others, CON: others, INT: others, SAG: others, CHA: others, [ability]: score,
+  });
+
+  it('expose des constantes nommées', () => {
+    expect([BALANCE_CATCHUP_GAP, BALANCE_SPECIALIZE_GAP, BALANCE_HEAVY_SPECIALIZE_GAP]).toEqual([-1, 4, 7]);
+    expect([BALANCE_CATCHUP_FACTOR, BALANCE_SPECIALIZE_FACTOR, BALANCE_HEAVY_SPECIALIZE_FACTOR]).toEqual([1.5, 0.75, 0.5]);
+  });
+  it('mesure l’écart à la moyenne des 5 autres', () => {
+    expect(balanceGap('FOR', BALANCED_SCORES)).toBe(0);
+    expect(balanceGap('FOR', { FOR: 8, DEX: 2, CON: 2, INT: 2, SAG: 2, CHA: 2 })).toBe(6);
+    expect(balanceGap('DEX', { FOR: 8, DEX: 2, CON: 2, INT: 2, SAG: 2, CHA: 2 })).toBeCloseTo(-1.2);
+  });
+  it('seuils du rattrapage : écart ≤ −1 → ×1,5', () => {
+    expect(xpBalanceFactor('FOR', scoresWith('FOR', 3, 3))).toBe(1);
+    expect(xpBalanceFactor('FOR', scoresWith('FOR', 2, 3))).toBe(1.5); // écart exactement −1
+    expect(xpBalanceFactor('FOR', scoresWith('FOR', 2, 8))).toBe(1.5);
+    // écart de −0,8 (moyenne des autres 2,8 ; score 2) : pas de bonus
+    expect(xpBalanceFactor('FOR', { FOR: 2, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 2 })).toBe(1);
+    // écart de −1,2 : bonus
+    expect(xpBalanceFactor('FOR', { FOR: 2, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 4 })).toBe(1.5);
+  });
+  it('seuils de la spécialisation : ≥ +4 → ×0,75, ≥ +7 → ×0,5', () => {
+    expect(xpBalanceFactor('FOR', scoresWith('FOR', 6, 3))).toBe(1); // +3
+    expect(xpBalanceFactor('FOR', scoresWith('FOR', 7, 3))).toBe(0.75); // +4 exactement
+    expect(xpBalanceFactor('FOR', scoresWith('FOR', 9, 3))).toBe(0.75); // +6
+    expect(xpBalanceFactor('FOR', scoresWith('FOR', 10, 3))).toBe(0.5); // +7 exactement
+    expect(xpBalanceFactor('FOR', scoresWith('FOR', 30, 3))).toBe(0.5);
+    // +3,8 : pas encore de réduction ; +4,2 : réduction
+    expect(xpBalanceFactor('FOR', { FOR: 7, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 4 })).toBe(1);
+    expect(xpBalanceFactor('FOR', { FOR: 7, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 2 })).toBe(0.75);
+  });
+  it('le facteur compare au reste des scores, la caractéristique elle-même est exclue de la moyenne', () => {
+    const s = { FOR: 10, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 };
+    expect(xpBalanceFactor('FOR', s)).toBe(0.5);
+    expect(xpBalanceFactor('DEX', s)).toBe(1.5); // 3 contre une moyenne de 4,4
+    expect(xpBalanceFactor('CHA', s)).toBe(1.5);
+  });
+  it('arrondit, avec un minimum de 1 pour un gain', () => {
+    expect(balanceAmount(10, 1.5)).toBe(15);
+    expect(balanceAmount(25, 0.75)).toBe(19); // 18,75
+    expect(balanceAmount(25, 1.5)).toBe(38); // 37,5 arrondi au supérieur
+    expect(balanceAmount(1, 0.5)).toBe(1);
+    expect(balanceAmount(1, 0.75)).toBe(1);
+    expect(balanceAmount(3, 0.5)).toBe(2);
+    expect(balanceAmount(1, 1.5)).toBe(2);
+    expect(balanceAmount(1, 0.3)).toBe(1); // plancher de 1 même si l'arrondi donnerait 0
+  });
+  it('n’agit jamais sur un retrait, un zéro ou un facteur neutre', () => {
+    expect(balanceAmount(-20, 1.5)).toBe(-20);
+    expect(balanceAmount(-20, 0.5)).toBe(-20);
+    expect(balanceAmount(0, 1.5)).toBe(0);
+    expect(balanceAmount(40, 1)).toBe(40);
+  });
+  it('applyBalance traite chaque part avec le score de sa caractéristique (scores d’avant)', () => {
+    const scores = { FOR: 10, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 };
+    const parts = splitXp(40, 'FOR', [{ ability: 'DEX', pct: 25 }]); // FOR 30, DEX 10
+    expect(applyBalance(parts, scores)).toEqual([
+      { ability: 'FOR', amount: 15 },
+      { ability: 'DEX', amount: 15 },
+    ]);
+    expect(applyBalance([{ ability: 'FOR', amount: -30 }], scores)).toEqual([{ ability: 'FOR', amount: -30 }]);
+    expect(applyBalance([], scores)).toEqual([]);
+    expect(applyBalance(parts, scores).reduce((n, p) => n + p.amount, 0)).toBe(30);
+  });
+  it('balanceDetails ne liste que les parts modifiées', () => {
+    const mixed = { FOR: 12, DEX: 3, CON: 6, INT: 5, SAG: 5, CHA: 5 }; // FOR ×0,5 ; DEX ×1,5 ; CON neutre
+    expect(balanceDetails([{ ability: 'FOR', amount: 30 }, { ability: 'CON', amount: 10 }, { ability: 'DEX', amount: 10 }], mixed)).toEqual([
+      { ability: 'FOR', factor: 0.5, base: 30, awarded: 15 },
+      { ability: 'DEX', factor: 1.5, base: 10, awarded: 15 },
+    ]);
+    expect(balanceDetails([{ ability: 'CON', amount: 10 }], BALANCED_SCORES)).toEqual([]);
+    expect(balanceDetails([{ ability: 'FOR', amount: -5 }], mixed)).toEqual([]);
+  });
+  it('previewBalance annonce l’effet avant la validation', () => {
+    const weak = { FOR: 2, DEX: 5, CON: 5, INT: 5, SAG: 5, CHA: 5 };
+    const p = previewBalance(weak, 'FOR');
+    expect(p).toMatchObject({ factor: 1.5, kind: 'catchup', percent: 50, label: '+50 % XP en rattrapage' });
+    expect(p.entries).toEqual([{ ability: 'FOR', pct: 100, factor: 1.5 }]);
+
+    const strong = { FOR: 7, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 };
+    expect(previewBalance(strong, 'FOR')).toMatchObject({ kind: 'specialization', percent: -25, label: '−25 % XP (spécialisation)' });
+    expect(previewBalance({ ...strong, FOR: 10 }, 'FOR')).toMatchObject({ percent: -50, label: '−50 % XP (spécialisation)' });
+
+    const none = previewBalance(BALANCED_SCORES, 'FOR', [{ ability: 'DEX', pct: 20 }]);
+    expect(none).toMatchObject({ factor: 1, kind: 'none', percent: 0, label: null });
+    expect(none.entries).toEqual([
+      { ability: 'FOR', pct: 80, factor: 1 },
+      { ability: 'DEX', pct: 20, factor: 1 },
+    ]);
+  });
+  it('previewBalance pondère principale et secondaires par leur part', () => {
+    // FOR forte (×0,5, 80 %), DEX faible (×1,5, 20 %) : 0,4 + 0,3 = 0,7
+    const s = { FOR: 10, DEX: 2, CON: 3, INT: 3, SAG: 3, CHA: 3 };
+    const p = previewBalance(s, 'FOR', [{ ability: 'DEX', pct: 20 }]);
+    expect(p.factor).toBeCloseTo(0.7);
+    expect(p.percent).toBe(-30);
+    expect(p.kind).toBe('specialization');
   });
 });

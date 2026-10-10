@@ -74,11 +74,15 @@ describe('tirage', () => {
       expect(new Set(abilities).size).toBe(abilities.length);
     }
   });
-  it('garantit une quête dans une caractéristique maîtrisée', () => {
-    for (let d = 1; d <= 30; d++) {
-      const r = drawQuests({ ...base, count: 3, level: 1, periodStart: `2026-11-${String(d).padStart(2, '0')}` });
-      expect(r.picks.some((t) => base.masteries.includes(t.ability))).toBe(true);
+  it('ne force plus de quête dans une caractéristique maîtrisée : seul l’équilibrage oriente le tirage', () => {
+    // Maîtrise sur la caractéristique la plus haute : avant, au moins une quête en relevait toujours.
+    const scoresHigh: Record<AbilityId, number> = { FOR: 9, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 };
+    let withMastery = 0;
+    for (let d = 1; d <= 60; d++) {
+      const r = drawQuests({ ...base, count: 2, level: 1, scores: scoresHigh, masteries: ['FOR'], characterId: `m${d}`, periodStart: `2026-11-${String((d % 28) + 1).padStart(2, '0')}` });
+      if (r.picks.some((t) => t.ability === 'FOR')) withMastery++;
     }
+    expect(withMastery).toBeLessThan(60);
   });
   it('ne tire pas de quêtes exclues', () => {
     const excluded = Object.fromEntries(
@@ -104,17 +108,33 @@ describe('tirage', () => {
     expect(r.relaxed).toContain('anti-repeat');
     expect(r.relaxed).toContain('duplicate-ability');
   });
-  it('les favorites sont plus souvent tirées', () => {
+  it('le statut « favori » n’influence plus le tirage', () => {
     const fav = templates.find((t) => t.id === 'INT-easy-0')!;
-    let withFav = 0;
-    let without = 0;
-    for (let d = 1; d <= 200; d++) {
+    for (let d = 1; d <= 40; d++) {
       const ps = `2027-0${1 + (d % 9)}-${String((d % 27) + 1).padStart(2, '0')}`;
       const seed = { ...base, count: 3, level: 1, periodStart: ps, characterId: `c${d}` };
-      if (drawQuests({ ...seed, preferences: { [fav.id]: { templateId: fav.id, isFavorite: true } } }).picks.some((t) => t.id === fav.id)) withFav++;
-      if (drawQuests(seed).picks.some((t) => t.id === fav.id)) without++;
+      const a = drawQuests({ ...seed, preferences: { [fav.id]: { templateId: fav.id, isFavorite: true } } }).picks.map((t) => t.id);
+      expect(a).toEqual(drawQuests(seed).picks.map((t) => t.id));
     }
-    expect(withFav).toBeGreaterThan(without);
+  });
+  it('ne tire jamais un gabarit d’échelon de parcours', () => {
+    const rungs: QuestTemplate[] = templates.slice(0, 40).map((t, i) => ({ ...t, id: `parcours-test-r${String(i + 1).padStart(2, '0')}`, trackId: 'parcours-test', rung: i + 1 }));
+    const only = drawQuests({ ...base, templates: rungs, count: 3 });
+    expect(only.picks).toHaveLength(0);
+    for (let d = 1; d <= 30; d++) {
+      const r = drawQuests({ ...base, templates: [...rungs, ...templates], periodStart: `2026-11-${String(d).padStart(2, '0')}` });
+      expect(r.picks.every((t) => !t.trackId)).toBe(true);
+    }
+  });
+  it('les caractéristiques les plus basses sont nettement favorisées, graduellement', () => {
+    const graded: Record<AbilityId, number> = { FOR: 2, DEX: 6, CON: 6, INT: 6, SAG: 6, CHA: 10 };
+    const hits: Record<string, number> = { FOR: 0, CHA: 0, DEX: 0 };
+    for (let d = 1; d <= 600; d++) {
+      const r = drawQuests({ ...base, count: 1, level: 1, scores: graded, characterId: `g${d}`, periodStart: `2027-05-${String((d % 28) + 1).padStart(2, '0')}` });
+      if (r.picks[0].ability in hits) hits[r.picks[0].ability]++;
+    }
+    expect(hits.FOR).toBeGreaterThan(hits.DEX);
+    expect(hits.DEX).toBeGreaterThan(hits.CHA);
   });
   it('les quêtes épinglées reviennent à chaque période', () => {
     const pinned = templates.find((t) => t.id === 'DEX-medium-3')!;

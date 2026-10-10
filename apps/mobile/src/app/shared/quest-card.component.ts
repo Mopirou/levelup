@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
-import { DIFFICULTY_LABEL, ABILITY_LABEL, DIFFICULTY_SWORDS, isReadyToComplete, progressRatio, type QuestInstance } from '@levelup/engine';
+import { DIFFICULTY_LABEL, ABILITY_LABEL, DIFFICULTY_SWORDS, progressRatio, type QuestInstance } from '@levelup/engine';
 import { GameService } from '../core/game.service';
 import { IconComponent } from './icon.component';
 import { AbilityBadgeComponent, BarComponent } from './ui';
-import { fmt, progressText, statusLabel } from './format';
+import { fmt, isQuestReady, progressText, questActionLabel, statusLabel } from './format';
 import { themeLabel } from './themes';
 
 /** « Carte de quête » des maquettes : identité, XP, avancement, statut et action. */
@@ -26,6 +26,9 @@ import { themeLabel } from './themes';
       </div>
       @if (showBar()) {
         <lu-bar [value]="ratio()" [thick]="true" [dashed]="inst().status === 'proposed'" />
+      }
+      @if (note(); as n) {
+        <p class="note"><lu-icon name="sparkles" [size]="13" /> {{ n }}</p>
       }
       <div class="foot">
         <span class="state">
@@ -72,6 +75,7 @@ import { themeLabel } from './themes';
     .sub { font-size: 11px; color: var(--lu-muted); margin-top: 2px; }
     .xp { font-size: 12px; font-weight: 700; color: var(--lu-gold); white-space: nowrap; align-self: flex-start; }
     .xp.prov { opacity: 0.8; text-decoration: underline dotted; }
+    .note { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: var(--lu-gold); }
     .foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; }
     .state { font-size: 11px; color: var(--lu-muted); display: inline-flex; align-items: center; gap: 6px; }
     .actions { display: inline-flex; align-items: center; gap: 8px; }
@@ -82,6 +86,8 @@ export class QuestCardComponent {
   private game = inject(GameService);
   readonly inst = input.required<QuestInstance>();
   readonly rerollable = input(false);
+  /** Ligne d'information facultative sous la quête (ex. bonus d'XP de rattrapage) */
+  readonly note = input<string | null>(null);
   readonly open = output<void>();
   readonly primary = output<void>();
   readonly reroll = output<void>();
@@ -98,7 +104,7 @@ export class QuestCardComponent {
   readonly tryLabel = computed(() => ((this.inst().run ?? 1) > 1 ? ' · Refaite' : ''));
   readonly canRedo = computed(() => this.game.canRedo(this.inst()));
   readonly ratio = computed(() => (this.inst().status === 'completed' ? 1 : progressRatio(this.inst())));
-  readonly ready = computed(() => this.inst().status === 'accepted' && ['counter', 'timer', 'steps'].includes(this.inst().snapshot.validation.type) && isReadyToComplete(this.inst()) === null);
+  readonly ready = computed(() => isQuestReady(this.inst()));
   readonly showBar = computed(() => ['counter', 'timer', 'steps'].includes(this.inst().snapshot.validation.type) || this.inst().status === 'completed');
   readonly stateText = computed(() => {
     const i = this.inst();
@@ -107,23 +113,7 @@ export class QuestCardComponent {
     return `${progressText(i)} · ${statusLabel(i, this.ready())}`;
   });
   readonly canReroll = computed(() => this.rerollable() && (this.inst().origin ?? 'draw') === 'draw' && (this.inst().status === 'proposed' || (this.inst().status === 'accepted' && this.inst().progress === 0 && !(this.inst().stepsDone ?? []).some(Boolean))));
-  readonly actionLabel = computed(() => {
-    const i = this.inst();
-    switch (i.status) {
-      case 'proposed':
-        return 'Accepter';
-      case 'accepted': {
-        const t = i.snapshot.validation.type;
-        if (this.ready()) return t === 'timer' ? 'Valider' : 'Valider';
-        if (t === 'simple') return 'Accomplir';
-        if (t === 'journal') return 'Écrire';
-        if (t === 'timer') return i.progress > 0 ? 'Continuer' : 'Démarrer';
-        return i.progress > 0 || (i.stepsDone ?? []).some(Boolean) ? 'Continuer' : 'Commencer';
-      }
-      default:
-        return null;
-    }
-  });
+  readonly actionLabel = computed(() => questActionLabel(this.inst()));
   readonly primaryTone = computed(() => (this.ready() ? 'mint' : ''));
   readonly swords = computed(() => DIFFICULTY_SWORDS[this.inst().snapshot.difficulty]);
 }

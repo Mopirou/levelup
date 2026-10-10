@@ -24,7 +24,8 @@ function unlocksText(level: number): string[] {
   if (level === 2) out.push('La Forge : crée tes propres quêtes');
   if (level === PATH_LEVEL) out.push('Choisis une voie pour ta classe');
   if (IMPROVEMENT_LEVELS.includes(level)) out.push('Amélioration : +2 à répartir entre tes caractéristiques');
-  if (now.dailyQuests > before.dailyQuests) out.push(`${now.dailyQuests} quêtes par jour`);
+  // « Pour aller plus loin » : de 0 à 4 propositions facultatives par jour (les parcours, eux, ne dépendent pas du niveau).
+  if (Math.min(4, now.dailyQuests) > Math.min(4, before.dailyQuests)) out.push(`${Math.min(4, now.dailyQuests)} propositions facultatives par jour`);
   if (now.weeklyQuests > before.weeklyQuests) out.push(`${now.weeklyQuests} quêtes par semaine`);
   if (now.monthlyQuests > before.monthlyQuests) out.push(`${now.monthlyQuests} quêtes par mois`);
   if (now.expertEverywhere && !before.expertEverywhere) out.push('Quêtes légendaires débloquées partout');

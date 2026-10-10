@@ -25,6 +25,7 @@ export default [
       ['Dos et tirage', 'faire une séance de dos et de tirage (rowing, tractions, élastiques)', 'Un dos fort corrige la posture et protège les épaules.', 'Déroulé conseillé : échauffement, rowings, tirages, travail de gainage, étirements.', 'Tire avec les coudes plutôt qu’avec les mains.', 'réussir 5 tractions ou une série de rowings plus lourde'],
       ['Corps entier haltères', 'suivre une séance corps entier avec haltères', 'Une séance corps entier est la plus efficace quand on manque de temps.', 'Déroulé conseillé : échauffement, 6 exercices en circuit, 3 tours, étirements.', 'Choisis une charge qui te laisse deux répétitions en réserve.', 'compléter un circuit de 45 minutes avec des charges croissantes'],
       ['Kettlebell', 'suivre une séance de kettlebell (swings, goblet squats, développés)', 'Le kettlebell combine force, explosivité et cardio.', 'Déroulé conseillé : mobilité des hanches, swings, goblet squats, développés, retour au calme.', 'Le mouvement part des hanches, pas des bras.', 'enchaîner 100 swings en moins de 10 minutes'],
+      ['Pompes', 'faire des pompes (sur les genoux, classiques ou variées)', 'Les pompes renforcent pectoraux, épaules, bras et gainage sans aucun matériel.', 'Déroulé conseillé : échauffement des poignets et des épaules, séries de pompes avec repos, étirements.', 'Garde le corps aligné de la tête aux talons et descends la poitrine vers le sol.', 'enchaîner 30 pompes d’affilée'],
     ],
   },
   {
@@ -278,6 +279,17 @@ export default [
       ['Mobilité des épaules', 'travailler la mobilité des épaules (cercles, étirements, élastiques)', 'Des épaules souples permettent de lever les bras sans tension.', 'Déroulé conseillé : cercles, étirements de pectoraux, travail avec élastique.', 'Garde les côtes rentrées pendant les élévations.', 'lever les bras au-dessus de la tête sans cambrer'],
       ['Mobilité du dos', 'travailler la mobilité du dos et de la colonne', 'Un dos mobile réduit les douleurs liées à la sédentarité.', 'Déroulé conseillé : chat-vache, rotations, étirements, relaxation.', 'Bouge lentement avec la respiration.', 'enchaîner une séance de 20 minutes sans gêne'],
       ['Grand écart', 'travailler la souplesse en vue du grand écart', 'Le grand écart est un objectif motivant pour progresser en souplesse.', 'Déroulé conseillé : échauffement, étirements des ischios et adducteurs, postures tenues.', 'Progresse un peu chaque jour plutôt que de forcer.', 'atteindre un grand écart facial ou latéral'],
+    ],
+  },
+  {
+    id: 'culture', label: 'Culture générale', blurb: 'Comprendre le monde : histoire, sciences, géographie et idées.',
+    primary: 'INT', secondary: [['SAG', 30], ['CHA', 20]], physical: false, time: [25, 100, 8, 30],
+    activities: [
+      ['Histoire', 'approfondir l’histoire (articles, documentaires, livres)', 'L’histoire aide à comprendre le présent et à relier les événements entre eux.', 'Déroulé conseillé : choisir une période, lire ou regarder, noter trois idées, les raconter à voix haute.', 'Place chaque événement sur une frise pour garder le fil.', 'raconter une période de l’histoire à quelqu’un sans notes'],
+      ['Sciences', 'explorer les sciences (articles, vidéos de vulgarisation, livres)', 'La science change le regard sur le monde et affûte l’esprit critique.', 'Déroulé conseillé : choisir une question, lire ou regarder, reformuler avec tes mots, vérifier une source.', 'Cherche la source avant de croire une affirmation.', 'expliquer un phénomène scientifique simplement à quelqu’un'],
+      ['Géographie', 'découvrir la géographie (pays, cartes, paysages, cultures)', 'Savoir où et comment vivent les autres peuples ouvre l’esprit.', 'Déroulé conseillé : ouvrir une carte, choisir un pays ou une région, lire ou regarder, situer sur la carte.', 'Repère d’abord les grands ensembles (fleuves, montagnes) avant les détails.', 'présenter un pays ou une région à quelqu’un avec une carte'],
+      ['Philosophie', 'explorer la philosophie (grandes questions, textes, débats)', 'La philosophie apprend à poser les bonnes questions et à argumenter.', 'Déroulé conseillé : choisir une question, lire un court texte, écrire ton avis, comparer avec un autre point de vue.', 'Écris l’argument inverse du tien pour mieux le comprendre.', 'défendre une idée devant quelqu’un en répondant à ses objections'],
+      ['Arts et patrimoine', 'découvrir les arts et le patrimoine (peinture, architecture, musique, monuments)', 'Les œuvres racontent des époques et affinent la sensibilité.', 'Déroulé conseillé : choisir une œuvre ou un lieu, l’observer, lire sa notice, noter ce qu’elle t’inspire.', 'Observe une minute en silence avant de lire la notice.', 'présenter une œuvre ou un monument à quelqu’un'],
     ],
   },
 ];

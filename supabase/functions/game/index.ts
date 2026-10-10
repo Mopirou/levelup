@@ -84,6 +84,12 @@ Deno.serve(async (req: Request) => {
         return json(await engine.choosePath(ctx, userId, p.pathId));
       case 'choose-improvement':
         return json(await engine.chooseImprovement(ctx, userId, p.choice));
+      case 'track-start':
+        return json(await engine.startTrack(ctx, userId, { trackId: p.trackId }));
+      case 'track-pause':
+        return json(await engine.setTrackPaused(ctx, userId, { trackId: p.trackId, paused: p.paused === true }));
+      case 'track-stop':
+        return json(await engine.stopTrack(ctx, userId, { trackId: p.trackId }));
       case 'declare-rest':
         return json(await engine.declareRest(ctx, userId));
       case 'equip-title':
@@ -96,7 +102,7 @@ Deno.serve(async (req: Request) => {
       }
       case 'reset-adventure': {
         // « Recommencer une nouvelle aventure » : remet le personnage à zéro, garde le compte et les compagnons.
-        const tables = ['posts', 'journal_entries', 'rest_days', 'unlocked_achievements', 'xp_events', 'quest_preferences', 'quest_instances', 'characters'];
+        const tables = ['posts', 'journal_entries', 'rest_days', 'unlocked_achievements', 'xp_events', 'quest_preferences', 'quest_instances', 'tracks', 'characters'];
         for (const t of tables) {
           const col = t === 'posts' ? 'author_id' : 'profile_id';
           const { error } = await admin.from(t).delete().eq(col, userId);

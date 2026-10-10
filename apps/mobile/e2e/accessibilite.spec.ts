@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { createHero } from './helpers';
 
-const PAGES = ['/tabs/tavern', '/tabs/quests', '/tabs/village', '/tabs/hero', '/tabs/chronicle', '/grimoire', '/trophies', '/settings', '/companions', '/messenger'];
+const PAGES = ['/tabs/tavern', '/tabs/quests', '/tracks', '/tabs/village', '/tabs/hero', '/tabs/chronicle', '/grimoire', '/trophies', '/settings', '/companions', '/messenger'];
 
 async function audit(page: Page): Promise<string[]> {
   const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).disableRules(['region']).analyze();
@@ -12,11 +12,16 @@ async function audit(page: Page): Promise<string[]> {
 for (const theme of ['dark', 'light'] as const) {
   test(`WCAG 2.1 AA — thème ${theme === 'dark' ? 'sombre' : 'clair'}`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await createHero(page);
+    await createHero(page, 'Aldric', 'aldric-e2e', [['Musculation', 'Muscu haut du corps']]);
     const problems: string[] = [];
     for (const p of PAGES) {
       await page.goto(p);
       await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme);
+      if (p === '/tracks') {
+        // on déplie une discipline et une échelle pour auditer le contenu ouvert
+        await page.getByRole('button', { name: /^Musculation/ }).click();
+        await page.getByRole('button', { name: 'Voir les 10 échelons' }).first().click();
+      }
       await page.waitForTimeout(1200);
       for (const v of await audit(page)) problems.push(`${p} : ${v}`);
     }
@@ -25,7 +30,7 @@ for (const theme of ['dark', 'light'] as const) {
 }
 
 test('aucun défilement horizontal de 360 à 430 px', async ({ page }) => {
-  await createHero(page);
+  await createHero(page, 'Aldric', 'aldric-e2e', [['Musculation', 'Muscu haut du corps']]);
   for (const width of [360, 390, 430]) {
     await page.setViewportSize({ width, height: 800 });
     for (const p of PAGES) {

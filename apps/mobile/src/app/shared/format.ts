@@ -1,4 +1,4 @@
-import { ABILITY_COLOR, ABILITY_LABEL, DIFFICULTY_LABEL, type AbilityId, type Difficulty, type QuestInstance, type Period, type ValidationSpec } from '@levelup/engine';
+import { ABILITY_COLOR, ABILITY_LABEL, DIFFICULTY_LABEL, isReadyToComplete, type AbilityId, type Difficulty, type QuestInstance, type Period, type ValidationSpec } from '@levelup/engine';
 
 export const ABILITY_ICON: Record<AbilityId, string> = {
   FOR: 'flame',
@@ -116,4 +116,28 @@ export const abilityColor = (a: AbilityId): string => ABILITY_COLOR[a];
 
 export function difficultyTone(d: Difficulty): string {
   return d === 'expert' ? 'gold' : d === 'high' ? 'mint' : '';
+}
+
+/** Quête de type compteur / chronomètre / étapes dont l'objectif est atteint (prête à valider). */
+export function isQuestReady(i: QuestInstance): boolean {
+  return i.status === 'accepted' && ['counter', 'timer', 'steps'].includes(i.snapshot.validation.type) && isReadyToComplete(i) === null;
+}
+
+/** Libellé du bouton principal d'une carte de quête (null = aucune action). */
+export function questActionLabel(i: QuestInstance): string | null {
+  switch (i.status) {
+    case 'proposed':
+      // Une quête de parcours « simple » se valide directement depuis sa proposition.
+      return i.origin === 'track' && i.snapshot.validation.type === 'simple' ? 'Accomplir' : 'Accepter';
+    case 'accepted': {
+      const t = i.snapshot.validation.type;
+      if (isQuestReady(i)) return 'Valider';
+      if (t === 'simple') return 'Accomplir';
+      if (t === 'journal') return 'Écrire';
+      if (t === 'timer') return i.progress > 0 ? 'Continuer' : 'Démarrer';
+      return i.progress > 0 || (i.stepsDone ?? []).some(Boolean) ? 'Continuer' : 'Commencer';
+    }
+    default:
+      return null;
+  }
 }

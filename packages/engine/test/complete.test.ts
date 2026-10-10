@@ -267,3 +267,48 @@ describe('auto-évaluation', () => {
     expect(s.FOR).toBeGreaterThan(s.CHA);
   });
 });
+
+describe('équilibrage à la validation', () => {
+  const withAbility = (ability: 'FOR' | 'DEX' | 'CON', over: Partial<QuestInstance['snapshot']> = {}) =>
+    inst({ snapshot: { ...inst().snapshot, ability, ...over } });
+
+  it('caractéristique en retard : +50 % (10 XP → 15), détail du rattrapage et total cohérent', () => {
+    // DEX 2 contre une moyenne des autres de 3,2 : écart −1,2
+    const r = completeQuest({ character: hero(), masteries: [], instance: withAbility('DEX'), useInspiration: false });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.result.breakdown.total).toBe(10);
+    expect(r.result.xpAwarded).toBe(15);
+    expect(r.result.parts).toEqual([{ ability: 'DEX', amount: 15 }]);
+    expect(r.result.balance).toEqual([{ ability: 'DEX', factor: 1.5, base: 10, awarded: 15 }]);
+    expect(r.result.character.totalXp).toBe(15);
+    expect(r.result.character.abilityXp.DEX).toBe(15);
+  });
+  it('caractéristique dominante : −25 % puis −50 %', () => {
+    const strong = (score: number) => hero({ baseScores: { FOR: score, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 } });
+    // FOR 7 contre 3 : écart +4
+    const a = completeQuest({ character: strong(7), masteries: [], instance: withAbility('FOR', { difficulty: 'medium' }), useInspiration: false });
+    expect(a.ok && a.result.xpAwarded).toBe(19); // 25 × 0,75 = 18,75
+    // FOR 10 contre 3 : écart +7
+    const b = completeQuest({ character: strong(10), masteries: [], instance: withAbility('FOR', { difficulty: 'medium' }), useInspiration: false });
+    expect(b.ok && b.result.xpAwarded).toBe(13); // 25 × 0,5 = 12,5
+    expect(b.ok && b.result.balance).toEqual([{ ability: 'FOR', factor: 0.5, base: 25, awarded: 13 }]);
+  });
+  it('sans écart notable : aucun effet et aucun détail', () => {
+    const r = completeQuest({ character: hero({ baseScores: { FOR: 3, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 } }), masteries: [], instance: withAbility('CON'), useInspiration: false });
+    expect(r.ok && r.result.xpAwarded).toBe(10);
+    expect(r.ok && r.result.balance).toEqual([]);
+  });
+  it('quête répartie : chaque part est équilibrée avec les scores d’avant ; l’Inspiration double avant équilibrage', () => {
+    const character = hero({ inspiration: 1, baseScores: { FOR: 10, DEX: 2, CON: 3, INT: 3, SAG: 3, CHA: 3 } });
+    const instance = withAbility('FOR', { difficulty: 'medium', secondary: [{ ability: 'DEX', pct: 20 }] });
+    const r = completeQuest({ character, masteries: [], instance, useInspiration: true });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.result.breakdown.total).toBe(50); // 25 doublé
+    // parts d'origine : FOR 40, DEX 10 → FOR ×0,5 = 20 ; DEX (2 contre 4,6) ×1,5 = 15
+    expect(r.result.parts).toEqual([{ ability: 'FOR', amount: 20 }, { ability: 'DEX', amount: 15 }]);
+    expect(r.result.xpAwarded).toBe(35);
+    expect(r.result.character.totalXp).toBe(35);
+  });
+});

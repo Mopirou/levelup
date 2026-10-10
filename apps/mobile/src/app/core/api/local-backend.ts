@@ -12,6 +12,7 @@ import {
 } from '@levelup/engine';
 import quests from '@levelup/content/quests.fr.json';
 import { uuid } from '../uuid';
+import { TRACKS } from '../../shared/tracks';
 import { createLocalSocial } from './local-social';
 import type { AuthApi, AuthUser, Backend, CommandResult, GameApi, MyProfile, SignUpInput } from './types';
 
@@ -24,7 +25,11 @@ class LocalDb extends Dexie {
   }
 }
 
-const catalog: QuestTemplate[] = (quests as unknown as QuestTemplate[]).map((q) => ({ ...q, source: 'catalog' as const }));
+// Catalogue libre + un gabarit par échelon de parcours (jamais tirés au sort ni listés dans le Grimoire).
+const catalog: QuestTemplate[] = [
+  ...(quests as unknown as QuestTemplate[]).map((q) => ({ ...q, source: 'catalog' as const })),
+  ...engine.buildRungTemplates(TRACKS),
+];
 const LOCAL_ID = 'local-user';
 
 const K256 = [
@@ -230,6 +235,9 @@ export async function createLocalBackend(): Promise<Backend> {
     chooseImprovement: (c) => wrap(() => engine.chooseImprovement(ctx, LOCAL_ID, c)),
     declareRest: () => wrap(() => engine.declareRest(ctx, LOCAL_ID)),
     equipTitle: (t) => wrap(() => engine.equipTitle(ctx, LOCAL_ID, t)),
+    trackStart: (trackId) => wrap(() => engine.startTrack(ctx, LOCAL_ID, { trackId })),
+    trackPause: (trackId, paused) => wrap(() => engine.setTrackPaused(ctx, LOCAL_ID, { trackId, paused })),
+    trackStop: (trackId) => wrap(() => engine.stopTrack(ctx, LOCAL_ID, { trackId })),
     achievementProgress: () => engine.achievementProgress(ctx, LOCAL_ID),
     async resetAdventure() {
       store.users.delete(LOCAL_ID);

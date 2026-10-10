@@ -8,6 +8,7 @@ import {
   abilityProgress,
   abilityProgressOf,
   addDays,
+  emptyAbilityRecord,
   gameDate,
   type AbilityId,
   type QuestInstance,
@@ -22,6 +23,7 @@ import { PageHeaderComponent, PortraitComponent, BarComponent, RadarComponent, A
 import { IconComponent } from '../../shared/icon.component';
 import { ModalComponent } from '../../shared/modal.component';
 import { fmt } from '../../shared/format';
+import { trackDef } from '../../shared/tracks';
 import { renderSheetPng } from './sheet-image';
 
 const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
@@ -101,6 +103,44 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
               }
             </div>
             <p class="xs muted">1 inspiration = une relance de quête, sans attendre demain. Record : {{ ch.streakBest }} jours.</p>
+          </section>
+
+          <!-- Évolution : parcours actifs et XP des 30 derniers jours -->
+          <section class="lu-section" aria-labelledby="h-evo">
+            <div class="lu-section-title">
+              <h2 id="h-evo">Évolution</h2>
+              <button type="button" class="lu-link" (click)="ui.go('/tracks')">Mes parcours →</button>
+            </div>
+            <div class="lu-card evo">
+              <span class="lu-eyebrow">PARCOURS ACTIFS</span>
+              @for (r of evoRows(); track r.state.trackId) {
+                <div class="erow">
+                  <lu-ability-badge [ability]="r.def.ability" [size]="34" />
+                  <div class="et">
+                    <div class="eh"><strong>{{ r.def.label }}</strong><span class="rung">Échelon {{ r.state.rung }}/{{ r.progress.total }}</span></div>
+                    <lu-bar [value]="r.progress.hits" [max]="r.progress.needed" [label]="'Jours validés à l’échelon ' + r.state.rung + ' : ' + r.progress.hits + ' sur ' + r.progress.needed" />
+                    <span class="small muted">{{ r.progress.hits }}/{{ r.progress.needed }} jours validés{{ r.progress.top ? '' : ' vers l’échelon ' + (r.state.rung + 1) }}</span>
+                    @if (r.lock.locked) { <span class="small gold"><lu-icon name="lock" [size]="12" /> {{ r.lock.label }}</span> }
+                  </div>
+                </div>
+              } @empty {
+                <p class="small muted">Aucun parcours actif pour l’instant. Un parcours te donne chaque jour la quête de ton échelon.</p>
+                <button type="button" class="lu-btn small ghost inline" (click)="ui.go('/tracks')">Choisir mes parcours</button>
+              }
+              @if (game.pausedTracks().length) {
+                <p class="small muted">En pause : {{ pausedNames() }}.</p>
+              }
+              <span class="lu-eyebrow">XP GAGNÉE SUR 30 JOURS</span>
+              <ul class="gains">
+                @for (g of gain30(); track g.a) {
+                  <li>
+                    <span class="gn">{{ label(g.a) }}</span>
+                    <lu-bar [value]="g.xp" [max]="gainMax()" [label]="'XP de ' + label(g.a) + ' sur 30 jours'" />
+                    <span class="gv">+{{ fmt(g.xp) }}</span>
+                  </li>
+                }
+              </ul>
+            </div>
           </section>
 
           <!-- Traits -->
@@ -203,6 +243,16 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
     .dd.on .dc { background: var(--lu-accent); border-color: var(--lu-accent); }
     .dd.today .dc { border-color: var(--lu-gold); }
     .dd.rest .dc { color: var(--lu-muted); }
+    .evo { gap: 12px; }
+    .erow { display: flex; gap: 12px; align-items: flex-start; }
+    .et { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .eh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .eh strong { font-size: 14px; }
+    .rung { font-size: 12px; font-weight: 700; color: var(--lu-accent); white-space: nowrap; }
+    .gains { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .gains li { display: grid; grid-template-columns: 96px 1fr 64px; align-items: center; gap: 10px; }
+    .gn { font-size: 12px; color: var(--lu-text-2); }
+    .gv { font-size: 12px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
     .traits { flex-direction: row; justify-content: space-around; padding: 14px 8px; }
     .t { display: flex; flex-direction: column; align-items: center; gap: 2px; }
     .t strong { font-family: var(--lu-font-title); font-size: 24px; font-weight: 500; }
@@ -264,21 +314,36 @@ export class HeroPage {
       [2, 'Créer ses quêtes', 'Crée tes propres quêtes au niveau 2.'],
       [3, 'Une voie à choisir', 'Une affinité secondaire au niveau 3.'],
       [4, 'Une amélioration', '+2 à répartir au niveau 4.'],
-      [5, '4 quêtes par jour', '4 quêtes par jour au niveau 5.'],
+      [5, 'Plus de propositions', 'Jusqu’à 4 propositions « Pour aller plus loin » par jour au niveau 5.'],
       [6, 'Une quête de plus', 'Une 3e quête hebdomadaire au niveau 6.'],
       [8, 'Une amélioration', '+2 à répartir au niveau 8.'],
-      [10, 'Routine ancrée', '5 quêtes par jour et 2 quêtes mensuelles au niveau 10.'],
+      [10, 'Routine ancrée', '2 quêtes mensuelles au niveau 10.'],
       [11, 'Quêtes de niveau 4', 'Quêtes légendaires et épiques au niveau 11.'],
       [12, 'Une amélioration', '+2 à répartir au niveau 12.'],
       [14, 'Une quête de plus', 'Une 4e quête hebdomadaire au niveau 14.'],
       [16, 'Une amélioration', '+2 à répartir au niveau 16.'],
-      [17, '6 quêtes par jour', '6 quêtes par jour au niveau 17.'],
       [19, 'Dernière amélioration', '+2 à répartir au niveau 19.'],
       [20, 'Titre final', 'Le titre final au niveau 20.'],
     ];
     const n = marks.find((m) => m[0] > l);
     return n ? { title: n[1], text: n[2] } : { title: 'Au sommet', text: 'Tu as atteint tous les déblocages. Continue pour les rangs légendaires.' };
   });
+  /** Parcours actifs avec leur échelon, leur progression et leur éventuel verrou de score. */
+  readonly evoRows = computed(() =>
+    this.game
+      .activeTracks()
+      .map((state) => ({ state, def: trackDef(state.trackId), progress: this.game.trackProgress(state), lock: this.game.trackLock(state) }))
+      .filter((r): r is { state: typeof r.state; def: NonNullable<typeof r.def>; progress: NonNullable<typeof r.progress>; lock: NonNullable<typeof r.lock> } => !!r.def && !!r.progress && !!r.lock),
+  );
+  readonly pausedNames = computed(() => this.game.pausedTracks().map((s) => trackDef(s.trackId)?.label ?? 'Parcours').join(', '));
+  /** XP gagnée par caractéristique sur les 30 derniers jours (registre d'XP, annulations déduites). */
+  readonly gain30 = computed(() => {
+    const from = addDays(this.game.today(), -29);
+    const sum = emptyAbilityRecord(0);
+    for (const e of this.events()) if (e.gameDate >= from) sum[e.ability] += e.amount;
+    return this.order.map((a) => ({ a, xp: Math.max(Math.round(sum[a]), 0) }));
+  });
+  readonly gainMax = computed(() => Math.max(1, ...this.gain30().map((g) => g.xp)));
   readonly week = computed(() => {
     const today = this.game.today();
     const tz = this.game.tz();

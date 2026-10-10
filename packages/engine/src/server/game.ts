@@ -25,7 +25,6 @@ import {
   computeBestStreak,
   computeStreak,
   expiredPartialXp,
-  hardcorePenalty,
   inspirationAfterStreak,
   MAX_INSPIRATION,
 } from '../complete';
@@ -38,17 +37,20 @@ import {
   AchievementProgress,
 } from '../achievements';
 import { ClassDef, masteriesOf, pathAbilityOf } from '../content-types';
+import { TRACK_RUNGS, advanceOnCompletion, applyMisses, effectiveRung, revertCompletion, rungTemplateId, trackShapes } from '../tracks';
 import {
   ABILITIES,
   AbilityId,
   CharacterCore,
   Difficulty,
+  MAX_ACTIVE_TRACKS,
   Period,
   PERIODS,
   QuestInstance,
   QuestOrigin,
   QuestPreference,
   QuestTemplate,
+  TrackState,
   emptyAbilityRecord,
 } from '../types';
 import {
@@ -67,6 +69,8 @@ import {
   unlocksAt,
   PATH_LEVEL,
   splitXp,
+  tierUnlocked,
+  type XpPart,
 } from '../xp';
 import {
   CharacterRecord,
@@ -83,7 +87,8 @@ export const CLASSES = classesJson as unknown as ClassDef[];
 export const ACHIEVEMENTS = achievementsJson as unknown as AchievementDef[];
 
 const STREAK_POSTS = [7, 14, 30, 60, 100, 200, 365];
-const FREE_QUESTS_PER_DAY = 2;
+/** Plafond des suggestions « Pour aller plus loin » par jour (le réglage « Propositions par jour » va de 0 à 6). */
+export const MAX_FREE_QUESTS_PER_DAY = 4;
 
 export type GameError =
   | 'no-character'
@@ -121,13 +126,29 @@ interface Env {
   settings: SettingsRecord;
   nowMs: number;
   today: string;
+  /**
+   * Cache de la commande en cours (l'Env est recréé à chaque commande, donc jamais périmé d'une commande à l'autre) :
+   * le moteur n'écrit aucun gabarit, une seule lecture suffit pour toute la validation ou tout le passage de `ensureQuests`.
+   */
+  templates: { full?: Promise<QuestTemplate[]>; plain?: Promise<QuestTemplate[]> };
 }
 
 async function loadEnv(ctx: ServerContext, userId: string): Promise<Env | null> {
   const [character, settings] = await Promise.all([ctx.store.getCharacter(userId), ctx.store.getSettings(userId)]);
   if (!character) return null;
   const nowMs = ctx.now();
-  return { ctx, userId, character, settings, nowMs, today: gameDate(nowMs, settings.timezone, settings.resetHour) };
+  return { ctx, userId, character, settings, nowMs, today: gameDate(nowMs, settings.timezone, settings.resetHour), templates: {} };
+}
+
+/**
+ * Gabarits du joueur, lus au plus une fois par commande. `withRungs: false` (défaut : `true`) écarte les gabarits d'échelon
+ * des parcours (lecture plus légère) ; une commande doit toujours demander la même variante pour ne lire qu'une fois.
+ */
+function loadTemplates(env: Env, withRungs = true): Promise<QuestTemplate[]> {
+  const c = env.templates;
+  if (withRungs) return (c.full ??= env.ctx.store.listTemplates(env.userId));
+  if (c.full) return c.full.then((l) => l.filter((t) => !t.trackId));
+  return (c.plain ??= env.ctx.store.listTemplates(env.userId, { withRungs: false }).then((l) => l.filter((t) => !t.trackId)));
 }
 
 export function masteriesFor(c: Pick<CharacterCore, 'classId'>): AbilityId[] {
@@ -163,7 +184,7 @@ function newInstance(
   nowIso: string,
   free = false,
   tune: number | undefined = 0,
-  meta: { origin?: QuestOrigin; run?: number } = {},
+  meta: { origin?: QuestOrigin; run?: number; trackId?: string; rung?: number } = {},
 ): QuestInstance {
   const snapshot = tunedSnapshot(snapshotOf(t), t.validation, (tune ?? 0) as TuneLevel);
   return {
@@ -181,6 +202,7 @@ function newInstance(
     free,
     run: meta.run ?? 1,
     origin: meta.origin ?? 'draw',
+    ...(meta.trackId ? { trackId: meta.trackId, rung: meta.rung ?? null } : {}),
     acceptedAt: status === 'accepted' ? nowIso : null,
     completedAt: null,
   };
@@ -205,10 +227,12 @@ export async function computePlayerStats(
   userId: string,
   character: CharacterRecord,
   settings: SettingsRecord,
+  /** Gabarits déjà lus par la commande (évite une relecture) ; sinon lus ici, sans les gabarits d'échelon. */
+  knownTemplates?: readonly QuestTemplate[],
 ): Promise<PlayerStats> {
   const [completed, templates, rest, journal, social] = await Promise.all([
     store.listInstances(userId, { status: 'completed' }),
-    store.listTemplates(userId),
+    knownTemplates ?? store.listTemplates(userId, { withRungs: false }),
     store.listRestDays(userId),
     store.countJournal(userId),
     store.socialCounts(userId),
@@ -271,7 +295,7 @@ export async function computePlayerStats(
 export async function achievementProgress(ctx: ServerContext, userId: string): Promise<AchievementProgress[]> {
   const env = await loadEnv(ctx, userId);
   if (!env) return [];
-  return evaluateAchievements(ACHIEVEMENTS, await computePlayerStats(ctx.store, userId, env.character, env.settings));
+  return evaluateAchievements(ACHIEVEMENTS, await computePlayerStats(ctx.store, userId, env.character, env.settings, await loadTemplates(env, false)));
 }
 
 // ───────────────────────── Recalcul de cohérence (RG-16) ─────────────────────────
@@ -298,14 +322,33 @@ export async function recomputeCharacter(ctx: ServerContext, userId: string): Pr
   return c;
 }
 
+/**
+ * Série : un jour compte s'il contient au moins une quête de parcours validée. Sans aucun parcours actif,
+ * repli sur l'ancienne règle (n'importe quelle quête journalière validée).
+ * La règle « parcours » ne s'applique qu'à partir du premier démarrage de parcours (plus ancien `startedAt`, en jour de jeu) :
+ * avant, l'ancienne règle vaut, pour qu'un joueur déjà en série ne retombe pas à 0 en activant un parcours.
+ * La série record et l'Inspiration (calculées depuis ces jours) en héritent.
+ */
 async function streakInfo(store: GameStore, userId: string, settings: SettingsRecord, today: string) {
-  const [daily, rest] = await Promise.all([
+  const [daily, rest, tracks] = await Promise.all([
     store.listInstances(userId, { period: 'daily', status: 'completed', from: addDays(today, -800) }),
     store.listRestDays(userId),
+    store.listTracks(userId),
   ]);
-  const days = daily
-    .filter((q) => q.completedAt)
-    .map((q) => gameDate(Date.parse(q.completedAt!), settings.timezone, settings.resetHour));
+  const trackMode = tracks.some((t) => t.status === 'active');
+  let trackRuleFrom: string | null = null;
+  for (const t of tracks) {
+    const ms = Date.parse(t.startedAt);
+    if (Number.isNaN(ms)) continue;
+    const d = gameDate(ms, settings.timezone, settings.resetHour);
+    if (trackRuleFrom === null || d < trackRuleFrom) trackRuleFrom = d;
+  }
+  const days: string[] = [];
+  for (const q of daily) {
+    if (!q.completedAt) continue;
+    const day = gameDate(Date.parse(q.completedAt), settings.timezone, settings.resetHour);
+    if (!trackMode || q.origin === 'track' || (trackRuleFrom !== null && day < trackRuleFrom)) days.push(day);
+  }
   const s = computeStreak(days, rest, today);
   return { current: s.current, doneToday: s.doneToday, best: computeBestStreak(days, rest), days };
 }
@@ -321,7 +364,7 @@ export interface CreateCharacterInput {
   motto?: string;
   oath?: string;
   timezone?: string;
-  /** Centres d'intérêt choisis à la création (orientent le premier tirage) */
+  /** @deprecated centres d'intérêt : remplacés par les parcours, enregistrés sans effet sur le tirage */
   interests?: string[];
 }
 
@@ -369,21 +412,91 @@ export interface EnsureResult {
   created: QuestInstance[];
   expired: QuestInstance[];
   levelUps: number[];
+  /** Descentes d'échelon constatées pendant ce passage (absent s'il n'y en a pas) */
+  demoted?: { trackId: string; from: number; to: number }[];
 }
 
-/** Clôture les périodes passées (RG-01) puis tire les quêtes manquantes de la période en cours. */
+/**
+ * Parcours « orphelin » : son état existe en base mais aucun gabarit d'échelon n'existe plus (contenu retiré).
+ * Sans aucun gabarit de parcours (contenu absent ou pas encore déployé), on ne peut rien affirmer : personne n'est orphelin.
+ */
+const isOrphanTrack = (t: Pick<TrackState, 'trackId'>, shapes: ReadonlyMap<string, unknown>): boolean => shapes.size > 0 && !shapes.has(t.trackId);
+
+/** Nombre de parcours actifs qui comptent pour la limite de `MAX_ACTIVE_TRACKS` (les orphelins ne comptent pas). */
+const countActiveTracks = (tracks: readonly TrackState[], shapes: ReadonlyMap<string, unknown>): number =>
+  tracks.filter((t) => t.status === 'active' && !isOrphanTrack(t, shapes)).length;
+
+/**
+ * Jours manqués et descentes de tous les parcours actifs (appelé avant tout le reste de `ensureQuests`).
+ * Retourne les états à jour des parcours et les descentes d'échelon constatées.
+ */
+async function settleTracks(
+  ctx: ServerContext,
+  userId: string,
+  today: string,
+  tracks: TrackState[],
+): Promise<{ tracks: TrackState[]; demoted: NonNullable<EnsureResult['demoted']> }> {
+  const { store } = ctx;
+  const yesterday = addDays(today, -1);
+  const demoted: NonNullable<EnsureResult['demoted']> = [];
+  const pending = tracks.filter((t) => t.status === 'active' && (!t.lastCheckedDate || t.lastCheckedDate < yesterday));
+  if (!pending.length) return { tracks, demoted };
+  const rest = await store.listRestDays(userId);
+  const checked = pending.map((t) => t.lastCheckedDate).filter((d): d is string => !!d);
+  const completed = checked.length
+    ? await store.listInstances(userId, { period: 'daily', status: 'completed', from: addDays(checked.reduce((a, b) => (a < b ? a : b)), 1) })
+    : [];
+  const out: TrackState[] = [];
+  for (const t of tracks) {
+    if (!pending.includes(t)) {
+      out.push(t);
+      continue;
+    }
+    // Un parcours jamais pointé (état incomplet) démarre son suivi aujourd'hui : aucun jour manqué rétroactif.
+    const next = t.lastCheckedDate
+      ? applyMisses(
+          t,
+          today,
+          rest,
+          completed.filter((q) => q.trackId === t.trackId).map((q) => q.periodStart),
+        ).state
+      : { ...t, lastCheckedDate: today };
+    if (next.rung !== t.rung || next.hits !== t.hits || next.lastCheckedDate !== t.lastCheckedDate) await store.saveTrack(userId, next);
+    if (next.rung < t.rung) demoted.push({ trackId: t.trackId, from: t.rung, to: next.rung });
+    out.push(next);
+  }
+  return { tracks: out, demoted };
+}
+
+/** Clôture les périodes passées (RG-01), règle les parcours, puis crée la quête du jour de chaque parcours et tire « Pour aller plus loin ». */
 export async function ensureQuests(ctx: ServerContext, userId: string): Promise<EnsureResult> {
   const env = await loadEnv(ctx, userId);
+  if (!env) return { created: [], expired: [], levelUps: [] };
+  return ensureQuestsFor(env);
+}
+
+async function ensureQuestsFor(env: Env): Promise<EnsureResult> {
+  const { ctx, userId, store } = { ...env, store: env.ctx.store };
   const result: EnsureResult = { created: [], expired: [], levelUps: [] };
-  if (!env) return result;
-  const { store } = ctx;
   let { character } = env;
   const { settings, today } = env;
   const nowIso = new Date(env.nowMs).toISOString();
+  const allTemplates = await loadTemplates(env);
+  const shapes = trackShapes(allTemplates);
+
+  // 0. Parcours orphelins nettoyés, puis jours manqués et descentes des parcours restants (avant tout).
+  const stored = await store.listTracks(userId);
+  const live: TrackState[] = [];
+  for (const t of stored) {
+    if (isOrphanTrack(t, shapes)) await store.deleteTrack(userId, t.trackId);
+    else live.push(t);
+  }
+  const settled = await settleTracks(ctx, userId, today, live);
+  const tracks = settled.tracks;
+  if (settled.demoted.length) result.demoted = settled.demoted;
 
   // 1. Clôture des périodes passées : en cours → Expirée, avec XP au prorata pour un compteur ≥ 50 %.
   const open = await store.listInstances(userId, { status: ['proposed', 'accepted'] });
-  const allTemplates = await store.listTemplates(userId);
   const customIds = new Set(allTemplates.filter((t) => t.source === 'custom').map((t) => t.id));
   const masteries = masteriesFor(character);
   const pathAbility = pathAbilityFor(character);
@@ -399,10 +512,6 @@ export async function ensureQuests(ctx: ServerContext, userId: string): Promise<
         const applied = applyXpParts(character, parts);
         character = mergeChar(character, applied.character);
         result.levelUps.push(...applied.levelsGained);
-      } else if (settings.hardcore && (inst.origin ?? 'draw') === 'draw') {
-        const penalty = hardcorePenalty(inst);
-        events.push(eventFor(ctx, { instanceId: inst.id, ability: inst.snapshot.ability, amount: -penalty, reason: 'hardcore' }, inst.periodEnd));
-        character = mergeChar(character, applyXp(character, inst.snapshot.ability, -penalty).character);
       }
     }
     await store.updateInstance(userId, inst.id, { status: 'expired', xpAwarded: xp });
@@ -410,24 +519,35 @@ export async function ensureQuests(ctx: ServerContext, userId: string): Promise<
   }
   if (events.length) await store.insertXpEvents(userId, events);
 
-  // 2. Tirage des périodes en cours.
+  // 2. Quête du jour de chaque parcours actif (absente → créée), avant le tirage.
   const templates = allTemplates;
   const [prefs, history] = await Promise.all([
     store.getPreferences(userId),
     store.listInstances(userId, { from: addDays(today, -400) }),
   ]);
   const scores = abilityScores(character);
+  const toInsert: QuestInstance[] = [];
+  const dayBounds = periodBounds('daily', today);
+  for (const t of tracks) {
+    if (t.status !== 'active') continue;
+    const shape = shapes.get(t.trackId);
+    if (!shape) continue;
+    if (history.some((i) => i.trackId === t.trackId && i.period === 'daily' && i.periodStart === dayBounds.start)) continue;
+    const rung = effectiveRung(shape, t, scores);
+    const tpl = templates.find((x) => x.id === rungTemplateId(t.trackId, rung));
+    if (!tpl) continue;
+    // Pas de réglage « trop dur / trop facile » sur un échelon : la progression d'échelon le remplace.
+    toInsert.push(newInstance(ctx.uuid(), tpl, 'daily', dayBounds.start, dayBounds.end, 'proposed', nowIso, false, 0, { origin: 'track', trackId: t.trackId, rung }));
+  }
+
+  // 3. « Pour aller plus loin » (quotidien) et quêtes hebdomadaires, mensuelles, épiques : tout est proposé, rien n'est accepté d'office.
   const u = unlocksAt(character.level);
   const periods: Period[] = ['daily', 'weekly', 'monthly'];
   if (u.epic) periods.push('epic');
-  const toInsert: QuestInstance[] = [];
-
   for (const period of periods) {
     const b = periodBounds(period, today);
-    // Les quêtes choisies ou refaites ne comptent pas comme un tirage : la période est tirée quand même.
+    // Les quêtes choisies, refaites ou de parcours ne comptent pas comme un tirage : la période est tirée quand même.
     if (history.some((i) => i.period === period && i.periodStart === b.start && (i.origin ?? 'draw') === 'draw')) continue;
-    const count = questCountFor(period, character.level, period === 'daily' ? settings.dailyQuestCount : undefined);
-    if (count <= 0) continue;
     const already = history.filter((i) => i.period === period && i.periodStart === b.start).map((i) => i.templateId);
     const base = {
       characterId: character.id,
@@ -435,34 +555,46 @@ export async function ensureQuests(ctx: ServerContext, userId: string): Promise<
       periodStart: b.start,
       level: character.level,
       scores,
-      masteries,
       templates,
       preferences: prefs,
-      interests: settings.interests,
       lastDrawn: lastDrawnMap(history, period),
     };
-    const main = drawQuests({ ...base, count, exclude: already });
-    for (const t of main.picks) {
-      const pinned = !!prefs[t.id]?.isPinned;
-      const status = period === 'daily' || pinned ? 'accepted' : 'proposed';
-      toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, status, nowIso, false, prefs[t.id]?.tune));
-    }
     if (period === 'daily') {
-      const free = drawQuests({
+      // « Propositions par jour » : nombre de suggestions facultatives (0 = mode manuel, aucune).
+      const freeCount = Math.min(Math.max(Math.trunc(settings.dailyQuestCount) || 0, 0), MAX_FREE_QUESTS_PER_DAY);
+      if (freeCount === 0) continue;
+      // Les quêtes épinglées reviennent chaque jour, en proposition.
+      const pinned = templates.filter(
+        (t) =>
+          !t.trackId &&
+          t.isActive !== false &&
+          prefs[t.id]?.isPinned &&
+          !prefs[t.id]?.isExcluded &&
+          t.periods.includes('daily') &&
+          !already.includes(t.id) &&
+          tierUnlocked(t.difficulty, scores[t.ability], character.level),
+      );
+      for (const t of pinned) toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, 'proposed', nowIso, true, prefs[t.id]?.tune));
+      const more = drawQuests({
         ...base,
-        count: FREE_QUESTS_PER_DAY,
-        difficultyPlan: ['medium', 'high'] as Difficulty[],
-        exclude: [...already, ...main.picks.map((t) => t.id)],
+        count: freeCount,
+        difficultyPlan: Array.from({ length: freeCount }, (_, i): Difficulty => (i % 2 === 0 ? 'medium' : 'high')),
+        exclude: [...already, ...pinned.map((t) => t.id)],
         seedSuffix: 'free',
         skipPinned: true,
       });
-      for (const t of free.picks) toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, 'proposed', nowIso, true, prefs[t.id]?.tune));
+      for (const t of more.picks) toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, 'proposed', nowIso, true, prefs[t.id]?.tune));
+      continue;
     }
+    const count = questCountFor(period, character.level);
+    if (count <= 0) continue;
+    const main = drawQuests({ ...base, count, exclude: already });
+    for (const t of main.picks) toInsert.push(newInstance(ctx.uuid(), t, period, b.start, b.end, 'proposed', nowIso, false, prefs[t.id]?.tune));
   }
   if (toInsert.length) await store.insertInstances(userId, toInsert);
   result.created = toInsert;
 
-  // 3. La série peut avoir été cassée par les jours manqués.
+  // 4. La série peut avoir été cassée par les jours manqués.
   const streak = await streakInfo(store, userId, settings, today);
   character = { ...character, streakCurrent: streak.current, streakBest: Math.max(character.streakBest, streak.best) };
   await store.saveCharacter(userId, character);
@@ -491,11 +623,8 @@ export async function abandonQuest(ctx: ServerContext, userId: string, instanceI
   const inst = await ctx.store.getInstance(userId, instanceId);
   if (!inst) return fail('not-found');
   if (inst.status !== 'proposed' && inst.status !== 'accepted') return fail('not-accepted');
-  if (env.settings.hardcore && inst.status === 'accepted' && (inst.origin ?? 'draw') === 'draw') {
-    const penalty = hardcorePenalty(inst);
-    await ctx.store.insertXpEvents(userId, [eventFor(ctx, { instanceId, ability: inst.snapshot.ability, amount: -penalty, reason: 'hardcore' }, env.today)]);
-    await ctx.store.saveCharacter(userId, mergeChar(env.character, applyXp(env.character, inst.snapshot.ability, -penalty).character));
-  }
+  if (inst.origin === 'track') return fail('invalid', 'Mets le parcours en pause plutôt que d’abandonner sa quête.');
+  // Plus de pénalité Hardcore : abandonner une quête ne coûte pas d'XP.
   await ctx.store.updateInstance(userId, instanceId, { status: 'abandoned' });
   return { ok: true, instance: { ...inst, status: 'abandoned' } };
 }
@@ -559,7 +688,8 @@ async function startFromTemplate(env: Env, t: QuestTemplate, period: Period): Pr
 export async function startQuest(ctx: ServerContext, userId: string, input: { templateId: string; period: Period }): Promise<Result<{ instance: QuestInstance }>> {
   const env = await loadEnv(ctx, userId);
   if (!env) return fail('no-character');
-  const t = (await ctx.store.listTemplates(userId)).find((x) => x.id === input.templateId && x.isActive !== false);
+  // Les gabarits d'échelon n'existent que par leur parcours : jamais lançables par le chemin libre.
+  const t = (await loadTemplates(env, false)).find((x) => x.id === input.templateId && x.isActive !== false && !x.trackId);
   if (!t) return fail('not-found');
   return startFromTemplate(env, t, input.period);
 }
@@ -571,7 +701,8 @@ export async function redoQuest(ctx: ServerContext, userId: string, instanceId: 
   const inst = await ctx.store.getInstance(userId, instanceId);
   if (!inst) return fail('not-found');
   if (inst.status === 'proposed' || inst.status === 'accepted') return fail('already-active', 'Cette quête est déjà en cours.');
-  const t = (await ctx.store.listTemplates(userId)).find((x) => x.id === inst.templateId && x.isActive !== false);
+  if (inst.trackId) return fail('invalid', 'Une quête de parcours ne se refait pas : elle revient chaque jour.');
+  const t = (await loadTemplates(env, false)).find((x) => x.id === inst.templateId && x.isActive !== false && !x.trackId);
   if (!t) return fail('not-found', 'Cette quête n’existe plus dans le catalogue.');
   return startFromTemplate(env, t, inst.period);
 }
@@ -598,7 +729,7 @@ export async function rerollQuest(ctx: ServerContext, userId: string, instanceId
   }
   character.rerollsUsed += 1;
   const [templates, prefs, history, same] = await Promise.all([
-    ctx.store.listTemplates(userId),
+    loadTemplates(env, false),
     ctx.store.getPreferences(userId),
     ctx.store.listInstances(userId, { from: addDays(env.today, -400) }),
     ctx.store.listInstances(userId, { period: inst.period, from: inst.periodStart, to: inst.periodStart }),
@@ -610,10 +741,8 @@ export async function rerollQuest(ctx: ServerContext, userId: string, instanceId
     count: 1,
     level: character.level,
     scores: abilityScores(character),
-    masteries: masteriesFor(character),
     templates,
     preferences: prefs,
-    interests: env.settings.interests,
     lastDrawn: lastDrawnMap(history, inst.period),
     exclude: same.map((i) => i.templateId),
     difficultyPlan: [inst.snapshot.difficulty],
@@ -642,7 +771,9 @@ export async function tuneQuest(
   const inst = await ctx.store.getInstance(userId, instanceId);
   if (!inst) return fail('not-found');
   if (inst.status !== 'proposed' && inst.status !== 'accepted') return fail('not-accepted');
-  const template = (await ctx.store.listTemplates(userId)).find((t) => t.id === inst.templateId);
+  // La progression d'échelon remplace ce réglage : « trop dur » casserait le seuil de montée, « trop facile » n'a plus de sens.
+  if (inst.origin === 'track') return fail('invalid', 'L’exigence d’une quête de parcours suit ton échelon : elle ne se règle pas.');
+  const template = (await ctx.store.listTemplates(userId, { withRungs: false })).find((t) => t.id === inst.templateId);
   const base = template?.validation;
   if (!base || tunableTarget(base) === null) return fail('invalid', 'Cette quête ne peut pas être ajustée.');
   const next = nextTune(inst.snapshot.tune, base, direction);
@@ -679,7 +810,9 @@ export interface UnlockedAchievement {
 }
 
 export interface CompleteResponse {
+  /** XP réellement versée au total (somme des événements d'XP, après équilibrage des caractéristiques) */
   xpAwarded: number;
+  /** Détail du calcul de base : `breakdown.total` est le montant AVANT équilibrage (`xpAwarded` après) */
   breakdown: { base: number; multiplier: number; mastery: number; affinity: number; doubled: boolean; repeat?: number; total: number };
   duplicate: boolean;
   character: CharacterRecord;
@@ -692,6 +825,14 @@ export interface CompleteResponse {
   inspirationOverflow: boolean;
   streak: number;
   postId?: string;
+  /** Quête de parcours : état du parcours après la validation (montée d'échelon incluse) */
+  track?: TrackState;
+  trackPromoted?: boolean;
+  /**
+   * Équilibrage des caractéristiques : une entrée par caractéristique dont l'XP a été modifiée
+   * (facteur 1,5 en rattrapage ; 0,75 ou 0,5 en spécialisation). Absent quand aucune part n'est touchée.
+   */
+  balance?: { ability: AbilityId; factor: number; base: number; awarded: number }[];
 }
 
 export async function completeQuestAction(ctx: ServerContext, userId: string, req: CompleteRequest): Promise<Result<{ data: CompleteResponse }>> {
@@ -736,8 +877,20 @@ export async function completeQuestAction(ctx: ServerContext, userId: string, re
   if (!isDateInRange(completedDay, inst.periodStart, inst.periodEnd)) {
     return fail('out-of-period', 'Cette quête n’est plus valable à cette date.');
   }
-  const statusOk = inst.status === 'accepted' || (offline && inst.status === 'expired');
+  // La quête du jour d'un parcours peut être validée sans passer par « Accepter ».
+  const statusOk = inst.status === 'accepted' || (inst.status === 'proposed' && inst.origin === 'track') || (offline && inst.status === 'expired');
   if (!statusOk) return fail('not-accepted');
+
+  // Parcours : état avant validation. Un jour déjà réglé par `settleTracks` (compté manqué, descente éventuelle) ne se rattrape pas
+  // hors ligne, sinon il serait compté deux fois. Le jour de démarrage n'est jamais évalué : il reste validable.
+  const trackBefore = inst.trackId ? (await store.listTracks(userId)).find((t) => t.trackId === inst.trackId) : undefined;
+  if (offline && inst.status === 'expired' && trackBefore?.status === 'active' && trackBefore.lastCheckedDate && inst.periodStart <= trackBefore.lastCheckedDate) {
+    const startMs = Date.parse(trackBefore.startedAt);
+    const startDay = Number.isNaN(startMs) ? null : gameDate(startMs, env.settings.timezone, env.settings.resetHour);
+    if (inst.periodStart !== startDay) {
+      return fail('too-late', 'Ce jour est déjà réglé pour ce parcours : cette validation hors ligne ne peut plus être enregistrée.');
+    }
+  }
 
   // XP dégressive quand la même quête a déjà été accomplie dans la période.
   const siblings = await store.listInstances(userId, { period: inst.period, from: inst.periodStart, to: inst.periodStart });
@@ -761,23 +914,44 @@ export async function completeQuestAction(ctx: ServerContext, userId: string, re
   const levelUps = [...res.levelsGained];
   const abilityUps = [...res.abilityUps];
   let character = mergeChar(env.character, res.character);
-  const custom = (await store.listTemplates(userId)).some((t) => t.id === inst.templateId && t.source === 'custom');
-  const events: XpEvent[] = splitXp(res.xpAwarded, inst.snapshot.ability, inst.snapshot.secondary).map((p) =>
+  // Une seule lecture des gabarits pour toute la validation (échelon max, XP, trophées) ; ceux d'échelon seulement pour un parcours.
+  const templates = await loadTemplates(env, !!inst.trackId);
+  const custom = templates.some((t) => t.id === inst.templateId && t.source === 'custom');
+  // Les événements enregistrent les montants réellement versés (après équilibrage) : l'annulation les rejoue tels quels.
+  const events: XpEvent[] = res.parts.map((p) =>
     eventFor(ctx, { instanceId: inst.id, ability: p.ability, amount: p.amount, reason: 'quest', custom }, completedDay),
   );
 
+  // Parcours : un jour validé de plus, voire une montée d'échelon. Le jour retenu est celui de la quête (bornée à sa période).
+  let trackUpdate: { state: TrackState; promoted: boolean } | undefined;
+  let snapshot = inst.snapshot;
+  if (trackBefore) {
+    const maxRung = trackShapes(templates).get(inst.trackId!)?.rungs.length ?? TRACK_RUNGS;
+    const after = advanceOnCompletion(trackBefore, inst.periodStart, maxRung);
+    trackUpdate = { state: after, promoted: after.rung > trackBefore.rung };
+    // On mémorise l'état d'avant seulement si la validation a réellement fait avancer le parcours (garde-fou de l'annulation).
+    if (after !== trackBefore) {
+      const { rung, hits, bestRung, lastDoneDate } = trackBefore;
+      snapshot = { ...inst.snapshot, trackBefore: { rung, hits, bestRung, lastDoneDate } };
+    }
+  }
+
   await store.updateInstance(userId, inst.id, {
     status: 'completed',
+    ...(snapshot !== inst.snapshot ? { snapshot } : {}),
     progress: req.progress ?? inst.progress,
     stepsDone: req.stepsDone ?? inst.stepsDone,
     xpAwarded: res.xpAwarded,
     inspirationUsed: res.inspirationSpent,
     completedAt: completedAtIso,
+    ...(inst.acceptedAt ? {} : { acceptedAt: completedAtIso }),
   });
   if (req.journalText?.trim()) {
     await store.saveJournal(userId, { id: ctx.uuid(), instanceId: inst.id, text: req.journalText.trim(), createdAt: completedAtIso });
   }
   await store.insertXpEvents(userId, events);
+
+  if (trackBefore && trackUpdate && trackUpdate.state !== trackBefore) await store.saveTrack(userId, trackUpdate.state);
 
   // Série et Inspiration (quêtes journalières).
   const prevStreak = character.streakCurrent;
@@ -798,7 +972,7 @@ export async function completeQuestAction(ctx: ServerContext, userId: string, re
   const unlockedNow: UnlockedAchievement[] = [];
   const already = new Set((await store.listUnlocked(userId)).map((u) => u.achievementId));
   for (let pass = 0; pass < 3; pass++) {
-    const stats = await computePlayerStats(store, userId, character, env.settings);
+    const stats = await computePlayerStats(store, userId, character, env.settings, templates);
     const fresh = newlyUnlocked(ACHIEVEMENTS, stats, already);
     if (!fresh.length) break;
     const bonusEvents: XpEvent[] = [];
@@ -862,6 +1036,8 @@ export async function completeQuestAction(ctx: ServerContext, userId: string, re
       inspirationOverflow,
       streak: streak.current,
       postId,
+      ...(res.balance.length ? { balance: res.balance } : {}),
+      ...(trackUpdate ? { track: trackUpdate.state, trackPromoted: trackUpdate.promoted } : {}),
     },
   };
 }
@@ -873,15 +1049,44 @@ export async function undoQuest(ctx: ServerContext, userId: string, instanceId: 
   const inst = await ctx.store.getInstance(userId, instanceId);
   if (!inst) return fail('not-found');
   if (inst.status !== 'completed' || !canUndo(inst.completedAt, env.nowMs)) return fail('cannot-undo', 'Cette quête ne peut plus être annulée (24 h maximum).');
+  // L'équilibrage rend les parts non déductibles de `xpAwarded` : on retire exactement ce que les événements de
+  // cette quête ont versé (validations moins annulations déjà passées, trophées exclus).
+  const paid = emptyAbilityRecord(0);
+  let hasEvents = false;
+  for (const e of await ctx.store.listXpEvents(userId)) {
+    if (e.instanceId !== instanceId || (e.reason !== 'quest' && e.reason !== 'undo')) continue;
+    paid[e.ability] += e.amount;
+    hasEvents = true;
+  }
+  const undoParts: XpPart[] = hasEvents
+    ? ABILITIES.filter((a) => paid[a] !== 0).map((a) => ({ ability: a, amount: paid[a] }))
+    : splitXp(inst.xpAwarded, inst.snapshot.ability, inst.snapshot.secondary);
   await ctx.store.insertXpEvents(
     userId,
-    splitXp(inst.xpAwarded, inst.snapshot.ability, inst.snapshot.secondary).map((p) =>
-      eventFor(ctx, { instanceId, ability: p.ability, amount: -p.amount, reason: 'undo' }, env.today),
-    ),
+    undoParts.map((p) => eventFor(ctx, { instanceId, ability: p.ability, amount: -p.amount, reason: 'undo' }, env.today)),
   );
-  const patch = { status: 'accepted' as const, xpAwarded: 0, inspirationUsed: false, completedAt: null };
+  // Le snapshot garde la trace de ce que la validation a compté dans le parcours : on la retire avec la validation.
+  const { trackBefore: counted, ...plainSnapshot } = inst.snapshot;
+  const patch = { status: 'accepted' as const, xpAwarded: 0, inspirationUsed: false, completedAt: null, ...(counted ? { snapshot: plainSnapshot } : {}) };
   await ctx.store.updateInstance(userId, instanceId, patch);
   await ctx.store.detachPostsFromInstance(userId, instanceId);
+  if (inst.trackId && counted) {
+    // Seule une validation qui a réellement fait avancer le parcours se défait (pas celle d'un parcours en pause ou sans état).
+    const track = (await ctx.store.listTracks(userId)).find((t) => t.trackId === inst.trackId);
+    if (track) {
+      const maxRung = trackShapes(await loadTemplates(env)).get(inst.trackId)?.rungs.length ?? TRACK_RUNGS;
+      const expected = advanceOnCompletion({ ...track, ...counted, status: 'active' }, inst.periodStart, maxRung);
+      const untouched = track.rung === expected.rung && track.hits === expected.hits && track.bestRung === expected.bestRung && track.lastDoneDate === expected.lastDoneDate;
+      if (untouched) {
+        // Le parcours n'a pas bougé depuis : retour exact à l'état d'avant (y compris au dernier échelon où `hits` plafonne).
+        await ctx.store.saveTrack(userId, { ...track, ...counted });
+      } else {
+        const others = await ctx.store.listInstances(userId, { period: 'daily', status: 'completed', from: addDays(env.today, -60) });
+        const previous = others.filter((q) => q.trackId === inst.trackId && q.id !== inst.id).map((q) => q.periodStart).sort().pop() ?? null;
+        await ctx.store.saveTrack(userId, revertCompletion(track, inst.periodStart, previous));
+      }
+    }
+  }
   let character = env.character;
   if (inst.inspirationUsed) {
     character = { ...character, inspiration: Math.min(character.inspiration + 1, MAX_INSPIRATION) };
@@ -889,6 +1094,87 @@ export async function undoQuest(ctx: ServerContext, userId: string, instanceId: 
   }
   const recomputed = (await recomputeCharacter(ctx, userId)) ?? character;
   return { ok: true, character: recomputed, instance: { ...inst, ...patch } };
+}
+
+// ───────────────────────── Parcours de discipline ─────────────────────────
+
+/**
+ * Active un parcours (échelon 1). Les parcours existants sont déduits des gabarits d'échelon (`{trackId}-r{NN}`) du store.
+ * Erreurs : no-character, not-found (parcours inconnu), already-active (état déjà présent, y compris en pause :
+ * utiliser `setTrackPaused`), too-many-open (déjà `MAX_ACTIVE_TRACKS` parcours actifs).
+ * Le jour du démarrage n'est jamais compté comme manqué ; la quête du jour est créée tout de suite.
+ */
+export async function startTrack(ctx: ServerContext, userId: string, input: { trackId: string }): Promise<Result<{ track: TrackState }>> {
+  const env = await loadEnv(ctx, userId);
+  if (!env) return fail('no-character');
+  const shapes = trackShapes(await loadTemplates(env));
+  if (!shapes.has(input.trackId)) return fail('not-found', 'Parcours inconnu.');
+  const refusal = (tracks: readonly TrackState[]) =>
+    tracks.some((t) => t.trackId === input.trackId)
+      ? fail('already-active', 'Ce parcours est déjà suivi.')
+      : countActiveTracks(tracks, shapes) >= MAX_ACTIVE_TRACKS
+        ? fail('too-many-open', `Tu peux suivre ${MAX_ACTIVE_TRACKS} parcours à la fois : mets-en un en pause ou arrête-en un.`)
+        : null;
+  const first = refusal(await ctx.store.listTracks(userId));
+  if (first) return first;
+  const track: TrackState = {
+    trackId: input.trackId,
+    status: 'active',
+    rung: 1,
+    hits: 0,
+    lastDoneDate: null,
+    lastCheckedDate: env.today,
+    bestRung: 1,
+    startedAt: new Date(env.nowMs).toISOString(),
+  };
+  // Pas de contrainte en base : on relit l'état juste avant d'écrire pour ne pas dépasser la limite sur deux appels concurrents.
+  const again = refusal(await ctx.store.listTracks(userId));
+  if (again) return again;
+  await ctx.store.saveTrack(userId, track);
+  await ensureQuestsFor(env);
+  return { ok: true, track };
+}
+
+/**
+ * Met un parcours en pause (échelon gelé, aucun jour manqué) ou le reprend (le suivi des jours repart d'aujourd'hui).
+ * Reprendre demande une place parmi les `MAX_ACTIVE_TRACKS` parcours actifs (sinon too-many-open).
+ */
+export async function setTrackPaused(ctx: ServerContext, userId: string, input: { trackId: string; paused: boolean }): Promise<Result<{ track: TrackState }>> {
+  const env = await loadEnv(ctx, userId);
+  if (!env) return fail('no-character');
+  const tracks = await ctx.store.listTracks(userId);
+  const current = tracks.find((t) => t.trackId === input.trackId);
+  if (!current) return fail('not-found', 'Parcours inconnu.');
+  if (input.paused === (current.status === 'paused')) return { ok: true, track: current };
+  const resumeRefused = async (list: readonly TrackState[]) => {
+    if (input.paused) return null;
+    return countActiveTracks(list, trackShapes(await loadTemplates(env))) >= MAX_ACTIVE_TRACKS
+      ? fail('too-many-open', `Tu peux suivre ${MAX_ACTIVE_TRACKS} parcours à la fois : mets-en un en pause ou arrête-en un.`)
+      : null;
+  };
+  const first = await resumeRefused(tracks);
+  if (first) return first;
+  // Pas de contrainte en base : on relit l'état juste avant d'écrire.
+  const fresh = input.paused ? tracks : await ctx.store.listTracks(userId);
+  const again = await resumeRefused(fresh);
+  if (again) return again;
+  const track: TrackState = input.paused ? { ...current, status: 'paused' } : { ...current, status: 'active', lastCheckedDate: env.today };
+  await ctx.store.saveTrack(userId, track);
+  if (!input.paused) await ensureQuestsFor(env);
+  return { ok: true, track };
+}
+
+/** Arrête un parcours : l'état est supprimé, les quêtes passées restent. */
+export async function stopTrack(ctx: ServerContext, userId: string, input: { trackId: string }): Promise<Result<{ trackId: string }>> {
+  const env = await loadEnv(ctx, userId);
+  if (!env) return fail('no-character');
+  if (!(await ctx.store.listTracks(userId)).some((t) => t.trackId === input.trackId)) return fail('not-found', 'Parcours inconnu.');
+  await ctx.store.deleteTrack(userId, input.trackId);
+  // La quête du jour encore « proposée » n'a plus de parcours : on la retire (une quête validée ou entamée reste), pour qu'un
+  // redémarrage le même jour recrée la bonne quête de l'échelon 1.
+  const stale = await ctx.store.listInstances(userId, { period: 'daily', status: 'proposed', from: env.today, to: env.today });
+  for (const q of stale) if (q.origin === 'track' && q.trackId === input.trackId) await ctx.store.deleteInstance(userId, q.id);
+  return { ok: true, trackId: input.trackId };
 }
 
 // ───────────────────────── Choix de personnage ─────────────────────────

@@ -8,6 +8,7 @@ import {
   ABILITY_TAGLINE,
   BALANCED_SCORES,
   CLASSES,
+  MAX_ACTIVE_TRACKS,
   MIN_SCORE,
   POINT_BUY_BUDGET,
   POINT_BUY_COST,
@@ -26,10 +27,10 @@ import { AuthService } from '../../core/auth.service';
 import { BackendService } from '../../core/backend.service';
 import { GameService } from '../../core/game.service';
 import { IconComponent } from '../../shared/icon.component';
-import { InterestsPickerComponent } from '../../shared/interests-picker.component';
+import { TracksPickerComponent } from '../../shared/tracks-picker.component';
 import { AbilityBadgeComponent, BarComponent, PORTRAIT_IDS, PortraitComponent, RadarComponent } from '../../shared/ui';
 
-const STEPS = ['Accueil', 'Le principe', 'Le nom', 'La classe', 'Le pseudo', 'Les caractéristiques', 'L’apparence', 'Tes centres d’intérêt', 'L’engagement'] as const;
+const STEPS = ['Accueil', 'Le principe', 'Le nom', 'La classe', 'Le pseudo', 'Les caractéristiques', 'L’apparence', 'Tes parcours', 'L’engagement'] as const;
 const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a', '#5f9e6e', '#a8c0b0'];
 const DRAFT_KEY = 'lu-onboarding-draft';
 
@@ -44,7 +45,8 @@ interface Draft {
   motto: string;
   oath: string;
   answers: Record<string, number>;
-  interests?: string[];
+  /** Parcours choisis (identifiants), démarrés juste après la création du personnage */
+  tracks?: string[];
 }
 
 function loadDraft(): Draft | null {
@@ -57,7 +59,7 @@ function loadDraft(): Draft | null {
 
 @Component({
   selector: 'app-onboarding',
-  imports: [IonContent, IconComponent, InterestsPickerComponent, AbilityBadgeComponent, BarComponent, PortraitComponent, RadarComponent],
+  imports: [IonContent, IconComponent, TracksPickerComponent, AbilityBadgeComponent, BarComponent, PortraitComponent, RadarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content [fullscreen]="true">
@@ -222,10 +224,10 @@ function loadDraft(): Draft | null {
           }
           @case (7) {
             <section class="step fade-in">
-              <h1 class="lu-title s">Qu’est-ce qui t’intéresse ?</h1>
-              <p class="lead">Cuisine, code, dessin, langues… Choisis ce que tu aimerais pratiquer : tes quêtes seront tirées en priorité parmi ces disciplines. Tu pourras changer ça quand tu veux dans les réglages.</p>
-              <lu-interests-picker [(value)]="interests" />
-              <button type="button" class="lu-btn" (click)="next()">{{ interests().length ? 'Continuer' : 'Passer cette étape' }}</button>
+              <h1 class="lu-title s">Où veux-tu évoluer ?</h1>
+              <p class="lead">Choisis jusqu’à {{ maxTracks }} parcours : une activité à faire progresser par petits échelons (musculation, espagnol, dessin…). Chaque jour, tu reçois la quête de ton échelon. Tu pourras changer d’avis à tout moment, dans les réglages ou depuis l’écran Quêtes.</p>
+              <lu-tracks-picker mode="draft" [(selection)]="tracks" />
+              <button type="button" class="lu-btn" (click)="next()">{{ tracks().length ? 'Continuer' : 'Passer cette étape' }}</button>
             </section>
           }
           @case (8) {
@@ -354,7 +356,8 @@ export class OnboardingPage {
   readonly frameColor = signal(this.d?.frameColor ?? FRAMES[0]);
   readonly motto = signal(this.d?.motto ?? '');
   readonly oath = signal(this.d?.oath ?? '');
-  readonly interests = signal<string[]>(this.d?.interests ?? []);
+  readonly tracks = signal<string[]>(this.d?.tracks ?? []);
+  readonly maxTracks = MAX_ACTIVE_TRACKS;
   readonly busy = signal(false);
   readonly sealing = signal(false);
   readonly error = signal('');
@@ -369,7 +372,7 @@ export class OnboardingPage {
     effect(() => {
       const draft: Draft = {
         step: this.step(), name: this.name(), classId: this.classId(), username: this.username(), scores: this.scores(),
-        portraitId: this.portraitId(), frameColor: this.frameColor(), motto: this.motto(), oath: this.oath(), answers: this.answers(), interests: this.interests(),
+        portraitId: this.portraitId(), frameColor: this.frameColor(), motto: this.motto(), oath: this.oath(), answers: this.answers(), tracks: this.tracks(),
       };
       try {
         sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -473,7 +476,7 @@ export class OnboardingPage {
           frameColor: this.frameColor(),
           motto: this.motto().trim(),
           oath: this.oath().trim(),
-          interests: this.interests(),
+          interests: [],
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris',
         }),
         new Promise((res) => setTimeout(res, 1100)),
@@ -493,8 +496,15 @@ export class OnboardingPage {
       } catch {
         /* ignore */
       }
+      // Le personnage existe : on démarre les parcours choisis (la quête du jour est créée au chargement).
+      const failed: string[] = [];
+      for (const id of this.tracks().slice(0, MAX_ACTIVE_TRACKS)) {
+        const s = await this.be.game.trackStart(id).catch(() => null);
+        if (!s || !s.ok) failed.push(id);
+      }
       this.game.loaded.set(false);
       await this.game.load();
+      if (failed.length) this.game.toast('Certains parcours n’ont pas pu démarrer : tu peux les choisir depuis l’écran Quêtes.', 'info');
       await this.router.navigateByUrl('/tabs/tavern', { replaceUrl: true });
     } catch (e) {
       this.sealing.set(false);

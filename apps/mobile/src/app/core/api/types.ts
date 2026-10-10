@@ -14,6 +14,7 @@ import type {
   QuestTemplate,
   ReactionKind,
   SettingsRecord,
+  TrackState,
   Visibility,
   EnsureResult,
   AchievementProgress,
@@ -89,6 +90,10 @@ export interface GameApi {
   chooseImprovement(choice: ImprovementChoice): Promise<CommandResult<{ character: CharacterRecord }>>;
   declareRest(): Promise<CommandResult<{ day: string }>>;
   equipTitle(title: string | null): Promise<CommandResult<{ character: CharacterRecord }>>;
+  /** Parcours de discipline : démarrer, mettre en pause / reprendre, arrêter (voir docs/PARCOURS.md) */
+  trackStart(trackId: string): Promise<CommandResult<{ track: TrackState }>>;
+  trackPause(trackId: string, paused: boolean): Promise<CommandResult<{ track: TrackState }>>;
+  trackStop(trackId: string): Promise<CommandResult<{ trackId: string }>>;
   achievementProgress(): Promise<AchievementProgress[]>;
   resetAdventure(): Promise<void>;
 

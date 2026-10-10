@@ -11,6 +11,7 @@ import {
   daysLeft,
   emptyAbilityRecord,
   endOfIsoWeek,
+  MAX_ACTIVE_TRACKS,
   MAX_RUNS,
   gameDate,
   lastAcceptDate,
@@ -22,6 +23,7 @@ import {
   pendingPath,
   periodBounds,
   pickTavernMessage,
+  previewBalance,
   proficiencyBonus,
   questXp,
   tuneXpScale,
@@ -40,9 +42,12 @@ import {
   type QuestTemplate,
   type SettingsRecord,
   type TavernMessage,
+  type TrackDef,
+  type TrackState,
   type UnlockedAchievement,
 } from '@levelup/engine';
 import taverne from '@levelup/content/taverne.fr.json';
+import { TRACKS, suggestTracks, trackDef, trackLock, trackProgress, type TrackLock, type TrackProgress } from '../shared/tracks';
 import { BackendService } from './backend.service';
 import { offline, type PendingAction } from './offline';
 import type { CommandResult, CompleteRequest, CompleteResponse } from './api/types';
@@ -69,6 +74,7 @@ export interface CompleteOutcome {
 }
 
 const CACHE_KEY = 'snapshot-v1';
+const INTRO_KEY = 'lu-tracks-intro';
 
 @Injectable({ providedIn: 'root' })
 export class GameService {
@@ -84,6 +90,10 @@ export class GameService {
   readonly recent = signal<QuestInstance[]>([]);
   readonly unlocked = signal<{ achievementId: string; unlockedAt: string }[]>([]);
   readonly restDays = signal<string[]>([]);
+  /** Parcours de discipline du joueur (actifs et en pause) */
+  readonly tracks = signal<TrackState[]>([]);
+  /** Définitions des parcours (statiques) */
+  readonly trackDefs: readonly TrackDef[] = TRACKS;
   readonly loaded = signal(false);
   readonly loading = signal(false);
   readonly offline = signal(false);
@@ -127,11 +137,45 @@ export class GameService {
   of(period: Period): QuestInstance[] {
     return this.instances().filter((i) => i.period === period);
   }
-  readonly dailies = computed(() => this.instances().filter((i) => i.period === 'daily' && !i.free));
-  readonly freeDailies = computed(() => this.instances().filter((i) => i.period === 'daily' && i.free));
+  /**
+   * Quêtes du jour « de fond » : l'échelon de chaque parcours ACTIF (origin = 'track'), plus les quêtes imposées
+   * d'avant la mise à jour (ni libres ni de parcours). Les quêtes d'un parcours en pause ou arrêté ne comptent plus.
+   */
+  readonly dailies = computed(() => {
+    const active = new Set(this.activeTracks().map((t) => t.trackId));
+    return this.instances().filter((i) => i.period === 'daily' && (i.origin === 'track' ? !!i.trackId && active.has(i.trackId) : !i.free));
+  });
+  /** « Pour aller plus loin » et ajouts du joueur : facultatives, hors parcours. */
+  readonly freeDailies = computed(() => this.instances().filter((i) => i.period === 'daily' && i.free && i.origin !== 'track'));
   readonly dailyDone = computed(() => this.dailies().filter((i) => i.status === 'completed').length);
-  readonly dailyOpen = computed(() => this.dailies().filter((i) => i.status === 'accepted'));
+  /** Quêtes du jour pas encore faites (proposées ou en cours). */
+  readonly dailyOpen = computed(() => this.dailies().filter((i) => i.status === 'accepted' || i.status === 'proposed'));
   readonly dailyLeft = computed(() => this.dailyOpen().length);
+
+  // ───── parcours
+  readonly activeTracks = computed(() => this.tracks().filter((t) => t.status === 'active'));
+  readonly pausedTracks = computed(() => this.tracks().filter((t) => t.status === 'paused'));
+  readonly maxTracks = MAX_ACTIVE_TRACKS;
+  readonly canAddTrack = computed(() => this.activeTracks().length < MAX_ACTIVE_TRACKS);
+  /** Parcours proposés d'après les anciens centres d'intérêt (`settings.interests`), 3 au maximum. */
+  readonly trackSuggestions = computed(() => suggestTracks(this.settings()?.interests, MAX_ACTIVE_TRACKS));
+  /** Carte « Nouveau : les parcours » déjà vue ou écartée (mémorisée sur l'appareil ; masquée tant qu'on ne sait pas). */
+  private readonly introSeen = signal(true);
+  /** Joueur arrivé avant les parcours : des centres d'intérêt, ou des quêtes journalières d'un jour passé qui ne viennent pas d'un parcours. */
+  private readonly existingPlayer = computed(
+    () => !!this.settings()?.interests?.length || this.instances().some((i) => i.period === 'daily' && i.origin !== 'track' && i.periodStart < this.today()),
+  );
+  readonly showTracksIntro = computed(() => !!this.character() && this.loaded() && this.tracks().length === 0 && !this.introSeen() && this.existingPlayer());
+  /**
+   * Le jour compte pour la série, comme dans le moteur : une quête de parcours validée aujourd'hui (même si le parcours
+   * a été mis en pause depuis), ou, sans parcours actif, n'importe quelle quête du jour validée (ancienne règle).
+   * Un jour de repos déclaré protège aussi la série.
+   */
+  readonly dayKept = computed(() => {
+    const trackMode = this.activeTracks().length > 0;
+    const done = this.instances().some((i) => i.period === 'daily' && i.status === 'completed' && (!trackMode || i.origin === 'track'));
+    return done || this.restDays().includes(this.today());
+  });
 
   readonly tavernMessage = computed(() => {
     const c = this.character();
@@ -215,12 +259,13 @@ export class GameService {
         return;
       }
       await this.be.game.ensure().then((r) => this.handleEnsure(r)).catch(() => undefined);
-      const [settings, templates, prefs, unlocked, rest] = await Promise.all([
+      const [settings, templates, prefs, unlocked, rest, tracks] = await Promise.all([
         store.getSettings(uid),
-        store.listTemplates(uid),
+        this.loadCatalogue(uid),
         store.getPreferences(uid),
         store.listUnlocked(uid),
         store.listRestDays(uid),
+        this.loadTracks(uid),
       ]);
       this.settings.set(settings as SettingsRecord);
       const fresh = (await store.getCharacter(uid)) as CharacterRecord;
@@ -229,6 +274,8 @@ export class GameService {
       this.prefs.set(prefs);
       this.unlocked.set(unlocked);
       this.restDays.set(rest);
+      this.tracks.set(tracks);
+      this.introSeen.set(tracks.length > 0 || this.readIntroSeen(uid));
       const today = gameDate(Date.now(), settings.timezone, settings.resetHour);
       const [covering, recent] = await Promise.all([
         store.listInstances(uid, { covers: today }),
@@ -240,7 +287,7 @@ export class GameService {
       this.lastRefresh = Date.now();
       this.pendingCount.set((await offline.pending()).length);
       void offline.putCache(CACHE_KEY, {
-        character: this.character(), settings, templates, prefs, unlocked, rest, instances: covering, recent,
+        character: this.character(), settings, templates, prefs, unlocked, rest, tracks, instances: covering, recent,
       });
       if (!first) this.checkPending();
       else this.checkPending();
@@ -250,10 +297,11 @@ export class GameService {
       if (cached) {
         this.character.set(cached.character);
         this.settings.set(cached.settings);
-        this.templates.set(cached.templates);
+        this.templates.set((cached.templates as QuestTemplate[]).filter((t) => !t.trackId));
         this.prefs.set(cached.prefs);
         this.unlocked.set(cached.unlocked);
         this.restDays.set(cached.rest);
+        this.tracks.set(cached.tracks ?? []);
         this.instances.set(cached.instances);
         this.recent.set(cached.recent);
         this.offline.set(true);
@@ -265,8 +313,19 @@ export class GameService {
     }
   }
 
-  private handleEnsure(r: { levelUps: number[] }): void {
+  private handleEnsure(r: { levelUps: number[]; demoted?: { trackId: string; from: number; to: number }[] }): void {
     for (const l of r.levelUps ?? []) this.pushOverlay({ kind: 'level-up', level: l });
+    for (const d of r.demoted ?? []) {
+      this.toast(`Ton échelon en ${this.trackLabelOf(d.trackId)} a baissé : mets le parcours en pause quand tu ne peux pas pratiquer.`, 'info', 8000);
+    }
+  }
+
+  /**
+   * Catalogue libre du joueur. Les gabarits d'échelon des parcours (trackId renseigné, ~1 300 lignes) ne sont ni lus ni
+   * mis en cache : l'application embarque déjà TRACKS, et `buildRungTemplates(TRACKS)` les reconstruit au besoin.
+   */
+  private async loadCatalogue(uid: string): Promise<QuestTemplate[]> {
+    return (await this.be.game.store.listTemplates(uid, { withRungs: false })).filter((t) => !t.trackId);
   }
 
   /** Amélioration ou voie en attente → écran événementiel. */
@@ -285,6 +344,8 @@ export class GameService {
     this.recent.set([]);
     this.unlocked.set([]);
     this.restDays.set([]);
+    this.tracks.set([]);
+    this.introSeen.set(true);
     this.overlays.set([]);
     this.loaded.set(false);
     void offline.clear();
@@ -303,10 +364,10 @@ export class GameService {
     return this.instances().find((i) => i.id === id) ?? this.recent().find((i) => i.id === id);
   }
 
-  toast(text: string, tone: Toast['tone'] = 'info'): void {
+  toast(text: string, tone: Toast['tone'] = 'info', ms = 3800): void {
     const t = { id: ++this.toastId, text, tone };
     this.toasts.update((l) => [...l, t]);
-    setTimeout(() => this.toasts.update((l) => l.filter((x) => x.id !== t.id)), 3800);
+    setTimeout(() => this.toasts.update((l) => l.filter((x) => x.id !== t.id)), ms);
   }
 
   pushOverlay(o: Overlay): void {
@@ -330,6 +391,7 @@ export class GameService {
       case 'already-active': return 'Cette quête est déjà en cours.';
       case 'run-limit': return 'Tu as déjà refait cette quête autant de fois que possible sur cette période.';
       case 'too-many-open': return 'Trop de quêtes en cours : termine-en une avant d’en ajouter.';
+      case 'no-character': return 'Crée d’abord ton personnage.';
       case 'no-reroll': return 'Plus de relance gratuite aujourd’hui et aucune Inspiration.';
       case 'cannot-undo': return 'Cette quête ne peut plus être annulée (24 h maximum).';
       default: return 'Quelque chose s’est mal passé. Réessaie.';
@@ -374,6 +436,8 @@ export class GameService {
   /** « Refaire » est possible quand la quête est terminée, que sa période est ouverte et que le plafond de répétitions n'est pas atteint. */
   canRedo(inst: QuestInstance): boolean {
     if (inst.status === 'proposed' || inst.status === 'accepted') return false;
+    // Une quête de parcours ne se refait pas : elle revient chaque jour (le moteur la refuse).
+    if (inst.origin === 'track' || inst.trackId) return false;
     const today = this.today();
     const b = periodBounds(inst.period, today);
     if (today > lastAcceptDate(inst.period, b.start, b.end)) return false;
@@ -522,7 +586,15 @@ export class GameService {
     for (const a of d.achievements) this.pushOverlay({ kind: 'achievement', achievement: a });
     if (d.inspirationGained) this.toast('+1 Inspiration pour ta série de 7 jours !', 'success');
     if (d.inspirationOverflow) this.toast('Ton Inspiration déborde : tu en as déjà 3.', 'info');
+    if (d.track) this.upsertTrack(d.track);
+    if (d.trackPromoted && d.track) this.toast(`Échelon ${d.track.rung} atteint : ${this.trackLabelOf(d.track.trackId)}. Bien joué !`, 'success');
     void this.refreshLists();
+  }
+
+  /** Effet de l'équilibrage des caractéristiques annoncé avant la validation (« +50 % XP en rattrapage »), ou null. */
+  balanceLabel(inst: QuestInstance): string | null {
+    if (inst.status === 'completed' || !this.character()) return null;
+    return previewBalance(this.scores(), inst.snapshot.ability, inst.snapshot.secondary).label;
   }
 
   async undo(inst: QuestInstance): Promise<boolean> {
@@ -544,17 +616,19 @@ export class GameService {
     const store = this.be.game.store;
     try {
       const today = this.today();
-      const [covering, recent, unlocked, rest, character] = await Promise.all([
+      const [covering, recent, unlocked, rest, character, tracks] = await Promise.all([
         store.listInstances(uid, { covers: today }),
         store.listInstances(uid, { from: addDays(startOfMonth(today), -7) }),
         store.listUnlocked(uid),
         store.listRestDays(uid),
         store.getCharacter(uid),
+        this.loadTracks(uid),
       ]);
       this.instances.set(covering);
       this.recent.set(recent);
       this.unlocked.set(unlocked);
       this.restDays.set(rest);
+      this.tracks.set(tracks);
       if (character) this.character.set(character as CharacterRecord);
     } catch {
       /* hors ligne */
@@ -568,6 +642,133 @@ export class GameService {
     } catch {
       /* hors ligne */
     }
+  }
+
+  // ───────────────────────── Parcours de discipline ─────────────────────────
+
+  /** Un échec de lecture des parcours (réseau, migration pas encore appliquée) ne doit pas faire tomber tout le chargement. */
+  private async loadTracks(uid: string): Promise<TrackState[]> {
+    try {
+      return await this.be.game.store.listTracks(uid);
+    } catch {
+      return this.tracks();
+    }
+  }
+
+  async refreshTracks(): Promise<void> {
+    this.tracks.set(await this.loadTracks(this.be.game.userId()));
+  }
+
+  private trackError(e: string | undefined, m?: string): string {
+    switch (e) {
+      case 'not-found': return 'Ce parcours n’existe plus.';
+      case 'already-active': return 'Ce parcours est déjà commencé.';
+      case 'too-many-open': return `Tu peux suivre ${MAX_ACTIVE_TRACKS} parcours à la fois : mets-en un en pause ou arrête-en un.`;
+      default: return this.errorMessage(e, m);
+    }
+  }
+
+  // Présentation des parcours aux joueurs d'avant la refonte : un simple confort, mémorisé sur l'appareil (jamais bloquant).
+  private introKey(uid: string): string {
+    return `${INTRO_KEY}-${uid}`;
+  }
+  private readIntroSeen(uid: string): boolean {
+    try {
+      return localStorage.getItem(this.introKey(uid)) === '1';
+    } catch {
+      return false;
+    }
+  }
+  /** Écarte la carte « Nouveau : les parcours » (pour de bon sur cet appareil). */
+  dismissTracksIntro(): void {
+    this.introSeen.set(true);
+    try {
+      localStorage.setItem(this.introKey(this.be.game.userId()), '1');
+    } catch {
+      /* stockage indisponible : la carte pourra revenir, sans conséquence */
+    }
+  }
+
+  trackLabelOf(trackId: string): string {
+    return trackDef(trackId)?.label ?? 'Parcours';
+  }
+
+  trackState(trackId: string): TrackState | undefined {
+    return this.tracks().find((t) => t.trackId === trackId);
+  }
+
+  /** Quête du jour d'un parcours (l'échelon courant), faite ou non. */
+  trackQuestToday(trackId: string): QuestInstance | undefined {
+    const mine = this.instances().filter((i) => i.period === 'daily' && i.trackId === trackId && i.status !== 'abandoned');
+    return mine.find((i) => i.status === 'completed') ?? mine.find((i) => i.status !== 'expired') ?? mine[0];
+  }
+
+  /** Quête du jour de ce parcours abandonnée (avant que le moteur ne l'interdise) : elle ne sera pas remplacée aujourd'hui. */
+  trackQuestAbandoned(trackId: string): QuestInstance | undefined {
+    if (this.trackQuestToday(trackId)) return undefined;
+    return this.instances().find((i) => i.period === 'daily' && i.trackId === trackId && i.status === 'abandoned');
+  }
+
+  /** Échelon, jours validés vers l'échelon suivant. */
+  trackProgress(state: TrackState): TrackProgress | null {
+    const def = trackDef(state.trackId);
+    return def ? trackProgress(def, state) : null;
+  }
+
+  /** Verrou par score (« FOR 6 requis ») d'un parcours, d'après les scores actuels du personnage. */
+  trackLock(state: TrackState): TrackLock | null {
+    const def = trackDef(state.trackId);
+    return def ? trackLock(def, state, this.scores()) : null;
+  }
+
+  /** Après un changement de parcours : recharge les quêtes ; si la quête du jour manque encore, `ensure` la crée puis on recharge. */
+  private async afterTrackChange(): Promise<void> {
+    await this.refreshLists();
+    if (this.activeTracks().some((t) => !this.trackQuestToday(t.trackId))) {
+      await this.be.game.ensure().then((r) => this.handleEnsure(r)).catch(() => undefined);
+      await this.refreshLists();
+    }
+  }
+
+  private upsertTrack(t: TrackState): void {
+    this.tracks.update((l) => (l.some((x) => x.trackId === t.trackId) ? l.map((x) => (x.trackId === t.trackId ? t : x)) : [...l, t]));
+  }
+
+  async startTrack(trackId: string): Promise<boolean> {
+    const r = await this.be.game.trackStart(trackId);
+    if (r.ok) {
+      this.upsertTrack(r.track);
+      this.dismissTracksIntro();
+      this.toast(`Parcours commencé : ${this.trackLabelOf(trackId)}. Ta quête du jour t’attend.`, 'success');
+      await this.afterTrackChange();
+      return true;
+    }
+    this.toast(this.trackError(r.error, r.message), 'error');
+    return false;
+  }
+
+  async pauseTrack(trackId: string, paused: boolean): Promise<boolean> {
+    const r = await this.be.game.trackPause(trackId, paused);
+    if (r.ok) {
+      this.upsertTrack(r.track);
+      this.toast(paused ? 'Parcours en pause : ton échelon est gardé, sans pénalité.' : `Parcours repris : ${this.trackLabelOf(trackId)}.`, 'success');
+      await this.afterTrackChange();
+      return true;
+    }
+    this.toast(this.trackError(r.error, r.message), 'error');
+    return false;
+  }
+
+  async stopTrack(trackId: string): Promise<boolean> {
+    const r = await this.be.game.trackStop(trackId);
+    if (r.ok) {
+      this.tracks.update((l) => l.filter((x) => x.trackId !== trackId));
+      this.toast(`Parcours arrêté : ${this.trackLabelOf(trackId)}. Tes quêtes passées restent dans ta chronique.`, 'info');
+      await this.afterTrackChange();
+      return true;
+    }
+    this.toast(this.trackError(r.error, r.message), 'error');
+    return false;
   }
 
   // ───────────────────────── Choix de personnage ─────────────────────────

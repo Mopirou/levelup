@@ -1,4 +1,4 @@
-import { QuestInstance, QuestPreference, QuestTemplate } from '../types';
+import { QuestInstance, QuestPreference, QuestTemplate, TrackState } from '../types';
 import {
   CharacterRecord,
   GameStore,
@@ -28,6 +28,8 @@ export interface UserData {
   unlocked: { achievementId: string; unlockedAt: string }[];
   restDays: string[];
   journal: JournalEntry[];
+  /** Parcours de discipline (absent des anciens instantanés) */
+  tracks?: TrackState[];
 }
 
 export interface MemorySnapshot {
@@ -45,6 +47,7 @@ export const emptyUserData = (): UserData => ({
   unlocked: [],
   restDays: [],
   journal: [],
+  tracks: [],
 });
 
 const asArray = <T>(v: T | T[] | undefined): T[] | undefined => (v === undefined ? undefined : Array.isArray(v) ? v : [v]);
@@ -65,6 +68,7 @@ export class MemoryStore implements GameStore {
       d = emptyUserData();
       this.users.set(userId, d);
     }
+    d.tracks ??= [];
     return d;
   }
 
@@ -95,8 +99,9 @@ export class MemoryStore implements GameStore {
     this.data(userId).settings = structuredClone(s);
     this.touch();
   }
-  async listTemplates(userId: string) {
-    return [...this.catalog, ...this.data(userId).customTemplates];
+  async listTemplates(userId: string, opts: { withRungs?: boolean } = {}) {
+    const all = [...this.catalog, ...this.data(userId).customTemplates];
+    return opts.withRungs === false ? all.filter((t) => !t.trackId) : all;
   }
   async getPreferences(userId: string) {
     return structuredClone(this.data(userId).preferences);
@@ -180,6 +185,22 @@ export class MemoryStore implements GameStore {
   }
   async listJournal(userId: string) {
     return structuredClone(this.data(userId).journal);
+  }
+
+  async listTracks(userId: string) {
+    return structuredClone(this.data(userId).tracks!);
+  }
+  async saveTrack(userId: string, t: TrackState) {
+    const list = this.data(userId).tracks!;
+    const i = list.findIndex((x) => x.trackId === t.trackId);
+    if (i >= 0) list[i] = structuredClone(t);
+    else list.push(structuredClone(t));
+    this.touch();
+  }
+  async deleteTrack(userId: string, trackId: string) {
+    const d = this.data(userId);
+    d.tracks = d.tracks!.filter((t) => t.trackId !== trackId);
+    this.touch();
   }
 
   async createPost(userId: string, draft: PostDraft) {

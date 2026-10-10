@@ -66,6 +66,9 @@ beforeAll(async () => {
   await db.exec(read('migrations/20261009000001_quest_themes.sql'));
   await db.exec(read('migrations/20261009000002_interests_and_tuning.sql'));
   await db.exec(read('migrations/20261009000003_rescale_base_scores.sql'));
+  await db.exec(read('migrations/20261010000001_quest_runs.sql'));
+  await db.exec(read('migrations/20261011000001_tracks.sql'));
+  await db.exec(read('migrations/20261011000002_free_quest_default.sql'));
   await db.exec(read('seed.sql'));
   await mkUser(ids.alice, 'alice');
   await mkUser(ids.bob, 'bob');
@@ -78,9 +81,10 @@ afterAll(async () => {
 });
 
 describe('schéma et contenu', () => {
-  it('contient 740 quêtes, 98 trophées et la liste de mots interdits', async () => {
-    expect((await admin(`select count(*)::int n from quest_templates where source = 'catalog'`))[0].n).toBe(740);
-    expect((await admin(`select count(*)::int n from quest_templates where theme is not null and jsonb_array_length(secondary) > 0`))[0].n).toBe(500);
+  it('contient 764 quêtes (hors échelons), 98 trophées et la liste de mots interdits', async () => {
+    // les gabarits d'échelon des parcours (track_id renseigné) s'ajoutent aux 764 quêtes du catalogue libre
+    expect((await admin(`select count(*)::int n from quest_templates where source = 'catalog' and track_id is null`))[0].n).toBe(764);
+    expect((await admin(`select count(*)::int n from quest_templates where track_id is null and theme is not null and jsonb_array_length(secondary) > 0`))[0].n).toBe(524);
     expect((await admin(`select count(*)::int n from achievements`))[0].n).toBe(98);
     expect((await admin(`select count(*)::int n from banned_words`))[0].n).toBeGreaterThan(10);
   });
@@ -147,7 +151,7 @@ describe('RLS : un non-ami ne lit rien (critère d’acceptation)', () => {
       values ('custom-a', 'custom', $1, 'FOR', 'easy', '{daily}', 'Ma quête', 'Faire un truc simple', '{"type":"simple"}')`, [ids.alice]);
     expect((await as(ids.bob, `select id from quest_templates where id = 'custom-a'`)).length).toBe(0);
     expect((await as(ids.alice, `select id from quest_templates where id = 'custom-a'`)).length).toBe(1);
-    expect((await as(ids.bob, `select count(*)::int n from quest_templates where source = 'catalog'`))[0].n).toBe(740);
+    expect((await as(ids.bob, `select count(*)::int n from quest_templates where source = 'catalog' and track_id is null`))[0].n).toBe(764);
     await expect(as(ids.bob, `insert into quest_templates (id, source, owner_id, ability, difficulty, periods, title, objective, validation)
       values ('custom-evil', 'custom', $1, 'FOR', 'easy', '{daily}', 'x', 'y', '{"type":"simple"}')`, [ids.alice])).rejects.toThrow();
   });
@@ -413,5 +417,166 @@ describe('migration des scores de départ (échelle 8-15 → 2-5)', () => {
     await db.exec(read('migrations/20261009000003_rescale_base_scores.sql'));
     expect(await scoresOf(legacy)).toEqual({ FOR: 3, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 });
     expect(await scoresOf(ids.alice)).toEqual({ FOR: 4, DEX: 2, CON: 4, INT: 2, SAG: 2, CHA: 2 });
+  });
+});
+
+describe('parcours de discipline (tracks)', () => {
+  const trackId = 'testeur-parcours-fictif';
+  const tplId = `${trackId}-r01`;
+  const insertTemplate = (id: string, track: string | null, rung: number | null, source = 'catalog') =>
+    admin(
+      `insert into quest_templates (id, source, ability, difficulty, periods, title, objective, validation, track_id, rung)
+       values ($1, $4, 'FOR', 'easy', '{daily}', 'Pompes', 'Faire des pompes', '{"type":"simple"}', $2, $3)`,
+      [id, track, rung, source],
+    );
+  const insertInstance = (day: string, origin: string, track: string | null, rung: number | null) =>
+    admin(
+      `insert into quest_instances (profile_id, template_id, snapshot, period, period_start, period_end, status, origin, track_id, rung)
+       values ($1, $2, '{"title":"Pompes"}', 'daily', $3, $3, 'proposed', $4, $5, $6)`,
+      [ids.alice, tplId, day, origin, track, rung],
+    );
+
+  it('crée la table avec les colonnes prévues et la RLS activée', async () => {
+    const cols = await admin(`select column_name, is_nullable from information_schema.columns
+      where table_schema = 'public' and table_name = 'tracks' order by ordinal_position`);
+    expect(cols.map((c) => c.column_name)).toEqual(['profile_id', 'track_id', 'status', 'rung', 'hits', 'last_done_date', 'last_checked_date', 'best_rung', 'started_at']);
+    expect(cols.filter((c) => c.is_nullable === 'YES').map((c) => c.column_name)).toEqual(['last_done_date', 'last_checked_date']);
+    expect((await admin(`select relrowsecurity r from pg_class where oid = 'public.tracks'::regclass`))[0].r).toBe(true);
+  });
+
+  it('applique les valeurs par défaut et les contraintes', async () => {
+    await admin(`insert into tracks (profile_id, track_id) values ($1, $2)`, [ids.alice, trackId]);
+    const [t] = await admin(`select status, rung, hits, best_rung, started_at is not null s from tracks where profile_id = $1`, [ids.alice]);
+    expect(t).toEqual({ status: 'active', rung: 1, hits: 0, best_rung: 1, s: true });
+    await expect(admin(`insert into tracks (profile_id, track_id) values ($1, $2)`, [ids.alice, trackId])).rejects.toThrow(); // clé (profil, parcours)
+    await expect(admin(`insert into tracks (profile_id, track_id, status) values ($1, 'x', 'stopped')`, [ids.alice])).rejects.toThrow();
+    await expect(admin(`insert into tracks (profile_id, track_id, rung) values ($1, 'x', 0)`, [ids.alice])).rejects.toThrow();
+    await expect(admin(`insert into tracks (profile_id, track_id, hits) values ($1, 'x', -1)`, [ids.alice])).rejects.toThrow();
+    await expect(admin(`insert into tracks (profile_id, track_id, best_rung) values ($1, 'x', 0)`, [ids.alice])).rejects.toThrow();
+    await expect(admin(`insert into tracks (profile_id, track_id) values ('00000000-0000-0000-0000-0000000000ff', 'x')`)).rejects.toThrow(); // profil inconnu
+  });
+
+  it('seul le propriétaire lit ses parcours (même pas un ami, même pas un anonyme)', async () => {
+    await admin(`insert into tracks (profile_id, track_id, status, rung) values ($1, 'danse-salsa', 'paused', 4)`, [ids.bob]);
+    expect((await as(ids.alice, `select track_id from tracks order by track_id`)).map((r) => r.track_id)).toEqual([trackId]);
+    expect(await as(ids.bob, `select track_id, rung from tracks`)).toEqual([{ track_id: 'danse-salsa', rung: 4 }]);
+    // alice et bob sont amis à ce stade : leurs parcours restent privés
+    expect((await admin(`select public.is_friend($1, $2) f`, [ids.alice, ids.bob]))[0].f).toBe(true);
+    expect(await as(ids.bob, `select * from tracks where profile_id = $1`, [ids.alice])).toEqual([]);
+    expect(await as(ids.cleo, `select * from tracks`)).toEqual([]);
+    expect(await as(null, `select * from tracks`)).toEqual([]);
+  });
+
+  it('un client ne peut ni créer, ni modifier, ni supprimer un parcours (écriture réservée au serveur)', async () => {
+    await expect(as(ids.cleo, `insert into tracks (profile_id, track_id) values ($1, 'forge')`, [ids.cleo])).rejects.toThrow();
+    await expect(as(ids.alice, `update tracks set rung = 10, best_rung = 10 where profile_id = $1`, [ids.alice])).rejects.toThrow();
+    await expect(as(ids.alice, `delete from tracks where profile_id = $1`, [ids.alice])).rejects.toThrow();
+    await expect(as(ids.bob, `update tracks set rung = 10 where profile_id = $1`, [ids.alice])).rejects.toThrow();
+    expect((await admin(`select rung, best_rung from tracks where profile_id = $1`, [ids.alice]))[0]).toEqual({ rung: 1, best_rung: 1 });
+  });
+
+  it('ajoute track_id et rung aux gabarits et aux instances', async () => {
+    for (const table of ['quest_templates', 'quest_instances']) {
+      const cols = await admin(
+        `select column_name n, data_type t, is_nullable nl from information_schema.columns
+         where table_schema = 'public' and table_name = $1 and column_name in ('track_id', 'rung') order by 1`,
+        [table],
+      );
+      expect(cols).toEqual([{ n: 'rung', t: 'integer', nl: 'YES' }, { n: 'track_id', t: 'text', nl: 'YES' }]);
+    }
+  });
+
+  it('un gabarit d’échelon est du catalogue, lisible par tous les authentifiés, unique par (parcours, échelon)', async () => {
+    await insertTemplate(tplId, trackId, 1);
+    expect(await as(ids.cleo, `select id, track_id, rung from quest_templates where id = $1`, [tplId])).toEqual([{ id: tplId, track_id: trackId, rung: 1 }]);
+    expect((await as(ids.bob, `select count(*)::int n from quest_templates where track_id = $1`, [trackId]))[0].n).toBe(1);
+    await expect(insertTemplate(`${trackId}-bis`, trackId, 1)).rejects.toThrow(); // doublon (parcours, échelon)
+    await insertTemplate(`${trackId}-r02`, trackId, 2);
+    await expect(insertTemplate('sans-rung', trackId, null)).rejects.toThrow(); // parcours sans échelon
+    await expect(insertTemplate('sans-track', null, 3)).rejects.toThrow(); // échelon sans parcours
+    await expect(insertTemplate('rung-zero', trackId, 0)).rejects.toThrow();
+  });
+
+  it('un joueur ne peut pas rattacher une quête personnalisée à un parcours', async () => {
+    await expect(
+      as(ids.cleo, `insert into quest_templates (id, source, owner_id, ability, difficulty, periods, title, objective, validation, track_id, rung)
+        values ('custom-track', 'custom', $1, 'FOR', 'easy', '{daily}', 'x', 'y', '{"type":"simple"}', $2, 7)`, [ids.cleo, trackId]),
+    ).rejects.toThrow();
+    await as(ids.cleo, `insert into quest_templates (id, source, owner_id, ability, difficulty, periods, title, objective, validation)
+      values ('custom-cleo', 'custom', $1, 'FOR', 'easy', '{daily}', 'x', 'y', '{"type":"simple"}')`, [ids.cleo]);
+    await expect(as(ids.cleo, `update quest_templates set track_id = 'forge', rung = 1 where id = 'custom-cleo'`)).rejects.toThrow();
+  });
+
+  it('accepte origin = track avec parcours et échelon, et rejette une origine inconnue', async () => {
+    await insertInstance('2026-10-11', 'track', trackId, 1);
+    expect(await as(ids.alice, `select origin, track_id, rung, run from quest_instances where origin = 'track'`)).toEqual([{ origin: 'track', track_id: trackId, rung: 1, run: 1 }]);
+    expect(await as(ids.bob, `select * from quest_instances where origin = 'track'`)).toEqual([]);
+    await expect(insertInstance('2026-10-12', 'inconnue', null, null)).rejects.toThrow();
+    // les trois autres origines existantes restent valides
+    await insertInstance('2026-10-13', 'draw', null, null);
+    await insertInstance('2026-10-14', 'chosen', null, null);
+    await insertInstance('2026-10-15', 'redo', null, null);
+    // l'index unique des tirages est conservé : même gabarit, même jour, même passage = refusé
+    await expect(insertInstance('2026-10-11', 'track', trackId, 1)).rejects.toThrow();
+  });
+
+  it('la migration est rejouable sans perdre de données ni de contraintes', async () => {
+    const counts = async () => ({
+      tracks: (await admin(`select count(*)::int n from tracks`))[0].n,
+      templates: (await admin(`select count(*)::int n from quest_templates where track_id = '${trackId}'`))[0].n,
+      instances: (await admin(`select count(*)::int n from quest_instances where origin = 'track'`))[0].n,
+    });
+    const before = await counts();
+    expect(before).toEqual({ tracks: 2, templates: 2, instances: 1 });
+    await db.exec(read('migrations/20261011000001_tracks.sql'));
+    await db.exec(read('migrations/20261011000001_tracks.sql'));
+    expect(await counts()).toEqual(before);
+    expect((await admin(`select count(*)::int n from pg_policies where tablename = 'tracks'`))[0].n).toBe(1);
+    await expect(admin(`insert into tracks (profile_id, track_id, rung) values ($1, 'x', 0)`, [ids.alice])).rejects.toThrow();
+    await expect(as(ids.alice, `delete from tracks`)).rejects.toThrow();
+    await expect(insertInstance('2026-10-16', 'inconnue', null, null)).rejects.toThrow();
+  });
+
+  it('les parcours disparaissent avec le compte (cascade à la purge)', async () => {
+    const gone = '00000000-0000-0000-0000-0000000000e9';
+    await mkUser(gone, 'partant');
+    await admin(`insert into tracks (profile_id, track_id) values ($1, 'cuisine-pates')`, [gone]);
+    await admin(`update profiles set deleted_at = now() - interval '31 days' where id = $1`, [gone]);
+    expect((await admin(`select purge_deleted_accounts() n`))[0].n).toBe(1);
+    expect((await admin(`select count(*)::int n from tracks where profile_id = $1`, [gone]))[0].n).toBe(0);
+    expect((await admin(`select count(*)::int n from tracks`))[0].n).toBe(2); // ceux d'alice et de bob restent
+  });
+});
+
+describe('suggestions « Pour aller plus loin » par jour (daily_quest_count)', () => {
+  const file = 'migrations/20261011000002_free_quest_default.sql';
+  const legacy = '00000000-0000-0000-0000-0000000000f1';
+  const custom = '00000000-0000-0000-0000-0000000000f2';
+  const count = async (id: string) => (await admin(`select daily_quest_count n from settings where profile_id = $1`, [id]))[0].n;
+
+  it('le défaut de la colonne est 2 et la contrainte 0 à 6 est conservée', async () => {
+    expect((await admin(`select column_default d from information_schema.columns where table_schema = 'public' and table_name = 'settings' and column_name = 'daily_quest_count'`))[0].d).toBe('2');
+    await admin(`insert into auth.users (id, email) values ($1, 'neuf@ex.fr')`, ['00000000-0000-0000-0000-0000000000f0']);
+    await admin(`insert into settings (profile_id) values ($1)`, ['00000000-0000-0000-0000-0000000000f0']);
+    expect(await count('00000000-0000-0000-0000-0000000000f0')).toBe(2);
+    await expect(admin(`update settings set daily_quest_count = 7 where profile_id = $1`, ['00000000-0000-0000-0000-0000000000f0'])).rejects.toThrow();
+    await expect(admin(`update settings set daily_quest_count = -1 where profile_id = $1`, ['00000000-0000-0000-0000-0000000000f0'])).rejects.toThrow();
+    await admin(`update settings set daily_quest_count = 0 where profile_id = $1`, ['00000000-0000-0000-0000-0000000000f0']);
+    await admin(`update settings set daily_quest_count = 6 where profile_id = $1`, ['00000000-0000-0000-0000-0000000000f0']);
+  });
+
+  it('ramène à 2 les anciens réglages à 6, sans toucher aux valeurs choisies, et se rejoue sans effet', async () => {
+    await mkUser(legacy, 'ancien');
+    await mkUser(custom, 'choisi');
+    await admin(`update settings set daily_quest_count = 6 where profile_id = $1`, [legacy]);
+    await admin(`update settings set daily_quest_count = 4 where profile_id = $1`, [custom]);
+    await db.exec(read(file));
+    expect(await count(legacy)).toBe(2);
+    expect(await count(custom)).toBe(4);
+    // rejouée, la migration laisse les autres valeurs intactes (le runner ne l'applique de toute façon qu'une fois)
+    await db.exec(read(file));
+    expect(await count(legacy)).toBe(2);
+    expect(await count(custom)).toBe(4);
+    expect((await admin(`select column_default d from information_schema.columns where table_schema = 'public' and table_name = 'settings' and column_name = 'daily_quest_count'`))[0].d).toBe('2');
   });
 });

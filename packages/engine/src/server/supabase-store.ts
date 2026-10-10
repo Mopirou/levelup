@@ -94,7 +94,7 @@ export class SupabaseStore {
     fail(error, 'settings.select');
     if (!data) {
       return {
-        resetHour: 4, timezone: 'Europe/Paris', dailyQuestCount: 6, hardcore: false,
+        resetHour: 4, timezone: 'Europe/Paris', dailyQuestCount: 2, hardcore: false,
         autoShare: { level: true, achievement: true, streak: true }, defaultVisibility: 'friends', leaderboardOptIn: true,
         notifPrefs: {}, friendRequestsFrom: 'everyone', theme: 'auto', sounds: true, reducedMotion: false,
         lastRecapWeek: null, lastRecapMonth: null, interests: [],
@@ -145,17 +145,19 @@ export class SupabaseStore {
   }
 
   // ───── Catalogue et préférences
-  async listTemplates(userId: string): Promise<any[]> {
-    const { data, error } = await this.db
-      .from('quest_templates')
-      .select('*')
-      .eq('is_active', true)
-      .or(`source.eq.catalog,owner_id.eq.${userId}`);
-    fail(error, 'templates.select');
-    return (data ?? []).map((t: any) => ({
+  async listTemplates(userId: string, opts: { withRungs?: boolean } = {}): Promise<any[]> {
+    // Catalogue + gabarits d'échelon des parcours : plus de 1000 lignes, donc lecture paginée (ordre stable sur l'id).
+    // `withRungs: false` écarte les gabarits d'échelon côté base (track_id nul).
+    const rows = await pageAll((a, b) => {
+      let q = this.db.from('quest_templates').select('*').eq('is_active', true).or(`source.eq.catalog,owner_id.eq.${userId}`);
+      if (opts.withRungs === false) q = q.is('track_id', null);
+      return q.order('id', { ascending: true }).range(a, b);
+    }, 'templates.select');
+    return rows.map((t: any) => ({
       id: t.id, source: t.source, ownerId: t.owner_id, ability: t.ability, difficulty: t.difficulty, periods: t.periods,
       title: t.title, flavor: t.flavor, objective: t.objective, tips: t.tips, validation: t.validation, tags: t.tags, isActive: t.is_active,
       ...(t.theme ? { theme: t.theme } : {}), ...(t.secondary?.length ? { secondary: t.secondary } : {}),
+      ...(t.track_id ? { trackId: t.track_id, rung: t.rung ?? null } : {}),
     }));
   }
 
@@ -185,6 +187,7 @@ export class SupabaseStore {
       id: r.id, templateId: r.template_id, snapshot: r.snapshot, period: r.period, periodStart: r.period_start, periodEnd: r.period_end,
       status: r.status, progress: Number(r.progress), stepsDone: r.steps_done ?? undefined, xpAwarded: r.xp_awarded,
       inspirationUsed: r.inspiration_used, free: r.is_free, run: r.run ?? 1, origin: r.origin ?? 'draw', acceptedAt: r.accepted_at, completedAt: r.completed_at,
+      ...(r.track_id ? { trackId: r.track_id, rung: r.rung ?? null } : {}),
     };
   }
 
@@ -193,6 +196,7 @@ export class SupabaseStore {
       id: i.id, profile_id: userId, template_id: i.templateId, snapshot: i.snapshot, period: i.period, period_start: i.periodStart,
       period_end: i.periodEnd, status: i.status, progress: i.progress, steps_done: i.stepsDone ?? null, xp_awarded: i.xpAwarded,
       inspiration_used: i.inspirationUsed, is_free: !!i.free, run: i.run ?? 1, origin: i.origin ?? 'draw', accepted_at: i.acceptedAt ?? null, completed_at: i.completedAt ?? null,
+      track_id: i.trackId ?? null, rung: i.rung ?? null,
     };
   }
 
@@ -238,6 +242,32 @@ export class SupabaseStore {
   async deleteInstance(userId: string, id: string): Promise<void> {
     const { error } = await this.db.from('quest_instances').delete().eq('profile_id', userId).eq('id', id);
     fail(error, 'instances.delete');
+  }
+
+  // ───── Parcours de discipline
+  async listTracks(userId: string): Promise<any[]> {
+    const { data, error } = await this.db.from('tracks').select('*').eq('profile_id', userId).order('track_id', { ascending: true });
+    fail(error, 'tracks.select');
+    return (data ?? []).map((r: any) => ({
+      trackId: r.track_id, status: r.status, rung: r.rung, hits: r.hits, lastDoneDate: r.last_done_date ?? null,
+      lastCheckedDate: r.last_checked_date ?? null, bestRung: r.best_rung, startedAt: r.started_at,
+    }));
+  }
+
+  async saveTrack(userId: string, t: any): Promise<void> {
+    const { error } = await this.db.from('tracks').upsert(
+      {
+        profile_id: userId, track_id: t.trackId, status: t.status, rung: t.rung, hits: t.hits, last_done_date: t.lastDoneDate ?? null,
+        last_checked_date: t.lastCheckedDate ?? null, best_rung: t.bestRung, started_at: t.startedAt,
+      },
+      { onConflict: 'profile_id,track_id' },
+    );
+    fail(error, 'tracks.upsert');
+  }
+
+  async deleteTrack(userId: string, trackId: string): Promise<void> {
+    const { error } = await this.db.from('tracks').delete().eq('profile_id', userId).eq('track_id', trackId);
+    fail(error, 'tracks.delete');
   }
 
   // ───── Registre d'XP

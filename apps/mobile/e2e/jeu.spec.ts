@@ -1,25 +1,55 @@
 import { expect, test } from '@playwright/test';
-import { createHero } from './helpers';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { BALANCED_SCORES, TIER3_MIN_SCORE, TIER4_MIN_LEVEL, questXp } from '../../../packages/engine/src/xp';
+import { createHero, validateOpenQuest } from './helpers';
+
+const quests = JSON.parse(readFileSync(resolve(__dirname, '../../../packages/content/data/quests.fr.json'), 'utf8')) as {
+  ability: string;
+  trackId?: string | null;
+}[];
+/** Quêtes du catalogue libre (les gabarits d'échelon des parcours n'y figurent pas). */
+const catalogCount = (ability: string): number => quests.filter((q) => q.ability === ability && !q.trackId).length;
 
 test.describe('Parcours solo', () => {
-  test('crée un personnage, voit ses quêtes, en valide une et gagne de l’XP', async ({ page }) => {
-    await createHero(page);
+  test('crée un personnage avec un parcours, voit la quête du jour, l’accepte puis la valide', async ({ page }) => {
+    await createHero(page, 'Aldric', 'aldric-e2e', [['Musculation', 'Muscu haut du corps']]);
     await expect(page.getByText('0 / 60 XP')).toBeVisible();
 
     await page.locator('ion-tab-button', { hasText: 'Quêtes' }).click();
     await expect(page.getByRole('heading', { name: 'Mes quêtes' })).toBeVisible();
-    await expect(page.getByText('Rien de fait pour l’instant')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Aujourd’hui, mes parcours' })).toBeVisible();
+    await expect(page.getByText('Rien de validé pour l’instant')).toBeVisible();
 
-    // valider une quête « simple » directement depuis le tableau
-    const simple = page.locator('lu-quest-card').filter({ has: page.getByRole('button', { name: 'Accomplir' }) }).first();
-    if (await simple.count()) {
-      await simple.getByRole('button', { name: 'Accomplir' }).click();
-      await expect(page.getByText(/Quête accomplie à/)).toBeVisible();
+    const card = page.locator('lu-track-card').filter({ hasText: 'Muscu haut du corps' });
+    await expect(card).toBeVisible();
+    await expect(card.getByText('Échelon 1/10')).toBeVisible();
+    await expect(card.getByText('0/5 jours validés')).toBeVisible();
+
+    // la quête du jour est proposée : rien n'est accepté d'office (une quête « simple » se valide directement)
+    const primary = card.getByRole('button', { name: /^(Accepter|Accomplir)$/ });
+    await expect(primary).toBeVisible();
+    if ((await primary.textContent())?.trim() === 'Accepter') {
+      await primary.click();
+      await expect(page.getByText(/Quête acceptée/)).toBeVisible();
+    }
+
+    // on l'ouvre et on la valide (le type dépend de l'échelon : simple, compteur ou étapes)
+    await card.getByRole('button', { name: /^Voir la quête/ }).click();
+    if (await validateOpenQuest(page)) {
       await expect(page.getByText(/XP gagnés/)).toBeVisible();
+      // l'enregistrement local est différé (150 ms) : on laisse le temps d'écrire avant de recharger la page
+      await page.waitForTimeout(600);
+      await page.goto('/tabs/quests');
+      await expect(page.locator('lu-track-card').filter({ hasText: 'Muscu haut du corps' }).getByText('Fait aujourd’hui')).toBeVisible();
+      await expect(page.locator('lu-track-card').filter({ hasText: 'Muscu haut du corps' }).getByText('1/5 jours validés')).toBeVisible();
+      await expect(page.getByText('Parcours du jour validés')).toBeVisible();
     }
   });
 
   test('les quêtes hebdomadaires s’acceptent', async ({ page }) => {
+    // on ne peut plus accepter une quête de la semaine après le vendredi : on fige la date au mercredi 7 octobre 2026
+    await page.clock.setFixedTime(new Date('2026-10-07T10:00:00+02:00'));
     await createHero(page);
     await page.locator('ion-tab-button', { hasText: 'Quêtes' }).click();
     await page.getByRole('tab', { name: 'Semaine' }).click();
@@ -46,8 +76,9 @@ test.describe('Parcours solo', () => {
     await expect(page.getByText(/Quête accomplie à/)).toBeVisible();
 
     await page.getByRole('button', { name: 'Refaire cette quête' }).click();
-    // la seconde tentative rapporte moitié moins d’XP (20 → 10)
-    await expect(page.locator('.chips').getByText('+10 XP')).toBeVisible();
+    // la seconde tentative rapporte moins d’XP (dégressivité des répétitions) ; héros Éclaireur (maîtrises FOR et CON), scores équilibrés : aucun facteur d’équilibrage
+    const second = questXp({ difficulty: 'easy', period: 'daily', ability: 'CON', level: 1, masteries: ['FOR', 'CON'], repeat: 1 }).total;
+    await expect(page.locator('.chips').getByText(`+${second} XP`)).toBeVisible();
   });
 
   test('la fiche affiche les six caractéristiques et le radar', async ({ page }) => {
@@ -68,8 +99,8 @@ test.describe('Parcours solo', () => {
     await expect(page.getByText('Niveau 2 · Semaine')).toBeVisible();
     await expect(page.getByText('Niveau 3 · Mois')).toBeVisible();
     await expect(page.getByText('Niveau 4 · Épique')).toBeVisible();
-    await expect(page.getByText('Force 14 requis (tu es à 13)')).toBeVisible();
-    await expect(page.getByText('Niveau 11 requis (tu es niveau 1)')).toBeVisible();
+    await expect(page.getByText(`Force ${TIER3_MIN_SCORE} requis (tu es à ${BALANCED_SCORES.FOR})`)).toBeVisible();
+    await expect(page.getByText(`Niveau ${TIER4_MIN_LEVEL} requis (tu es niveau 1)`)).toBeVisible();
     await expect(page.getByRole('button', { name: /Niveau 3 · Mois/ })).toBeDisabled();
     await page.getByRole('button', { name: /Niveau 1 · Journée/ }).click();
     await expect(page.getByText('Pompes, 20 aujourd’hui')).toBeVisible();
@@ -101,7 +132,7 @@ test.describe('Parcours solo', () => {
   test('le Grimoire liste les quêtes par chapitre et se filtre', async ({ page }) => {
     await createHero(page);
     await page.goto('/grimoire');
-    await expect(page.getByText('0/100 quêtes essayées').first()).toBeVisible();
+    await expect(page.getByText(`0/${catalogCount('FOR')} quêtes essayées`).first()).toBeVisible();
     await page.getByPlaceholder('Chercher une quête…').fill('pompes');
     await expect(page.getByText('Pompes, 20 aujourd’hui')).toBeVisible();
   });

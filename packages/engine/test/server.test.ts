@@ -19,12 +19,14 @@ import {
   redoQuest,
   rerollQuest,
   startQuest,
+  startTrack,
   undoQuest,
   updateProgress,
   abilityScores,
   ABILITIES,
   type QuestInstance,
 } from '../src';
+import { TEST_RUNG_TEMPLATES } from './track-fixtures';
 
 const catalog = JSON.parse(readFileSync(join(__dirname, '..', '..', 'content', 'data', 'quests.fr.json'), 'utf8')).map(
   (q: QuestTemplate) => ({ ...q, source: 'catalog' }),
@@ -34,7 +36,7 @@ const U = 'user-1';
 let counter = 0;
 
 function setup(startIso = '2026-10-05T09:00:00+02:00') {
-  const store = new MemoryStore(catalog);
+  const store = new MemoryStore([...catalog, ...TEST_RUNG_TEMPLATES]);
   let nowMs = Date.parse(startIso);
   const ctx: ServerContext = { store, now: () => nowMs, uuid: () => `id-${++counter}` };
   return {
@@ -56,7 +58,24 @@ const heroInput = {
   timezone: 'Europe/Paris',
 };
 
+/**
+ * Personnage créé, avec les propositions du jour (« Pour aller plus loin ») acceptées : reproduit l'ancien flux
+ * où des quêtes journalières « en cours » attendaient d'être validées. Rien n'est accepté d'office par le moteur.
+ */
 async function started() {
+  const s = await created();
+  await acceptDaily(s);
+  return s;
+}
+
+async function acceptDaily(s: ReturnType<typeof setup>) {
+  for (const q of await s.store.listInstances(U, { period: 'daily', status: 'proposed' })) {
+    expect((await acceptQuest(s.ctx, U, q.id)).ok).toBe(true);
+  }
+}
+
+/** Personnage créé, sans rien accepter. */
+async function created() {
   const s = setup();
   const r = await createCharacter(s.ctx, U, heroInput);
   expect(r.ok).toBe(true);
@@ -65,6 +84,7 @@ async function started() {
 
 /** Valide toutes les quêtes acceptées « faciles à satisfaire » d'une période. */
 async function completeAllDaily(s: ReturnType<typeof setup>) {
+  await acceptDaily(s);
   const today = (await s.store.listInstances(U, { period: 'daily', status: 'accepted' }));
   const done: QuestInstance[] = [];
   for (const q of today) {
@@ -83,16 +103,17 @@ async function completeAllDaily(s: ReturnType<typeof setup>) {
 }
 
 describe('création du personnage', () => {
-  it('crée le personnage et tire les premières quêtes', async () => {
-    const { store } = await started();
+  it('crée le personnage et propose les premières quêtes, sans rien accepter d’office', async () => {
+    const { store } = await created();
     const c = (await store.getCharacter(U))!;
     expect(c.level).toBe(1);
     expect(c.totalXp).toBe(0);
     const daily = await store.listInstances(U, { period: 'daily' });
-    expect(daily.filter((q) => !q.free)).toHaveLength(3);
-    expect(daily.filter((q) => !q.free).every((q) => q.status === 'accepted')).toBe(true);
-    expect(daily.filter((q) => q.free)).toHaveLength(2);
-    expect(daily.filter((q) => q.free).every((q) => q.status === 'proposed')).toBe(true);
+    // « Pour aller plus loin » : 2 propositions facultatives, plus aucune quête journalière imposée
+    expect(daily.filter((q) => !q.free)).toHaveLength(0);
+    expect(daily).toHaveLength(2);
+    expect(daily.every((q) => q.free && q.status === 'proposed' && q.origin === 'draw')).toBe(true);
+    expect(await store.listTracks(U)).toEqual([]);
     const weekly = await store.listInstances(U, { period: 'weekly' });
     expect(weekly).toHaveLength(2);
     expect(weekly.every((q) => q.status === 'proposed')).toBe(true);
@@ -272,7 +293,8 @@ describe('passage du temps', () => {
     s.setNow('2026-10-06T09:00:00+02:00');
     const r = await ensureQuests(s.ctx, U);
     expect(r.expired.length).toBeGreaterThan(0);
-    expect(r.created.filter((q) => q.period === 'daily' && !q.free)).toHaveLength(3);
+    expect(r.created.filter((q) => q.period === 'daily')).toHaveLength(2);
+    expect(r.created.every((q) => q.status === 'proposed')).toBe(true);
     // pas de nouvelle semaine (mardi) ni de nouveau mois
     expect(r.created.filter((q) => q.period !== 'daily')).toHaveLength(0);
   });
@@ -281,7 +303,7 @@ describe('passage du temps', () => {
     s.setNow('2026-10-14T09:00:00+02:00');
     await ensureQuests(s.ctx, U);
     const daily = await s.store.listInstances(U, { period: 'daily' });
-    expect(daily.filter((q) => q.periodStart === '2026-10-14')).toHaveLength(5);
+    expect(daily.filter((q) => q.periodStart === '2026-10-14')).toHaveLength(2);
     expect(daily.filter((q) => q.periodStart > '2026-10-05' && q.periodStart < '2026-10-14')).toHaveLength(0);
     const weekly = await s.store.listInstances(U, { period: 'weekly' });
     expect(weekly.some((q) => q.periodStart === '2026-10-12')).toBe(true);
@@ -333,6 +355,7 @@ describe('passage du temps', () => {
       const date = new Date(Date.UTC(2026, 9, 5 + d, 7, 0));
       s.setNow(date.toISOString());
       await ensureQuests(s.ctx, U);
+      await acceptDaily(s);
       const accepted = await s.store.listInstances(U, { period: 'daily', status: 'accepted' });
       for (const q of accepted) {
         const v = q.snapshot.validation;
@@ -397,15 +420,18 @@ describe('quêtes hebdomadaires et mensuelles', () => {
     expect(await abandonQuest(s.ctx, U, w.id)).toMatchObject({ ok: false });
     expect(await abandonQuest(s.ctx, U, 'nope')).toMatchObject({ ok: false, error: 'not-found' });
   });
-  it('le mode Hardcore retire de l’XP à l’abandon', async () => {
+  it('le mode Hardcore n’existe plus : abandonner ou laisser expirer ne coûte jamais d’XP', async () => {
     const s = await started();
     const settings = await s.store.getSettings(U);
     await s.store.saveSettings(U, { ...settings, hardcore: true });
     const c = (await s.store.getCharacter(U))!;
     await s.store.saveCharacter(U, { ...c, totalXp: 100, abilityXp: { ...c.abilityXp, FOR: 100 } });
-    const q = (await s.store.listInstances(U, { status: 'accepted' }))[0];
+    const [q, other] = await s.store.listInstances(U, { period: 'daily', status: 'accepted' });
     await abandonQuest(s.ctx, U, q.id);
-    expect((await s.store.listXpEvents(U)).some((e) => e.reason === 'hardcore' && e.amount < 0)).toBe(true);
+    s.setNow('2026-10-07T09:00:00+02:00');
+    await ensureQuests(s.ctx, U); // l'autre quête acceptée expire
+    expect((await s.store.getInstance(U, other.id))!.status).toBe('expired');
+    expect((await s.store.listXpEvents(U)).some((e) => e.reason === 'hardcore' || e.amount < 0)).toBe(false);
   });
 });
 
@@ -531,14 +557,17 @@ describe('trophées et statistiques', () => {
     await completeAllDaily(s);
     const p = await achievementProgress(s.ctx, U);
     expect(p.find((x) => x.id === 'premier-pas')!.done).toBe(true);
-    expect(p.find((x) => x.id === 'premier-elan')!.current).toBeGreaterThanOrEqual(3);
+    expect(p.find((x) => x.id === 'premier-elan')!.current).toBeGreaterThanOrEqual(2);
     expect(p.length).toBe(98);
   });
-  it('mode Journée parfaite et nombre de caractéristiques', async () => {
+  it('Journée parfaite : toutes les quêtes de parcours du jour validées (les propositions facultatives ne comptent pas)', async () => {
     const s = await started();
     await completeAllDaily(s);
-    const p = await achievementProgress(s.ctx, U);
-    expect(p.find((x) => x.id === 'journee-parfaite')!.done).toBe(true);
+    expect((await achievementProgress(s.ctx, U)).find((x) => x.id === 'journee-parfaite')!.done).toBe(false);
+    expect((await startTrack(s.ctx, U, { trackId: 'muscu-haut' })).ok).toBe(true);
+    const q = (await s.store.listInstances(U, { period: 'daily' })).find((i) => i.origin === 'track')!;
+    expect((await completeQuestAction(s.ctx, U, { instanceId: q.id, useInspiration: false })).ok).toBe(true);
+    expect((await achievementProgress(s.ctx, U)).find((x) => x.id === 'journee-parfaite')!.done).toBe(true);
     expect(ABILITIES.length).toBe(6);
   });
 });
@@ -607,7 +636,7 @@ describe('quêtes choisies et refaites', () => {
     expect(r.instance).toMatchObject({ status: 'accepted', free: true, origin: 'chosen', run: 1, templateId: t.id });
     expect(await startQuest(s.ctx, U, { templateId: t.id, period: 'daily' })).toMatchObject({ ok: false, error: 'already-active' });
     // le tirage du jour n'est pas perturbé
-    expect((await s.store.listInstances(U, { period: 'daily' })).filter((i) => !i.free)).toHaveLength(3);
+    expect((await s.store.listInstances(U, { period: 'daily' })).filter((i) => i.origin === 'chosen')).toHaveLength(1);
   });
 
   it('refuse une quête verrouillée, inconnue ou hors période', async () => {

@@ -44,6 +44,7 @@ Deno.serve(async (req: Request) => {
         character: await sel('characters'),
         settings: await sel('settings'),
         quests: await sel('quest_instances'),
+        tracks: await sel('tracks'),
         customQuests: (await admin.from('quest_templates').select('*').eq('owner_id', userId)).data ?? [],
         preferences: await sel('quest_preferences'),
         xpEvents: await sel('xp_events'),

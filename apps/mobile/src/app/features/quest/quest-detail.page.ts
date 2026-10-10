@@ -15,6 +15,7 @@ import {
   tuneXpScale,
   validationTarget,
   withTarget,
+  type AbilityId,
   type QuestInstance,
 } from '@levelup/engine';
 import { GameService } from '../../core/game.service';
@@ -190,6 +191,14 @@ const timerKey = (id: string) => `lu-timer-${id}`;
             </section>
           }
 
+          @if (isTrack() && (q.status === 'proposed' || q.status === 'accepted')) {
+            <section class="lu-card flat tracknote" aria-labelledby="h-tn">
+              <h3 id="h-tn" class="sec2">Quête de ton parcours {{ trackName() }}</h3>
+              <p class="small muted">Cette quête revient chaque jour à ton échelon : elle ne se relance pas, ne s’abandonne pas et ne s’ajuste pas. Pour souffler, mets ce parcours en pause : ton échelon est gardé, sans pénalité.</p>
+              <button type="button" class="lu-btn ghost small inline" [disabled]="busy()" (click)="pauseTrack()"><lu-icon name="pause" [size]="15" /> Mettre ce parcours en pause</button>
+            </section>
+          }
+
           <!-- Récompense -->
           @if (done()) {
             <section class="lu-card gold reward pop">
@@ -199,6 +208,12 @@ const timerKey = (id: string) => `lu-timer-${id}`;
                   <span class="gtitle">+{{ fmt(q.xpAwarded) }} XP gagnés</span>
                   @if (completion(); as c) {
                     @if (c.data.breakdown.mastery) { <span class="xs">dont maîtrise +{{ c.data.breakdown.mastery }}</span> }
+                    @for (b of c.data.balance ?? []; track b.ability) {
+                      <span class="xs">{{ abilityName(b.ability) }} : {{ fmt(b.base) }} XP de base → {{ fmt(b.awarded) }} XP ({{ b.factor > 1 ? 'rattrapage' : 'spécialisation' }})</span>
+                    }
+                    @if (c.data.trackPromoted && c.data.track; as t) {
+                      <span class="xs">Nouvel échelon : {{ t.rung }}</span>
+                    }
                   }
                 </div>
               </div>
@@ -206,7 +221,7 @@ const timerKey = (id: string) => `lu-timer-${id}`;
               <p class="xs">Après validation : {{ fmt(game.levelInfo().current) }} / {{ fmt(game.levelInfo().needed) }} XP · Niveau {{ game.level() }}</p>
               <lu-bar [value]="game.levelInfo().ratio" tone="gold" />
               @if (allDailyDone()) {
-                <p class="small">Tes {{ game.dailies().length }} quêtes du jour sont accomplies. Bravo !</p>
+                <p class="small">{{ game.activeTracks().length ? 'Tous tes parcours du jour sont validés. Bravo !' : 'Tes quêtes du jour sont accomplies. Bravo !' }}</p>
               }
               @if (completion()?.provisional) {
                 <p class="xs">XP provisoire : elle sera confirmée au retour du réseau.</p>
@@ -254,6 +269,9 @@ const timerKey = (id: string) => `lu-timer-${id}`;
     .tips li { display: flex; gap: 8px; font-size: 12px; line-height: 1.45; color: var(--lu-muted); }
     .tips lu-icon { color: var(--lu-gold); margin-top: 2px; }
     .sec { font-size: 19px; }
+    .sec2 { font-size: 16px; margin: 0; }
+    .tracknote { gap: 10px; }
+    .tracknote .lu-btn { align-self: flex-start; }
     .vhead { display: flex; align-items: center; justify-content: space-between; }
     .vmode { font-size: 12px; }
     .tune { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -294,6 +312,12 @@ export class QuestDetailPage {
   readonly fmt = fmt;
 
   readonly inst = computed<QuestInstance | undefined>(() => this.game.instance(this.id()));
+  /** Quête du jour d'un parcours : ni relance, ni abandon, ni « ne plus la proposer », ni ajustement de cible. */
+  readonly isTrack = computed(() => this.inst()?.origin === 'track' || !!this.inst()?.trackId);
+  readonly trackName = computed(() => {
+    const id = this.inst()?.trackId;
+    return id ? '« ' + this.game.trackLabelOf(id) + ' »' : '';
+  });
   readonly busy = signal(false);
   readonly useInsp = signal(false);
   readonly journal = signal('');
@@ -308,6 +332,7 @@ export class QuestDetailPage {
   private autoSaved = false;
 
   readonly periodNoun = computed(() => ({ daily: 'du jour', weekly: 'de la semaine', monthly: 'du mois', epic: 'épique' })[this.inst()?.period ?? 'daily']);
+  abilityName = (a: AbilityId) => ABILITY_LABEL[a];
   readonly abilityLabel = computed(() => ABILITY_LABEL[this.inst()!.snapshot.ability]);
   readonly difficultyLabel = computed(() => DIFFICULTY_LABEL[this.inst()!.snapshot.difficulty]);
   readonly themeName = computed(() => themeLabel(this.inst()?.snapshot.theme));
@@ -358,6 +383,7 @@ export class QuestDetailPage {
   readonly tuneOptions = computed(() => {
     const q = this.inst();
     if (!q || (q.status !== 'proposed' && q.status !== 'accepted')) return null;
+    if (this.isTrack()) return null; // l'échelon fixe la cible : le moteur refuse « trop dur / trop facile »
     const v = q.snapshot.validation;
     const base = baseTargetOf(q.snapshot);
     if ((v.type !== 'counter' && v.type !== 'timer') || base === null) return null;
@@ -625,13 +651,30 @@ export class QuestDetailPage {
     const pref = this.game.prefs()[q.templateId];
     const canReroll = (q.origin ?? 'draw') === 'draw' && (q.status === 'proposed' || (q.status === 'accepted' && q.progress === 0));
     const buttons: { text: string; role?: string; handler?: () => void }[] = [];
-    if (canReroll) buttons.push({ text: 'Relancer cette quête', handler: () => void this.reroll() });
-    buttons.push({ text: pref?.isFavorite ? 'Retirer des favorites' : 'Marquer comme favorite', handler: () => void this.game.setPreference({ templateId: q.templateId, isFavorite: !pref?.isFavorite, isExcluded: pref?.isExcluded, isPinned: pref?.isPinned }) });
-    buttons.push({ text: 'Ne plus jamais me la proposer', role: 'destructive', handler: () => void this.exclude() });
-    if (q.status === 'accepted' || q.status === 'proposed') buttons.push({ text: 'Abandonner la quête', role: 'destructive', handler: () => void this.abandon() });
+    if (this.isTrack()) {
+      // Quête de parcours : seule la pause du parcours permet de souffler.
+      if (q.trackId && (q.status === 'accepted' || q.status === 'proposed')) buttons.push({ text: 'Mettre ce parcours en pause', handler: () => void this.pauseTrack() });
+    } else {
+      if (canReroll) buttons.push({ text: 'Relancer cette quête', handler: () => void this.reroll() });
+      buttons.push({ text: pref?.isFavorite ? 'Retirer des favorites' : 'Marquer comme favorite', handler: () => void this.game.setPreference({ templateId: q.templateId, isFavorite: !pref?.isFavorite, isExcluded: pref?.isExcluded, isPinned: pref?.isPinned }) });
+      buttons.push({ text: 'Ne plus jamais me la proposer', role: 'destructive', handler: () => void this.exclude() });
+      if (q.status === 'accepted' || q.status === 'proposed') buttons.push({ text: 'Abandonner la quête', role: 'destructive', handler: () => void this.abandon() });
+    }
     buttons.push({ text: 'Fermer', role: 'cancel' });
     const s = await this.sheet.create({ header: q.snapshot.title, buttons, cssClass: 'lu-sheet' });
     await s.present();
+  }
+
+  /** Raccourci : met en pause le parcours de cette quête, puis retourne aux quêtes. */
+  async pauseTrack(): Promise<void> {
+    const q = this.inst();
+    if (!q?.trackId || this.busy()) return;
+    this.busy.set(true);
+    try {
+      if (await this.game.pauseTrack(q.trackId, true)) this.finish();
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   private async reroll(): Promise<void> {
