@@ -7,6 +7,7 @@ import type {
   QuestStatus,
   QuestTemplate,
   SettingsCore,
+  TrackState,
 } from '../types';
 
 export type PostType = 'quest' | 'photo' | 'level_up' | 'achievement' | 'streak';
@@ -137,6 +138,12 @@ export interface GameStore {
 
   saveJournal(userId: string, entry: JournalEntry): Promise<void>;
   countJournal(userId: string): Promise<number>;
+
+  /** Parcours de discipline du joueur (tous statuts) */
+  listTracks(userId: string): Promise<TrackState[]>;
+  /** Crée ou remplace l'état d'un parcours */
+  saveTrack(userId: string, t: TrackState): Promise<void>;
+  deleteTrack(userId: string, trackId: string): Promise<void>;
   listJournal(userId: string): Promise<JournalEntry[]>;
 
   createPost(userId: string, draft: PostDraft): Promise<string>;

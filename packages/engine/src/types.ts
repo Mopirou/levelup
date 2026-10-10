@@ -9,7 +9,8 @@ export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'medium', 'high', 'e
 export type Period = 'daily' | 'weekly' | 'monthly' | 'epic';
 export const PERIODS: readonly Period[] = ['daily', 'weekly', 'monthly', 'epic'] as const;
 
-export type QuestOrigin = 'draw' | 'chosen' | 'redo';
+/** draw = tirage (« Pour aller plus loin »), chosen = catalogue, redo = refaite, track = quête du jour d'un parcours */
+export type QuestOrigin = 'draw' | 'chosen' | 'redo' | 'track';
 
 export type QuestStatus = 'proposed' | 'accepted' | 'completed' | 'abandoned' | 'expired';
 
@@ -46,6 +47,9 @@ export interface QuestTemplate {
   /** Caractéristiques secondaires qui reçoivent une part de l'XP. */
   secondary?: XpShare[];
   isActive?: boolean;
+  /** Quête d'échelon d'un parcours : jamais tirée au sort ni listée dans le catalogue libre */
+  trackId?: string | null;
+  rung?: number | null;
 }
 
 /** Copie figée du texte d'une quête au moment du tirage. */
@@ -82,6 +86,10 @@ export interface QuestInstance {
   stepsDone?: boolean[];
   xpAwarded: number;
   inspirationUsed: boolean;
+  /** Parcours de discipline dont cette quête est l'échelon du jour (origin = 'track') */
+  trackId?: string | null;
+  /** Échelon du parcours au moment du tirage */
+  rung?: number | null;
   /** Quête « libre » : hors quota (proposition facultative, quête choisie ou refaite) */
   free?: boolean;
   /** Rang parmi les quêtes du même modèle dans la période (1 = première, 2+ = refaite) */
@@ -126,3 +134,59 @@ export const emptyAbilityRecord = <T>(v: T): Record<AbilityId, T> => ({
   SAG: v,
   CHA: v,
 });
+
+// ───────────────────────── Parcours de discipline ─────────────────────────
+//
+// Un parcours est une échelle d'échelons au sein d'une activité d'une discipline
+// (ex. discipline « musculation », parcours « Muscu haut du corps »). Le joueur en active jusqu'à MAX_ACTIVE_TRACKS ;
+// chaque jour l'application lui propose la quête de son échelon. Voir docs/PARCOURS.md.
+
+export interface TrackRung {
+  /** 1 = premier échelon */
+  rung: number;
+  title: string;
+  objective: string;
+  tips: string[];
+  validation: ValidationSpec;
+  /** Sert à l'XP de base (easy 10 / medium 25 / high 50 / expert 100) */
+  difficulty: Difficulty;
+}
+
+export interface TrackDef {
+  /** `{theme}-{activité slugifiée}` — ex. « musculation-muscu-haut-du-corps » */
+  id: string;
+  theme: string;
+  /** Nom de l'activité tel qu'il figure dans la discipline */
+  activity: string;
+  label: string;
+  /** Pourquoi ce parcours (une phrase) */
+  blurb: string;
+  ability: AbilityId;
+  secondary: XpShare[];
+  rungs: TrackRung[];
+}
+
+export type TrackStatus = 'active' | 'paused';
+
+/** État d'un parcours pour un joueur. */
+export interface TrackState {
+  trackId: string;
+  status: TrackStatus;
+  /** Échelon courant (1..rungs.length) */
+  rung: number;
+  /** Jours validés à l'échelon courant depuis la dernière montée ou descente */
+  hits: number;
+  /** Dernier jour de jeu (YYYY-MM-DD) où une quête du parcours a été validée */
+  lastDoneDate: string | null;
+  /** Dernier jour de jeu (YYYY-MM-DD) traité pour le calcul des jours manqués */
+  lastCheckedDate: string | null;
+  /** Échelon le plus haut jamais atteint */
+  bestRung: number;
+  startedAt: string;
+}
+
+export const MAX_ACTIVE_TRACKS = 3;
+/** Jours validés à un échelon pour monter au suivant */
+export const TRACK_PROMOTE_HITS = 5;
+/** Jours manqués d'affilée (hors repos et pause) avant de descendre d'un échelon */
+export const TRACK_DEMOTE_MISSES = 4;
