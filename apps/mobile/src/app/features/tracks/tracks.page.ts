@@ -16,7 +16,7 @@ import { TracksPickerComponent } from '../../shared/tracks-picker.component';
   imports: [IonContent, PageHeaderComponent, TracksPickerComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <lu-page-header [back]="true" eyebrow="Progression" icon="compass" title="Mes parcours" />
       <div class="lu-page">
         <p class="lead">Choisis jusqu’à trois activités à faire progresser. Chaque jour, tu reçois la quête de ton échelon ; la mise en pause garde ton échelon sans pénalité.</p>

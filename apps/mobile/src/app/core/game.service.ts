@@ -253,6 +253,10 @@ export class GameService {
       const character = await store.getCharacter(uid);
       this.character.set(character as CharacterRecord | null);
       if (!character) {
+        // Une requête partie sans jeton valide (réseau instable au lancement) reçoit une réponse vide, pas une erreur :
+        // si une copie locale de ce joueur existe, on la garde au lieu de renvoyer vers la création de personnage.
+        const cached = await offline.getCache<any>(CACHE_KEY);
+        if (cached?.character?.profileId === uid) throw new Error('character-missing');
         this.settings.set(null);
         this.instances.set([]);
         this.offline.set(false);

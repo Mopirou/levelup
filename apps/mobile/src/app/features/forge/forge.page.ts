@@ -43,7 +43,7 @@ const TAG_SUGGESTIONS = ['sans matériel', 'extérieur', 'social', 'moins de 10 
   imports: [IonContent, PageHeaderComponent, AbilityBadgeComponent, EmptyComponent, IconComponent, QuestCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <lu-page-header [back]="true" eyebrow="Mes quêtes" icon="hammer" [title]="editing() ? 'Modifier ma quête' : 'Créer une quête'" />
       @if (!game.unlocks().forge) {
         <div class="lu-page"><lu-empty icon="lock" title="Créer ses propres quêtes s’ouvre au niveau 2" text="Accomplis tes premières quêtes pour inventer les tiennes." /></div>

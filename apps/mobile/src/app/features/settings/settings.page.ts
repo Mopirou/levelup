@@ -24,7 +24,7 @@ const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a'
   imports: [IonContent, RouterLink, TracksPickerComponent, PageHeaderComponent, PortraitComponent, SwitchComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <lu-page-header [back]="true" eyebrow="Compte et préférences" icon="settings" title="Réglages" />
       @if (s(); as st) {
         <div class="lu-page">

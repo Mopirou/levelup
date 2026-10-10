@@ -33,7 +33,7 @@ export function authMessage(e: unknown): string {
   imports: [IonContent, IconComponent, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <div class="wrap">
         <svg class="gates" viewBox="0 0 360 200" aria-hidden="true">
           <defs>

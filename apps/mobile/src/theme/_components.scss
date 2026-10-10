@@ -569,7 +569,8 @@ select.lu-input {
 ion-tab-bar.lu-tabbar {
   --background: var(--lu-nav-bg);
   --border: 1px solid var(--lu-border);
-  height: calc(72px + var(--lu-safe-bottom));
+  // Ionic force `box-sizing: content-box` : `height` est celle du contenu (46px), le padding s'y ajoute (barre de ~72px + zone sûre).
+  height: 46px;
   padding: 14px 12px calc(12px + var(--lu-safe-bottom));
   contain: none;
   backdrop-filter: blur(14px);

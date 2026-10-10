@@ -16,7 +16,7 @@ import { relativeTime } from '../../shared/format';
   imports: [IonContent, PageHeaderComponent, AvatarComponent, EmptyComponent, IconComponent, PostCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <lu-page-header [back]="true" eyebrow="Publication" icon="message" />
       <div class="lu-page">
         @if (post(); as p) {

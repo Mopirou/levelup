@@ -33,7 +33,7 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
   imports: [IonContent, PageHeaderComponent, PortraitComponent, BarComponent, RadarComponent, AbilityBadgeComponent, IconComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <lu-page-header eyebrow="Profil" icon="user-round" title="Ta progression">
         <div actions>
           <button type="button" class="lu-icon-btn" aria-label="Partager ma fiche" (click)="shareSheet()"><lu-icon name="share" [size]="17" /></button>

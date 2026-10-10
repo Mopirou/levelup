@@ -32,7 +32,7 @@ const PERIODS: Period[] = ['daily', 'weekly', 'monthly'];
   imports: [IonContent, IonRefresher, IonRefresherContent, PageHeaderComponent, EmptyComponent, IconComponent, QuestCardComponent, TrackCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
 
       <lu-page-header eyebrow="À faire" icon="swords" title="Mes quêtes">

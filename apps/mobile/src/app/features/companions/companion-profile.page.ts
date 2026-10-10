@@ -16,7 +16,7 @@ import { PostCardComponent } from '../../shared/post-card.component';
   imports: [IonContent, PageHeaderComponent, PortraitComponent, RadarComponent, AvatarComponent, AbilityBadgeComponent, IconComponent, PostCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <lu-page-header [back]="true" eyebrow="Profil d’un ami" [title]="sheet()?.card?.name ?? username()">
         <div actions><button type="button" class="lu-icon-btn" aria-label="Plus d’options" (click)="menu()"><lu-icon name="ellipsis" [size]="17" /></button></div>
       </lu-page-header>

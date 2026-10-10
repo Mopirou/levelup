@@ -42,7 +42,7 @@ const timerKey = (id: string) => `lu-timer-${id}`;
   imports: [IonContent, PageHeaderComponent, BarComponent, IconComponent, ShareFormComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       @if (inst(); as q) {
         <lu-page-header [back]="true" [eyebrow]="'Quêtes / Quête ' + periodNoun()" [title]="q.snapshot.title">
           <div actions>

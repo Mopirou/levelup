@@ -62,7 +62,7 @@ function loadDraft(): Draft | null {
   imports: [IonContent, IconComponent, TracksPickerComponent, AbilityBadgeComponent, BarComponent, PortraitComponent, RadarComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <div class="wrap">
         <header class="top">
           @if (step() > 0) {

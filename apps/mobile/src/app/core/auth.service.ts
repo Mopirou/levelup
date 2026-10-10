@@ -7,6 +7,7 @@ import type { AuthUser, MyProfile } from './api/types';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private be = inject(BackendService);
+  private router = inject(Router);
   readonly user = signal<AuthUser | null>(null);
   readonly profile = signal<MyProfile | null>(null);
   readonly ready = signal(false);
@@ -18,9 +19,14 @@ export class AuthService {
     this.ready.set(true);
     this.be.auth.onChange(async (u) => {
       const changed = u?.id !== this.user()?.id;
+      const hadUser = !!this.user();
       this.user.set(u);
       if (u && changed) await this.loadProfile();
       if (!u) this.profile.set(null);
+      // Session retrouvée après coup (réseau revenu) : on quitte l'écran d'accueil ; session perdue : on y retourne.
+      const url = this.router.url.split('?')[0];
+      if (u && changed && url === '/auth') void this.router.navigateByUrl('/tabs/tavern', { replaceUrl: true });
+      if (!u && hadUser && !url.startsWith('/auth') && !url.startsWith('/legal')) void this.router.navigateByUrl('/auth', { replaceUrl: true });
     });
   }
 

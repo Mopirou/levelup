@@ -23,7 +23,7 @@ const CATEGORIES: { id: AchievementDef['category']; label: string; icon: string 
   imports: [IonContent, PageHeaderComponent, BarComponent, IconComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <lu-page-header [back]="true" eyebrow="Succès" icon="trophy" title="Tes succès" />
       <div class="lu-page">
         <section class="lu-card gold head">

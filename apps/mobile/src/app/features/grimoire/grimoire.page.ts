@@ -45,7 +45,7 @@ type StatusFilter = 'all' | 'never' | 'favorite' | 'excluded';
   imports: [IonContent, NgTemplateOutlet, PageHeaderComponent, AbilityBadgeComponent, BarComponent, IconComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <lu-page-header [back]="true" eyebrow="Catalogue" icon="library" title="Choisir une quête" />
       <div class="lu-page">
         <div class="search">

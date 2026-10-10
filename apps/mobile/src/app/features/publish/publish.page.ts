@@ -29,7 +29,7 @@ const PROMPTS: Record<AbilityId | 'any', string[]> = {
   imports: [IonContent, PageHeaderComponent, BarComponent, IconComponent, PostCardComponent, ShareFormComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <lu-page-header [back]="true" eyebrow="Publication" icon="feather" title="Partager un moment" />
       <div class="lu-page">
         <section class="lu-section">

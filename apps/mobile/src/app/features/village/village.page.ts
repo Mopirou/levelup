@@ -21,7 +21,7 @@ import { dayLabel, fmt } from '../../shared/format';
   imports: [IonContent, IonRefresher, IonRefresherContent, IonInfiniteScroll, IonInfiniteScrollContent, PageHeaderComponent, AvatarComponent, EmptyComponent, IconComponent, PostCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
 
       <lu-page-header eyebrow="Amis" icon="users" title="Fil des amis">

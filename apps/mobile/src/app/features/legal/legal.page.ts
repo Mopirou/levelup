@@ -81,7 +81,7 @@ const DOCS: Record<string, Doc> = {
   imports: [IonContent, PageHeaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <lu-page-header [back]="true" eyebrow="Documents" icon="scroll-text" [title]="doc().title" />
       <div class="lu-page">
         <p class="xs muted">Dernière mise à jour : {{ doc().updated }}</p>

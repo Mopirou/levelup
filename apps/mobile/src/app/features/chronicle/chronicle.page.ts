@@ -21,7 +21,7 @@ const IDLE_LINES = ['Aucune quête ce jour-là.', 'Journée sans activité.', 'J
   imports: [IonContent, IonRefresher, IonRefresherContent, PageHeaderComponent, BarComponent, EmptyComponent, IconComponent, ChartComponent, RecapComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
       <lu-page-header eyebrow="Historique" icon="book-open" title="Ta progression" />
 

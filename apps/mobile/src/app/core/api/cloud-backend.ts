@@ -89,11 +89,33 @@ export function createCloudBackend(): Backend {
   });
 
   // ───────────────────────── Auth ─────────────────────────
+  const storageKey: string = (sb.auth as any).storageKey;
+  const isNetworkError = (e: { name?: string; status?: number }) => e.name === 'AuthRetryableFetchError' || e.status === 0;
+  const readStored = (): any => {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) ?? 'null');
+    } catch {
+      return null;
+    }
+  };
+  const hasStoredSession = () => !!readStored()?.refresh_token;
+  const readStoredUser = (): { id: string; email?: string | null } | undefined => {
+    const u = readStored()?.user;
+    return u?.id ? { id: u.id, email: u.email ?? null } : undefined;
+  };
   const auth: AuthApi = {
     mode: 'cloud',
     async getUser() {
-      const { data } = await sb.auth.getSession();
-      const u = data.session?.user;
+      // Lancement depuis l'icône : le réseau n'est pas toujours prêt et le jeton a souvent expiré. Un rafraîchissement
+      // qui échoue pour cause réseau ne doit pas passer pour une déconnexion (sinon on retombe sur l'écran d'accueil).
+      let { data, error } = await sb.auth.getSession();
+      for (let i = 0; !data.session && error && isNetworkError(error) && hasStoredSession() && i < 3; i++) {
+        await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+        ({ data, error } = await sb.auth.getSession());
+      }
+      let u: { id: string; email?: string | null } | undefined = data.session?.user;
+      // Toujours pas de réseau : on garde la session enregistrée, l'app s'ouvre sur sa copie locale (lecture hors ligne).
+      if (!u && error && isNetworkError(error)) u = readStoredUser();
       if (u) myId = u.id;
       return u ? { id: u.id, email: u.email ?? null } : null;
     },

@@ -32,7 +32,7 @@ const REQUEST_MESSAGES: Record<string, string> = {
   imports: [IonContent, IonRefresher, IonRefresherContent, PageHeaderComponent, AvatarComponent, EmptyComponent, IconComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
       <lu-page-header [back]="true" eyebrow="Amis" title="Tes amis">
         <p class="lead">Des visages familiers, des encouragements sincères. Ici, on avance côte à côte.</p>

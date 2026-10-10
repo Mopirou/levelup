@@ -18,7 +18,7 @@ import { trackDef } from '../../shared/tracks';
   imports: [RecapComponent, IonContent, IonRefresher, IonRefresherContent, BarComponent, PageHeaderComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
 
       <lu-page-header [eyebrow]="date()" title="Aujourd’hui">

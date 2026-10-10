@@ -28,7 +28,7 @@ interface Row {
   imports: [IonContent, IonRefresher, IonRefresherContent, PageHeaderComponent, EmptyComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content [fullscreen]="true">
+    <ion-content>
       <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
       <lu-page-header [back]="true" eyebrow="Activité" icon="bell" title="Notifications">
         <div actions><button type="button" class="lu-btn small ghost" [disabled]="!unread()" (click)="markAll()">Tout marquer comme lu</button></div>
