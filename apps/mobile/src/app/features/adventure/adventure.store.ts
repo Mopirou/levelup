@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { GameService } from '../../core/game.service';
 import type { ChestOpening, ChestRarity, DungeonEntry, DungeonRunResult, ItemView } from '../../core/api/types';
-import { gearOf, itemInfo, type ItemRarity } from './adventure.model';
+import { SPELL_FLAVOR, gearOf, isBigSpell, itemInfo, spellInfo, type ItemRarity } from './adventure.model';
 
 export interface RunReport { dungeonName: string; result: DungeonRunResult }
 
@@ -26,6 +26,9 @@ export class AdventureStore {
   readonly gear = computed(() => gearOf(this.equipped()));
   /** Progression des panoplies */
   readonly sets = computed(() => this.state()?.sets ?? []);
+  /** Grimoire (V4) : capacités connues, emplacements, bonus actifs */
+  readonly grimoire = computed(() => this.state()?.grimoire ?? null);
+  readonly heroClass = computed(() => this.state()?.heroClass ?? '');
   readonly stock = computed(() => this.items().filter((i) => !i.equipped));
   readonly chestCounts = computed(() => this.state()?.chestCounts ?? { bois: 0, bronze: 0, argent: 0, or: 0, mythique: 0 });
   readonly opensLeft = computed(() => this.state()?.opens.remaining ?? 0);
@@ -68,8 +71,28 @@ export class AdventureStore {
     const o = await this.call(() => this.game.openChest(chest.id));
     if (!o) return;
     this.opened.set(o);
-    this.announce.set(`Coffre ${rarity} ouvert : ${itemInfo(o.item).name}, ${o.item.rarity}.`);
+    if (o.spell) {
+      const sp = o.spell;
+      const name = spellInfo(sp.spell.id).name;
+      const big = isBigSpell(sp.spell.rarity);
+      this.announce.set(`Coffre ${rarity} ouvert : ${big ? 'capacité exceptionnelle, ' : 'capacité, '}${name}, ${sp.isNew ? 'nouvelle' : sp.fragments ? 'déjà au niveau maximal' : 'niveau ' + sp.spell.level}. ${big ? SPELL_FLAVOR[sp.spell.rarity] ?? '' : ''}`);
+    } else if (o.item) {
+      this.announce.set(`Coffre ${rarity} ouvert : ${itemInfo(o.item).name}, ${o.item.rarity}.`);
+    }
     await this.load();
+  }
+
+  async equipSpell(spellId: string, slot?: number): Promise<void> {
+    if (await this.call(() => this.game.equipSpell(spellId, slot))) {
+      this.announce.set(`${spellInfo(spellId).name} équipé dans le Grimoire.`);
+      await this.load();
+    }
+  }
+  async unequipSpell(spellId: string, slot: number): Promise<void> {
+    if (await this.call(() => this.game.unequipSpell(slot))) {
+      this.announce.set(`${spellInfo(spellId).name} retiré du Grimoire.`);
+      await this.load();
+    }
   }
 
   async mergeChests(rarity: ChestRarity): Promise<void> {

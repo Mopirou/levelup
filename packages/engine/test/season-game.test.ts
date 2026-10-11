@@ -19,7 +19,7 @@ import {
 
 const heroInput = (name: string) => ({
   name,
-  classId: 'eclaireur',
+  classId: 'guerrier',
   scores: { FOR: 5, DEX: 2, CON: 5, INT: 2, SAG: 2, CHA: 2 },
   portraitId: 'p1',
   frameColor: '#2f5a47',
@@ -69,7 +69,7 @@ describe('publication de la puissance', () => {
   it('garde le premier jour, avance le dernier, suit la puissance', async () => {
     const w = await world([A]);
     await play(w, A);
-    await w.store.insertItems(A, [item('epee-du-sentier', 'legendaire', false)]);
+    await w.store.insertItems(A, [item('espadon', 'legendaire', false)]);
     const equipped = (await w.store.listItems(A))[0];
     w.at('2026-10-14');
     expect((await equipItem(w.ctx, A, { itemId: equipped.id })).ok).toBe(true);
@@ -83,7 +83,7 @@ describe('publication de la puissance', () => {
     const w = await world([A]);
     await getAdventureState(w.ctx, A);
     const base = (await w.store.getCharacter(A))!.power;
-    const it = item('epee-du-sentier', 'rare', false);
+    const it = item('espadon', 'rare', false);
     await w.store.insertItems(A, [it]);
     await equipItem(w.ctx, A, { itemId: it.id });
     const equipped = (await w.store.getCharacter(A))!.power;
@@ -98,7 +98,7 @@ describe('publication de la puissance', () => {
     await unequipSlot(w.ctx, A, { slot: 'arme' });
     expect((await w.store.getCharacter(A))!.power).toBe(base);
     // améliorer un objet non équipé ne touche pas la puissance
-    const spare = item('hache-du-forgeron', 'commun', false);
+    const spare = item('gourdin-de-voyageur', 'commun', false);
     await w.store.insertItems(A, [spare]);
     const r = await upgradeItem(w.ctx, A, { itemId: spare.id });
     expect(r.ok && r.character.power).toBe(base);
@@ -115,8 +115,8 @@ describe('publication de la puissance', () => {
     expect(r.state.setBonus).toMatchObject({ pp: 12, abilities: { FOR: 3 } });
     expect(r.state.power).toBe(r.state.powerBreakdown.level + r.state.powerBreakdown.scores + r.state.powerBreakdown.items + 12);
     expect(r.state.scores.FOR - base.state.scores.FOR).toBeGreaterThanOrEqual(3);
-    expect(r.state.sets.find((s) => s.setId === 'titan')).toMatchObject({ equipped: 4, owned: 4, tier: { pieces: 4 } });
-    expect(r.state.items.every((i) => i.setId === 'titan')).toBe(true);
+    expect(r.state.sets.find((s) => s.setId === 'guerrier')).toMatchObject({ equipped: 4, owned: 4, tier: { pieces: 4 } });
+    expect(r.state.items.every((i) => i.setId === 'guerrier')).toBe(true);
     // les autres modes (raids) voient les mêmes PP
     const stats = await heroCombatStats(w.store, A, r.character);
     expect(stats.power).toBe(r.state.power);

@@ -205,6 +205,34 @@ console.log(`${tracks.length} parcours, ${rungCount} échelons générés`);
 const write = (name, data) => writeFileSync(join(root, 'data', name), JSON.stringify(data, null, 2) + '\n');
 const imp = async (p) => (await import(pathToFileURL(join(root, 'src', p)).href)).default;
 
+// ───────────── Classes D&D (voir docs/CLASSES.md) ─────────────
+const CLASS_IDS = ['guerrier', 'paladin', 'rodeur', 'clerc', 'barde', 'roublard', 'magicien'];
+const classes = await imp('classes.mjs');
+if (classes.map((c) => c.id).join() !== CLASS_IDS.join()) throw new Error(`classes: identifiants attendus ${CLASS_IDS.join(', ')}`);
+const questTitles = new Set(quests.map((q) => q.title));
+const masteryCount = Object.fromEntries(ABILITIES.map((a) => [a, 0]));
+for (const c of classes) {
+  const where = `classe ${c.id}`;
+  if (!c.name.trim() || !c.icon.trim() || !c.profile.trim() || !c.description.trim()) throw new Error(`${where}: texte vide`);
+  if (c.masteries.length !== 2 || c.masteries[0] === c.masteries[1] || !c.masteries.every((a) => ABILITIES.includes(a))) throw new Error(`${where}: 2 maîtrises distinctes attendues`);
+  for (const a of c.masteries) masteryCount[a]++;
+  if (c.favoredQuests.length !== 3) throw new Error(`${where}: 3 quêtes favorites attendues`);
+  for (const f of c.favoredQuests) {
+    if (!questTitles.has(f)) throw new Error(`${where}: quête favorite inconnue « ${f} »`);
+    const q = quests.find((x) => x.title === f);
+    if (!c.masteries.includes(q.ability)) throw new Error(`${where}: « ${f} » (${q.ability}) n’est pas une maîtrise de la classe`);
+  }
+  if (c.paths.length !== 2 || c.paths[0].ability === c.paths[1].ability) throw new Error(`${where}: 2 voies d’affinités différentes attendues`);
+  for (const p of c.paths) {
+    if (!p.id.startsWith(`${c.id}-`) || !ABILITIES.includes(p.ability) || !p.name.trim() || !p.title.trim() || !p.description.trim()) throw new Error(`voie invalide : ${p.id}`);
+  }
+}
+if (new Set(classes.map((c) => [...c.masteries].sort().join('-'))).size !== 7) throw new Error('classes: 7 couples de maîtrises distincts attendus');
+// Aucune caractéristique ignorée, aucune monopolisée : chaque discipline (caractéristique principale) trouve au moins 2 classes.
+for (const a of ABILITIES) if (masteryCount[a] < 2 || masteryCount[a] > 3) throw new Error(`classes: ${a} est maîtrisée par ${masteryCount[a]} classes (2 ou 3 attendues)`);
+for (const th of themeRows) if (!classes.some((c) => c.masteries.includes(th.primary))) throw new Error(`discipline ${th.id}: aucune classe ne maîtrise ${th.primary}`);
+write('classes.fr.json', classes);
+
 const achRows = await imp('achievements.mjs');
 const achievements = achRows.map(([id, category, name, description, condition, xpBonus, titleUnlocked, isSecret, hint]) => ({
   id, category, name, description, condition, xpBonus, titleUnlocked: titleUnlocked ?? null,
@@ -235,29 +263,38 @@ const itemRows = await imp('items.mjs');
 const { default: setRows, SET_BONUSES } = await import(pathToFileURL(join(root, 'src', 'sets.mjs')).href);
 const setOf = new Map();
 for (const [setId, , , , , pieces] of setRows) for (const id of Object.values(pieces)) setOf.set(id, setId);
-const items = itemRows.map(([id, slot, ability, name, glyph, blurb]) => ({ id, slot, ability, name, glyph, blurb, setId: setOf.get(id) ?? null }));
+const items = itemRows.map(([id, slot, ability, name, glyph, blurb, classId]) => ({ id, slot, ability, name, glyph, blurb, classId: classId ?? null, setId: setOf.get(id) ?? null }));
 if (new Set(items.map((i) => i.id)).size !== items.length) throw new Error('objets en double');
+// V4 : 54 modèles = 7 classes × 6 emplacements + 12 universels (2 par emplacement), chaque emplacement couvre les 6 caractéristiques.
+if (items.length !== 54) throw new Error(`objets: ${items.length} (attendu 54)`);
 for (const s of SLOTS) {
   const inSlot = items.filter((i) => i.slot === s);
-  if (inSlot.length !== 8) throw new Error(`objets: ${inSlot.length} pour l’emplacement ${s} (attendu 8)`);
+  if (inSlot.length !== 9) throw new Error(`objets: ${inSlot.length} pour l’emplacement ${s} (attendu 9)`);
+  if (inSlot.filter((i) => !i.classId).length !== 2) throw new Error(`objets: 2 universels attendus pour l’emplacement ${s}`);
   for (const a of ABILITIES) if (!inSlot.some((i) => i.ability === a)) throw new Error(`objets: aucune caractéristique ${a} pour l’emplacement ${s}`);
+  for (const c of classes) if (inSlot.filter((i) => i.classId === c.id).length !== 1) throw new Error(`objets: 1 objet de ${c.id} attendu pour l’emplacement ${s}`);
+}
+for (const c of classes) {
+  const mine = items.filter((i) => i.classId === c.id);
+  for (const m of c.masteries) if (mine.filter((i) => i.ability === m).length !== 3) throw new Error(`objets: ${c.id} doit avoir 3 pièces en ${m}`);
 }
 for (const i of items) {
   if (!SLOTS.includes(i.slot) || !ABILITIES.includes(i.ability) || !i.name.trim() || !i.glyph.trim() || !i.blurb.trim()) throw new Error(`objet invalide : ${i.id}`);
+  if (i.classId && !CLASS_IDS.includes(i.classId)) throw new Error(`objet ${i.id} : classe inconnue ${i.classId}`);
 }
 write('items.fr.json', items);
 
-// ───────────── Panoplies : 6 sets de 6 pièces, une par emplacement ─────────────
+// ───────────── Panoplies de classe : 7 sets de 6 pièces, une par emplacement ─────────────
 const sets = setRows.map(([id, name, glyph, ability, blurb, pieces]) => ({ id, name, glyph, ability, blurb, pieces, bonuses: SET_BONUSES }));
-if (sets.length !== 6 || new Set(sets.map((x) => x.id)).size !== 6) throw new Error('sets: 6 sets distincts attendus');
+if (sets.map((x) => x.id).join() !== CLASS_IDS.join()) throw new Error('sets: un set par classe attendu, dans l’ordre des classes');
 const usedPieces = new Set();
 for (const st of sets) {
-  if (!ABILITIES.includes(st.ability) || !st.name.trim() || !st.glyph.trim() || !st.blurb.trim()) throw new Error(`set invalide : ${st.id}`);
+  if (st.ability !== classes.find((c) => c.id === st.id).masteries[0] || !st.name.trim() || !st.glyph.trim() || !st.blurb.trim()) throw new Error(`set invalide : ${st.id}`);
   if (Object.keys(st.pieces).length !== SLOTS.length) throw new Error(`set ${st.id} : une pièce par emplacement attendue`);
   for (const s of SLOTS) {
     const it = items.find((i) => i.id === st.pieces[s]);
     if (!it || it.slot !== s) throw new Error(`set ${st.id} : pièce invalide pour l’emplacement ${s}`);
-    if (it.ability !== st.ability) throw new Error(`set ${st.id} : ${it.id} n’a pas la caractéristique du set`);
+    if (it.classId !== st.id) throw new Error(`set ${st.id} : ${it.id} n’est pas un objet de la classe`);
     if (usedPieces.has(it.id)) throw new Error(`set ${st.id} : ${it.id} figure dans deux sets`);
     usedPieces.add(it.id);
   }
@@ -265,8 +302,28 @@ for (const st of sets) {
 if (!SET_BONUSES.every((b, i, a) => b.pieces > 0 && b.pp > 0 && (i === 0 || (b.pieces > a[i - 1].pieces && b.pp > a[i - 1].pp)))) throw new Error('sets: bonus croissants attendus');
 write('sets.fr.json', sets);
 
+// ───────────── Sorts et capacités de classe : 8 par classe (2-2-2-1-1) ─────────────
+const RARITY_PLAN = ['commun', 'commun', 'peu_commun', 'peu_commun', 'rare', 'rare', 'epique', 'legendaire'];
+const FAMILIES = ['xp', 'stat', 'raid', 'gold', 'chest', 'dungeon'];
+const spellRows = await imp('spells.mjs');
+const spells = spellRows.map(([id, classId, rarity, family, ability, name, glyph, blurb]) => ({ id, classId, rarity, family, ability, name, glyph, blurb }));
+if (spells.length !== 56 || new Set(spells.map((x) => x.id)).size !== 56) throw new Error(`sorts: 56 capacités distinctes attendues (${spells.length})`);
+for (const cl of classes) {
+  const mine = spells.filter((x) => x.classId === cl.id);
+  if (mine.map((x) => x.rarity).join() !== RARITY_PLAN.join()) throw new Error(`sorts: ${cl.id} doit suivre la structure 2-2-2-1-1 (communes à légendaire)`);
+}
+for (const x of spells) {
+  if (!FAMILIES.includes(x.family) || !(ABILITIES.includes(x.ability) || x.ability === 'all') || !x.name.trim() || !x.glyph.trim() || !x.blurb.trim()) throw new Error(`sort invalide : ${x.id}`);
+  const cl = classes.find((k) => k.id === x.classId);
+  if (!cl) throw new Error(`sort ${x.id} : classe inconnue`);
+  if (x.family === 'xp' && x.ability !== 'all' && !cl.masteries.includes(x.ability)) throw new Error(`sort ${x.id} : l’XP vise une maîtrise de la classe`);
+  if (x.ability === 'all' && x.family !== 'xp') throw new Error(`sort ${x.id} : « all » est réservé à la famille xp`);
+}
+for (const a of ABILITIES) if (!spells.some((x) => x.ability === a)) throw new Error(`sorts: aucune capacité pour ${a}`);
+write('spells.fr.json', spells);
+
 const { buildDungeons } = await import(pathToFileURL(join(root, 'src', 'dungeons.mjs')).href);
 const dungeons = buildDungeons(themeRows);
 if (dungeons.length !== themeRows.length || dungeons.length !== new Set(tracks.map((t) => t.theme)).size) throw new Error('donjons: un par thème de parcours attendu');
 write('dungeons.fr.json', dungeons);
-console.log(`${items.length} objets, ${sets.length} sets, ${dungeons.length} donjons`);
+console.log(`${items.length} objets, ${sets.length} sets, ${spells.length} capacités, ${dungeons.length} donjons`);

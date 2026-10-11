@@ -82,6 +82,8 @@ Deno.serve(async (req: Request) => {
         return json(await engine.undoQuest(ctx, userId, p.instanceId));
       case 'choose-path':
         return json(await engine.choosePath(ctx, userId, p.pathId));
+      case 'class-change':
+        return json(await engine.changeClass(ctx, userId, p.classId));
       case 'choose-improvement':
         return json(await engine.chooseImprovement(ctx, userId, p.choice));
       case 'track-start':
@@ -109,6 +111,11 @@ Deno.serve(async (req: Request) => {
         return json(await engine.mergeItems(ctx, userId, { itemIds: Array.isArray(p.itemIds) ? p.itemIds : [] }));
       case 'item-dismantle':
         return json(await engine.dismantleItem(ctx, userId, { itemId: p.itemId }));
+      // Grimoire : capacités de classe (V4, voir docs/CLASSES.md)
+      case 'spell-equip':
+        return json(await engine.equipSpell(ctx, userId, { spellId: p.spellId, slot: p.slot }));
+      case 'spell-unequip':
+        return json(await engine.unequipSpell(ctx, userId, { spellId: p.spellId, slot: p.slot }));
       case 'dungeon-list':
         return json(await engine.listDungeons(ctx, userId));
       case 'dungeon-run':
@@ -143,7 +150,7 @@ Deno.serve(async (req: Request) => {
         // « Recommencer une nouvelle aventure » : remet le personnage à zéro, garde le compte et les compagnons.
         // Les raids en cours sont quittés d'abord (passage de relais du chef, équipes vides supprimées).
         await admin.rpc('raid_detach_profile', { p_profile: userId });
-        const tables = ['posts', 'journal_entries', 'rest_days', 'unlocked_achievements', 'xp_events', 'quest_preferences', 'quest_instances', 'tracks', 'inventory_items', 'chests', 'dungeon_progress', 'characters'];
+        const tables = ['posts', 'journal_entries', 'rest_days', 'unlocked_achievements', 'xp_events', 'quest_preferences', 'quest_instances', 'tracks', 'inventory_items', 'spells_known', 'chests', 'dungeon_progress', 'characters'];
         for (const t of tables) {
           const col = t === 'posts' ? 'author_id' : 'profile_id';
           const { error } = await admin.from(t).delete().eq(col, userId);

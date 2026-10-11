@@ -6,13 +6,17 @@ import { ABILITIES, DUNGEONS, EQUIP_SLOTS, ITEMS, dungeonBase, dungeonUnlockLeve
 const data = (f: string) => JSON.parse(readFileSync(join(__dirname, '..', '..', 'content', 'data', f), 'utf8'));
 
 describe('contenu de l’aventure', () => {
-  it('48 objets : 8 par emplacement, chaque caractéristique présente dans chaque emplacement', () => {
-    expect(ITEMS).toHaveLength(48);
-    expect(new Set(ITEMS.map((i) => i.id)).size).toBe(48);
+  it('54 objets : 42 de classe (6 par classe) et 12 universels, chaque caractéristique présente dans chaque emplacement', () => {
+    expect(ITEMS).toHaveLength(54);
+    expect(new Set(ITEMS.map((i) => i.id)).size).toBe(54);
+    expect(ITEMS.filter((i) => i.classId)).toHaveLength(42);
+    expect(ITEMS.filter((i) => !i.classId)).toHaveLength(12);
     for (const slot of EQUIP_SLOTS) {
       const inSlot = ITEMS.filter((i) => i.slot === slot);
-      expect(inSlot).toHaveLength(8);
+      expect(inSlot).toHaveLength(9);
+      expect(inSlot.filter((i) => !i.classId)).toHaveLength(2);
       for (const a of ABILITIES) expect(inSlot.some((i) => i.ability === a)).toBe(true);
+      for (const c of ['guerrier', 'paladin', 'rodeur', 'clerc', 'barde', 'roublard', 'magicien']) expect(inSlot.filter((i) => i.classId === c)).toHaveLength(1);
     }
     for (const i of ITEMS) {
       expect(i.name.trim().length).toBeGreaterThan(3);

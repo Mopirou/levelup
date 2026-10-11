@@ -740,7 +740,7 @@
   {
     "id": "decouvreur-50",
     "category": "exploration",
-    "name": "Explorateur du catalogue",
+    "name": "Fouilleur du catalogue",
     "description": "Accomplir 50 quêtes différentes.",
     "condition": {
       "kind": "discovered",
@@ -903,7 +903,7 @@
       "target": 20
     },
     "xpBonus": 250,
-    "titleUnlocked": "Rassembleur"
+    "titleUnlocked": "Cœur de la compagnie"
   },
   {
     "id": "encourageur",

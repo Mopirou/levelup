@@ -27,10 +27,13 @@ import {
   listDungeons,
   mergeChests,
   mergeItems,
+  equipSpell,
   openChest,
+  unequipSpell,
   runDungeon,
   unequipSlot,
   upgradeItem,
+  changeClass,
   createCharacter,
   declareRest,
   ensureQuests,
@@ -95,7 +98,7 @@ function setup(startIso: string) {
 
 const input = {
   name: 'Aldric',
-  classId: 'eclaireur',
+  classId: 'guerrier',
   scores: { FOR: 5, DEX: 2, CON: 5, INT: 2, SAG: 2, CHA: 2 },
   portraitId: 'p03',
   frameColor: '#2f5a47',
@@ -119,7 +122,7 @@ const complete = (s: ReturnType<typeof setup>, q: QuestInstance, extra: Record<s
 beforeAll(async () => {
   pg = await PGlite.create({ extensions: { citext, pgcrypto } });
   await pg.exec(PLATFORM);
-  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql', '20261009000002_interests_and_tuning.sql', '20261009000003_rescale_base_scores.sql', '20261010000001_quest_runs.sql', '20261011000001_tracks.sql', '20261011000002_free_quest_default.sql', '20261012000001_adventure.sql', '20261013000001_raids.sql', '20261014000001_seasons.sql', '20261015000001_daily_chest.sql']) await pg.exec(read(`migrations/${f}`));
+  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql', '20261009000002_interests_and_tuning.sql', '20261009000003_rescale_base_scores.sql', '20261010000001_quest_runs.sql', '20261011000001_tracks.sql', '20261011000002_free_quest_default.sql', '20261012000001_adventure.sql', '20261013000001_raids.sql', '20261014000001_seasons.sql', '20261015000001_daily_chest.sql', '20261016000001_classes.sql', '20261017000001_spells.sql']) await pg.exec(read(`migrations/${f}`));
   await pg.exec(read('seed.sql'));
   await pg.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'a@ex.fr', '{"username":"aldric","birth_year":1994}')`, [U]);
 }, 120_000);
@@ -134,7 +137,7 @@ describe('logique de jeu sur le vrai schéma (adaptateur SupabaseStore)', () => 
     const r = await createCharacter(s.ctx, U, input);
     expect(r.ok).toBe(true);
     const c = (await s.store.getCharacter(U))!;
-    expect(c).toMatchObject({ name: 'Aldric', classId: 'eclaireur', level: 1, totalXp: 0, oath: input.oath, portraitId: 'p03' });
+    expect(c).toMatchObject({ name: 'Aldric', classId: 'guerrier', level: 1, totalXp: 0, oath: input.oath, portraitId: 'p03' });
     expect(abilityScores(c).FOR).toBe(5);
     const settings = await s.store.getSettings(U);
     expect(settings).toMatchObject({ resetHour: 4, timezone: 'Europe/Paris', hardcore: false });
@@ -483,7 +486,7 @@ describe('aventure sur le vrai schéma (coffres, équipement, donjons, expéditi
     return { store: store as any, ctx, setNow: (iso: string) => (nowMs = Date.parse(iso)) };
   };
   const chestOf = (rarity: string, key: string): any => ({ id: crypto.randomUUID(), rarity, source: 'quest', sourceKey: key, instanceId: null, createdAt: new Date().toISOString(), openedAt: null });
-  const itemOf = (slot: string, rarity = 'rare', over: object = {}): any => ({ id: crypto.randomUUID(), templateId: 'epee-du-sentier', rarity, slot, ability: 'FOR', level: 0, equipped: false, createdAt: new Date().toISOString(), ...over });
+  const itemOf = (slot: string, rarity = 'rare', over: object = {}): any => ({ id: crypto.randomUUID(), templateId: 'espadon', rarity, slot, ability: 'FOR', level: 0, equipped: false, createdAt: new Date().toISOString(), ...over });
 
   beforeAll(async () => {
     await pg.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'v@ex.fr', '{"username":"vaillant","birth_year":1990}')`, [V]);
@@ -521,6 +524,32 @@ describe('aventure sur le vrai schéma (coffres, équipement, donjons, expéditi
     // annulation : le coffre fermé disparaît
     expect((await undoQuest(s.ctx, V, q.id)).ok).toBe(true);
     expect((await rows(`select count(*)::int n from chests where profile_id = $1`, [V]))[0].n).toBe(0);
+  });
+
+  it('Grimoire (V4) : capacités connues écrites en base, un seul sort par emplacement, équiper et retirer', async () => {
+    const s = mk();
+    await s.store.saveSpell(V, { spellId: 'boule-de-feu', level: 2, equippedSlot: null });
+    await s.store.saveSpell(V, { spellId: 'eclair', level: 1, equippedSlot: null });
+    expect(await s.store.listSpells(V)).toEqual([
+      { spellId: 'boule-de-feu', level: 2, equippedSlot: null },
+      { spellId: 'eclair', level: 1, equippedSlot: null },
+    ]);
+    // la classe de ce héros n'importe pas pour équiper : l'emplacement 2 reçoit Éclair, puis Boule de feu le remplace
+    expect(await equipSpell(s.ctx, V, { spellId: 'eclair', slot: 2 })).toMatchObject({ ok: true });
+    const swapped = await equipSpell(s.ctx, V, { spellId: 'boule-de-feu', slot: 2 });
+    expect(swapped.ok && swapped.grimoire.equipped).toEqual([null, 'boule-de-feu', null]);
+    expect(await rows(`select spell_id, level, equipped_slot from spells_known where profile_id = $1 order by spell_id`, [V])).toEqual([
+      { spell_id: 'boule-de-feu', level: 2, equipped_slot: 2 },
+      { spell_id: 'eclair', level: 1, equipped_slot: null },
+    ]);
+    // un niveau supplémentaire (doublon) garde l'emplacement
+    await s.store.saveSpell(V, { spellId: 'boule-de-feu', level: 3, equippedSlot: 2 });
+    expect((await rows(`select level, equipped_slot from spells_known where profile_id = $1 and spell_id = 'boule-de-feu'`, [V]))[0]).toEqual({ level: 3, equipped_slot: 2 });
+    const state = await getAdventureState(s.ctx, V);
+    expect(state.ok && state.state.grimoire.equipped).toEqual([null, 'boule-de-feu', null]);
+    expect((await unequipSpell(s.ctx, V, { slot: 2 })).ok).toBe(true);
+    expect((await rows(`select count(*)::int n from spells_known where profile_id = $1 and equipped_slot is not null`, [V]))[0].n).toBe(0);
+    await rows(`delete from spells_known where profile_id = $1`, [V]);
   });
 
   it('ouvre au plus 2 coffres par jour de jeu (plafond écrit en base), repart le lendemain', async () => {
@@ -757,7 +786,7 @@ describe('saisons sur le vrai schéma (adaptateur SupabaseStore, classement, ré
     }
     await pg.query(`insert into friendships (requester_id, addressee_id, status, accepted_at) values ($1, $2, 'accepted', now()), ($1, $3, 'accepted', now())`, [ANA, BEN, CLO]);
     // Ben porte une panoplie de Titan de 4 pièces (épiques) : plus puissant
-    for (const [slot, tpl] of [['arme', 'epee-du-sentier'], ['tete', 'bandeau-du-guerrier'], ['torse', 'armure-de-plates'], ['mains', 'gantelets-de-force']]) {
+    for (const [slot, tpl] of [['arme', 'espadon'], ['tete', 'heaume'], ['torse', 'harnois'], ['mains', 'gantelets-de-puissance-d-ogre']]) {
       await pg.query(`insert into inventory_items (profile_id, template_id, rarity, slot, ability, equipped) values ($1, $2, 'epique', $3, 'FOR', true)`, [BEN, tpl, slot]);
     }
   });
@@ -766,7 +795,7 @@ describe('saisons sur le vrai schéma (adaptateur SupabaseStore, classement, ré
     const s = mk();
     const ben = ok(await getAdventureState(s.ctx, BEN));
     expect(ben.state.powerBreakdown.sets).toBe(12);
-    expect(ben.state.sets.find((x) => x.setId === 'titan')).toMatchObject({ equipped: 4, tier: { pieces: 4 } });
+    expect(ben.state.sets.find((x) => x.setId === 'guerrier')).toMatchObject({ equipped: 4, tier: { pieces: 4 } });
     const [c] = await rows(`select power from characters where profile_id = $1`, [BEN]);
     expect(c.power).toBe(ben.state.power);
     const [sc] = await rows(`select season_key, power, first_day::text f, last_day::text l from season_scores where profile_id = $1`, [BEN]);
@@ -840,5 +869,35 @@ describe('saisons sur le vrai schéma (adaptateur SupabaseStore, classement, ré
     expect(clo.state.evaluated[0]).toMatchObject({ rank: null, participants: 0, frame: 'laurier' });
     expect(clo.state.optedIn).toBe(false);
     expect((await rows(`select count(*)::int n from chests where profile_id = $1 and source = 'season'`, [CLO]))[0].n).toBe(1);
+  });
+});
+
+describe('classes D&D sur le vrai schéma : migration puis reclassification gratuite', () => {
+  const CU = '00000000-0000-0000-0000-000016000001';
+  const mk = () => {
+    const store = new SupabaseStore(fakeSupabase(pg));
+    const ctx: ServerContext = { store: store as never, now: () => Date.parse('2026-10-05T09:00:00+02:00'), uuid: () => crypto.randomUUID() };
+    return { store: store as any, ctx };
+  };
+
+  it('un ancien personnage est converti, voit l’annonce et change de classe une seule fois', async () => {
+    const s = mk();
+    await pg.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'c@ex.fr', '{"username":"classique","birth_year":1990}')`, [CU]);
+    expect((await createCharacter(s.ctx, CU, { ...input, name: 'Classique' })).ok).toBe(true);
+    // simule un personnage d'avant la refonte, puis rejoue la migration
+    await pg.query(`update characters set class_id = 'gardien', path_id = 'gardien-protecteur', level = 5, total_xp = 900 where profile_id = $1`, [CU]);
+    await pg.exec(read('migrations/20261016000001_classes.sql'));
+    let c = (await s.store.getCharacter(CU))!;
+    expect(c).toMatchObject({ classId: 'clerc', pathId: 'clerc-vie', classNotice: true, classChanged: false, level: 5, totalXp: 900 });
+
+    const r = await changeClass(s.ctx, CU, 'magicien');
+    expect(r.ok && r.character).toMatchObject({ classId: 'magicien', pathId: 'magicien-evocation', classNotice: false, classChanged: true });
+    c = (await s.store.getCharacter(CU))!;
+    expect(c).toMatchObject({ classId: 'magicien', pathId: 'magicien-evocation', classNotice: false, classChanged: true });
+    expect(await changeClass(s.ctx, CU, 'barde')).toMatchObject({ ok: false, error: 'forbidden' });
+
+    // la migration rejouée ne rallume pas l'annonce ni ne touche la nouvelle classe
+    await pg.exec(read('migrations/20261016000001_classes.sql'));
+    expect(await s.store.getCharacter(CU)).toMatchObject({ classId: 'magicien', classNotice: false, classChanged: true });
   });
 });

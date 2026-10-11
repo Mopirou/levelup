@@ -46,7 +46,7 @@ const date = (day: number) => `2026-10-${String(day).padStart(2, '0')}`;
 
 const heroInput = {
   name: 'Aldric',
-  classId: 'eclaireur',
+  classId: 'guerrier',
   scores: { FOR: 5, DEX: 2, CON: 5, INT: 2, SAG: 2, CHA: 2 },
   portraitId: 'p1',
   frameColor: '#2f5a47',
@@ -353,7 +353,7 @@ describe('ouverture des coffres', () => {
     if (!r1.ok) return;
     expect(r1.opening).toMatchObject({ gold: 50, fragments: 5, opensToday: 1 });
     expect(r1.opening.item).toMatchObject({ equipped: false, level: 0 });
-    expect(ITEMS.some((t) => t.id === r1.opening.item.templateId)).toBe(true);
+    expect(ITEMS.some((t) => t.id === r1.opening.item!.templateId)).toBe(true);
     expect(r1.opening.chest.openedAt).not.toBeNull();
     expect(r1.character).toMatchObject({ gold: 50, fragments: 5, chestOpensDate: date(5), chestOpensToday: 1 });
     expect((await s.store.listItems(U))).toHaveLength(1);
@@ -401,7 +401,7 @@ describe('ouverture des coffres', () => {
       const s = await hero();
       const [a] = await give(s, 'argent');
       const r = await openChest(s.ctx, U, { chestId: a.id });
-      return r.ok ? [r.opening.item.templateId, r.opening.item.rarity] : null;
+      return r.ok ? [r.opening.item?.templateId ?? r.opening.spell?.spell.id, r.opening.item?.rarity ?? r.opening.spell?.spell.rarity] : null;
     };
     expect(await run()).toEqual(await run());
     const s = await hero();
@@ -410,8 +410,10 @@ describe('ouverture des coffres', () => {
     const r = await openChest(s.ctx, U, { chestId: a.id });
     expect(r.ok && ['epique', 'legendaire']).toBeTruthy();
     if (r.ok) {
-      expect(['epique', 'legendaire']).toContain(r.opening.item.rarity);
-      expect(r.opening.guaranteed).toBe(r.opening.item.rarity === 'epique' ? 'epique' : null);
+      // la pitié garantit la rareté, que le coffre donne un objet ou une capacité
+      const rarity = r.opening.item?.rarity ?? r.opening.spell!.spell.rarity;
+      expect(['epique', 'legendaire']).toContain(rarity);
+      expect(r.opening.guaranteed).toBe(rarity === 'epique' ? 'epique' : null);
       expect(r.character.chestPity.bronze).toBe(0);
     }
   });
@@ -468,7 +470,7 @@ describe('équipement', () => {
     expect(items.filter((i) => i.equipped).map((i) => i.id).sort()).toEqual([b.id, tete.id].sort());
     const st = await getAdventureState(s.ctx, U);
     expect(st.ok && st.state.equipped).toEqual({ arme: b.id, tete: tete.id });
-    expect(st.ok && st.state.powerBreakdown.items).toBe(6 + 31); // arme FOR et casque CON : maîtrises de l’Éclaireur (+10 %)
+    expect(st.ok && st.state.powerBreakdown.items).toBe(6 + 34); // espadon et heaume : objets du Guerrier, +20 % de PP (affinité de classe)
     expect(await equipItem(s.ctx, U, { itemId: 'nope' })).toMatchObject({ ok: false, error: 'not-found' });
     const u = await unequipSlot(s.ctx, U, { slot: 'arme' });
     expect(u.ok && u.item.equipped).toBe(false);
@@ -483,11 +485,11 @@ describe('équipement', () => {
     await equipItem(s.ctx, U, { itemId: it.id });
     const after = await getAdventureState(s.ctx, U);
     if (!before.ok || !after.ok) throw new Error('état');
-    // eclaireur : FOR est une maîtrise -> +10 % : 130 × 2 × 1,1 = 286
-    expect(after.state.power - before.state.power).toBe(286);
-    expect(after.state.scores.FOR - before.state.scores.FOR).toBe(Math.floor(286 / 12));
+    // espadon : objet du Guerrier -> +20 % : 130 × 2 × 1,2 = 312
+    expect(after.state.power - before.state.power).toBe(312);
+    expect(after.state.scores.FOR - before.state.scores.FOR).toBe(Math.floor(312 / 12));
     const view = after.state.items[0];
-    expect(view).toMatchObject({ power: 286, abilityBonus: 23, upgradeCost: null, dismantleValue: 80 });
+    expect(view).toMatchObject({ power: 312, abilityBonus: 26, upgradeCost: null, dismantleValue: 80 });
   });
 
   it('améliore : coûte des fragments et de l’or, refuse sans ressources ou au niveau max', async () => {

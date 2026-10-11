@@ -21,6 +21,35 @@ test.describe('Aventure', () => {
     expect(await page.locator('.drow').count()).toBeGreaterThan(20);
   });
 
+  test('le Grimoire (V4) affiche 3 emplacements libres, l’affinité de classe et l’aide sur les capacités', async ({ page }) => {
+    await createHero(page);
+    await page.locator('ion-tab-button', { hasText: 'Aventure' }).click();
+    await expect(page.getByRole('heading', { name: /Grimoire/ })).toBeVisible();
+    const slots = page.getByRole('list', { name: 'Emplacements du Grimoire' }).getByRole('listitem');
+    await expect(slots).toHaveCount(3);
+    await expect(page.getByRole('group', { name: /Emplacement 1 : libre/ })).toBeVisible();
+    await expect(page.getByTestId('grimoire-empty')).toContainText('coffres de bronze');
+    await expect(page.getByTestId('grimoire-count')).toContainText('0/8');
+    // l'affinité de classe est expliquée, sans dépendre de la couleur
+    await expect(page.getByTestId('affinity-help')).toContainText('+20 % de PP');
+    // sept panoplies de classe
+    expect(await page.locator('[data-testid^="set-"]').count()).toBe(7);
+  });
+
+  test('ouvrir le coffre de bois offert annonce l’objet obtenu (jamais une capacité)', async ({ page }) => {
+    await createHero(page);
+    await page.locator('ion-tab-button', { hasText: 'Aventure' }).click();
+    await page.getByRole('button', { name: /Ouvrir un coffre Bois/ }).click();
+    const result = page.getByTestId('open-result');
+    await expect(result).toBeVisible();
+    await expect(page.getByTestId('spell-announce')).toHaveCount(0);
+    await expect(result).toContainText(/PP/);
+    await page.getByRole('button', { name: 'Super' }).click();
+    // l'objet obtenu est dans le sac : son détail indique s'il est de la classe du héros ou universel
+    await page.locator('.irow').first().click();
+    await expect(page.getByTestId('item-class')).toContainText(/Objet|universel|classe/);
+  });
+
   test('réclamer l’expédition affiche un message de butin', async ({ page }) => {
     await page.clock.install();
     await createHero(page);

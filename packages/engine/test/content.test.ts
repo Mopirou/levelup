@@ -405,15 +405,40 @@ describe('tirage sur le vrai catalogue', () => {
 });
 
 describe('autres contenus', () => {
-  it('8 classes, 16 voies, maîtrises valides et distinctes', () => {
-    expect(classes).toHaveLength(8);
-    expect(classes.flatMap((c) => c.paths)).toHaveLength(16);
-    expect(new Set(classes.map((c) => c.masteries.join('-'))).size).toBe(8);
+  it('7 classes D&D, 14 voies, maîtrises valides et distinctes', () => {
+    expect(classes.map((c) => c.id)).toEqual(['guerrier', 'paladin', 'rodeur', 'clerc', 'barde', 'roublard', 'magicien']);
+    expect(classes.flatMap((c) => c.paths)).toHaveLength(14);
+    expect(new Set(classes.map((c) => [...c.masteries].sort().join('-'))).size).toBe(7);
+    const mastered = Object.fromEntries(ABILITIES.map((a) => [a, 0]));
     for (const c of classes) {
       expect(c.masteries).toHaveLength(2);
+      expect(c.masteries[0]).not.toBe(c.masteries[1]);
+      for (const m of c.masteries) mastered[m]++;
+      expect(c.icon).toMatch(/\p{Extended_Pictographic}/u);
+      expect(c.description.length).toBeGreaterThan(40);
       expect(c.favoredQuests).toHaveLength(3);
-      for (const f of c.favoredQuests) expect(quests.some((q) => q.title === f)).toBe(true);
+      for (const f of c.favoredQuests) {
+        const q = quests.find((x) => x.title === f);
+        expect(q, f).toBeDefined();
+        // une quête favorite relève d'une des deux maîtrises de la classe
+        expect(c.masteries).toContain(q!.ability);
+      }
+      expect(c.paths[0].ability).not.toBe(c.paths[1].ability);
+      for (const p of c.paths) {
+        expect(p.id.startsWith(c.id + '-')).toBe(true);
+        expect(p.title.length).toBeGreaterThan(3);
+      }
     }
+    // 14 places de maîtrise : FOR 2, DEX 3, CON 3, INT 2, SAG 2, CHA 2
+    expect(mastered).toEqual({ FOR: 2, DEX: 3, CON: 3, INT: 2, SAG: 2, CHA: 2 });
+  });
+  it('aucune discipline orpheline : chaque caractéristique principale est maîtrisée par au moins deux classes', () => {
+    for (const th of themes) expect(classes.filter((c) => c.masteries.includes(th.ability)).length, th.id).toBeGreaterThanOrEqual(2);
+  });
+  it('aucun texte du contenu ne cite une ancienne classe', () => {
+    const old = /\b(éclaireur|aventurier|artisan|troubadour|rassembleur|érudit|gardien|explorateur)s?\b/i;
+    for (const c of classes) expect(JSON.stringify(c)).not.toMatch(old);
+    for (const a of achievements) expect(`${a.name} ${a.titleUnlocked ?? ''}`).not.toMatch(old);
   });
   it('98 trophées uniques', () => {
     expect(achievements).toHaveLength(98);

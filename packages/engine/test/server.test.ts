@@ -49,7 +49,7 @@ function setup(startIso = '2026-10-05T09:00:00+02:00') {
 
 const heroInput = {
   name: 'Aldric',
-  classId: 'eclaireur',
+  classId: 'guerrier',
   scores: { FOR: 5, DEX: 2, CON: 5, INT: 2, SAG: 2, CHA: 2 },
   portraitId: 'p1',
   frameColor: '#2f5a47',
@@ -495,11 +495,11 @@ describe('niveau, voie, améliorations, titres', () => {
   }
   it('choix de la voie au niveau 3', async () => {
     const s = await started();
-    expect(await choosePath(s.ctx, U, 'eclaireur-sentier')).toMatchObject({ ok: false, error: 'level-too-low' });
+    expect(await choosePath(s.ctx, U, 'guerrier-champion')).toMatchObject({ ok: false, error: 'level-too-low' });
     await levelTo(s, 200);
     expect(await choosePath(s.ctx, U, 'inconnue')).toMatchObject({ ok: false, error: 'invalid' });
-    expect((await choosePath(s.ctx, U, 'eclaireur-sentier')).ok).toBe(true);
-    expect(await choosePath(s.ctx, U, 'eclaireur-bastion')).toMatchObject({ ok: false, error: 'nothing-pending' });
+    expect((await choosePath(s.ctx, U, 'guerrier-champion')).ok).toBe(true);
+    expect(await choosePath(s.ctx, U, 'guerrier-chevalier')).toMatchObject({ ok: false, error: 'nothing-pending' });
   });
   it('amélioration +2 ou +1/+1, sans dépasser 20', async () => {
     const s = await started();

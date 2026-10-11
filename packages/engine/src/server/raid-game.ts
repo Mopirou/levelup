@@ -271,6 +271,8 @@ interface Roster {
   power: number;
   cha: number;
   forScore: number;
+  /** Capacités : +% de dégâts */
+  raidBonus: number;
 }
 
 /** Personnages, puissance et scores des membres joints (une lecture par membre). */
@@ -278,9 +280,9 @@ async function loadRoster(ctx: ServerContext, members: readonly RaidMemberRecord
   return Promise.all(
     members.map(async (record) => {
       const character = me && record.profileId === me.id ? me.character : await ctx.store.getCharacter(record.profileId);
-      if (!character) return { record, character: null, power: 0, cha: 0, forScore: 0 };
+      if (!character) return { record, character: null, power: 0, cha: 0, forScore: 0, raidBonus: 0 };
       const s = await heroCombatStats(ctx.store, record.profileId, character);
-      return { record, character, power: s.power, cha: s.scores.CHA, forScore: s.scores.FOR };
+      return { record, character, power: s.power, cha: s.scores.CHA, forScore: s.scores.FOR, raidBonus: s.raidBonus };
     }),
   );
 }
@@ -292,7 +294,7 @@ async function applyHit(env: RaidEnv, team: RaidTeamRecord, roster: readonly Ros
   if (!mine) return null;
   if (damage.some((d) => d.profileId === env.userId && d.gameDate === env.today)) return null;
   const chaBonus = raidChaBonus(roster.filter((r) => r.record.status === 'joined' && r.character).map((r) => r.cha));
-  const baseDamage = raidBaseDamage({ pp: mine.power, forScore: mine.forScore, chaBonus });
+  const baseDamage = raidBaseDamage({ pp: mine.power, forScore: mine.forScore, chaBonus, spellBonusPct: mine.raidBonus });
   const received = (await env.ctx.store.listRaidEncouragements(team.id, env.today)).filter((e) => e.toId === env.userId).length;
   const record: RaidDamageRecord = { teamId: team.id, profileId: env.userId, gameDate: env.today, baseDamage, encouragements: received, damage: raidDamage(baseDamage, received) };
   if (!(await env.ctx.store.insertRaidDamage(record))) return null;

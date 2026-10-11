@@ -5,6 +5,7 @@ import {
   ABILITY_LABEL,
   ABILITY_TAGLINE,
   ACHIEVEMENTS,
+  CLASSES,
   abilityProgress,
   abilityProgressOf,
   addDays,
@@ -65,6 +66,26 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
             <lu-bar [value]="game.levelInfo().ratio" [thick]="true" />
             <p class="xs muted">{{ fmt(ch.totalXp) }} XP cumulés · {{ totalDone() }} quêtes accomplies</p>
           </section>
+
+          <!-- Refonte des classes : annonce unique et reclassification gratuite -->
+          @if (game.classNotice()) {
+            <section class="lu-card classnote" data-testid="class-notice" aria-labelledby="h-class-evo">
+              <span class="lu-eyebrow">NOUVEAU</span>
+              <h2 id="h-class-evo">Ta classe a évolué</h2>
+              <p class="small">Les classes s’inspirent désormais de Donjons &amp; Dragons. Tu deviens <strong>{{ game.classDef()?.name }}</strong>, sans rien perdre : niveau, XP, série et objets sont intacts. Tu peux choisir une autre classe, <strong>une seule fois et gratuitement</strong>.</p>
+              <div class="cgrid">
+                @for (k of classes; track k.id) {
+                  <button type="button" class="lu-card flat copt" [class.cur]="k.id === ch.classId" [attr.data-testid]="'class-' + k.id" [attr.aria-label]="k.name + ' : ' + k.profile" (click)="pickClass(k.id)">
+                    <span class="cg" aria-hidden="true">{{ k.icon }}</span>
+                    <strong>{{ k.name }}</strong>
+                    <span class="xs muted">{{ label(k.masteries[0]) }} · {{ label(k.masteries[1]) }}</span>
+                    @if (k.id === ch.classId) { <span class="xs gold">Classe actuelle</span> }
+                  </button>
+                }
+              </div>
+              <button type="button" class="lu-btn" data-testid="class-keep" (click)="pickClass(ch.classId)">Garder {{ game.classDef()?.name }}</button>
+            </section>
+          }
 
           <!-- Tes six caractéristiques -->
           <section class="lu-section">
@@ -218,6 +239,12 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
     .id { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
     .nm { font-size: 30px; line-height: 1.1; font-weight: 500; }
     .cls { font-size: 13px; color: var(--lu-text-2); }
+    .classnote { gap: 10px; border-color: var(--lu-gold-strong); }
+    .classnote h2 { font-size: 20px; font-weight: 500; }
+    .cgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .copt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; text-align: left; cursor: pointer; min-height: 44px; }
+    .copt.cur { border-color: var(--lu-accent); }
+    .copt .cg { font-size: 22px; line-height: 1; }
     .mot { font-family: var(--lu-font-title); font-style: italic; font-size: 13px; color: var(--lu-muted); }
     .chips { display: flex; flex-wrap: wrap; gap: 8px; }
     .chips .lu-chip { cursor: default; } .chips button.lu-chip { cursor: pointer; }
@@ -419,6 +446,23 @@ export class HeroPage {
   goGrimoire(a: AbilityId): void {
     this.detail.set(null);
     this.ui.go('/grimoire', { queryParams: { ability: a } });
+  }
+
+  readonly classes = CLASSES;
+
+  async pickClass(classId: string): Promise<void> {
+    const cur = this.c()?.classId;
+    const next = CLASSES.find((k) => k.id === classId);
+    if (!next) return;
+    if (classId !== cur) {
+      const ok = await this.ui.confirm({
+        title: `Devenir ${next.name} ?`,
+        message: 'Ce changement est gratuit mais unique : ensuite, ta classe ne changera plus.',
+        confirm: `Devenir ${next.name}`,
+      });
+      if (!ok) return;
+    }
+    if (await this.game.changeClass(classId)) this.game.toast(classId === cur ? `Tu restes ${next.name}.` : `Tu es maintenant ${next.name}.`, 'success');
   }
 
   async pickTitle(): Promise<void> {

@@ -72,7 +72,7 @@ Les coffres s'accumulent dans l'inventaire (`chests`), sans limite, sans expirat
 - Le plafond rend chaque ouverture précieuse et empêche de revenir souvent.
 
 ### 5.5 Contenu d'un coffre (gros loot, peu de tirages)
-Chaque ouverture donne **toujours 1 objet d'équipement** + des fragments + de l'or. Tableau par rareté de coffre :
+Chaque ouverture donne **1 objet d'équipement** (ou, *V4b*, une capacité de classe : bois 0 %, bronze 15 %, argent 22 %, or 30 %, mythique 40 %, voir `CLASSES.md` §3.4) + des fragments + de l'or. Tableau par rareté de coffre :
 
 | Coffre | Rareté de l'objet (probas %) Commun / Peu commun / Rare / Épique / Légendaire | Fragments | Or |
 |---|---|---|---|
@@ -92,8 +92,8 @@ Chaque ouverture donne **toujours 1 objet d'équipement** + des fragments + de l
 - **Raretés** : `commun`, `peu_commun`, `rare`, `epique`, `legendaire` (couleurs gris, vert, bleu, violet, orange).
 - **PP d'un objet** : `round(base[rareté] × (1 + 0.1 × niveau_objet) × affinité)` avec base = 5 / 12 / 28 / 60 / 130, `niveau_objet` 0..10.
 - Chaque objet porte `ability` (la caractéristique qu'il augmente) : le **bonus de score** de cette caractéristique = `floor(PP_objet / 12)` (s'ajoute au score effectif en jeu d'aventure uniquement -- expédition, coffres, donjons --, **pas** au score de progression/XP du personnage). La somme des scores de la formule de PP (§2) n'inclut **pas** ces bonus, déjà comptés dans le PP des objets.
-- **Affinité de classe** : +10 % de PP si la caractéristique (`ability`) de l'objet est l'une des deux maîtrises de la classe du héros.
-- **Contenu** (`packages/content/src/items.mjs`) : ~48 modèles (8 par emplacement) avec `id`, `slot`, `ability`, `name`, `glyph` (un emoji), `blurb`. Aucun asset image.
+- **Affinité de classe** : +20 % de PP si l'objet est de la classe du héros (`classId` du modèle ; *V4b, remplace le +10 % basé sur les maîtrises*, voir `CLASSES.md` §3.1). Les objets universels et ceux des autres classes n'ont aucun bonus.
+- **Contenu** (`packages/content/src/items.mjs`) : *V4b* 54 modèles (42 de classe + 12 universels, 9 par emplacement) avec `id`, `slot`, `ability`, `name`, `glyph` (un emoji), `blurb`, `classId`. Aucun asset image. (V1 : 48 modèles, 8 par emplacement.)
 - **Améliorer** : `niveau_objet +1` coûte `fragments = 5 × (niveau+1)` et `gold = 100 × (niveau+1)^1.5` (arrondi).
 - **Fusion d'objets (Forge)** : **3 objets de même rareté -> 1 objet de rareté supérieure** (emplacement de **celui des 3 passé en premier** dans `itemIds`, modèle tiré avec une graine déterministe, niveau 0), jamais au-delà de légendaire. Les objets équipés ne sont pas fusionnables. **Démonter** un objet donne des fragments (`2, 5, 12, 30, 80` selon rareté).
 - Un seul objet équipé par emplacement. `equip` remplace.
@@ -128,6 +128,7 @@ Implémenté dans `packages/engine/src/sets.ts` et `seasons.ts` (règles pures),
 
 ### 9.1 Panoplies
 
+- *V4b : ces 6 sets par caractéristique sont remplacés par 7 panoplies de classe (id = id de la classe, mêmes paliers +5/+12/+25 PP ; voir `CLASSES.md` §3.1). Le texte suivant décrit la V3 d'origine.*
 - **6 sets de 6 pièces** (une par emplacement), **un set par caractéristique** : Titan (FOR), Ombre (DEX), Rempart (CON), Érudit (INT), Aube (SAG), Troubadour (CHA). Une pièce de set a toujours la caractéristique de son set.
 - Aucun objet n'a été ajouté : sur les 8 modèles de chaque emplacement, 6 sont des pièces de set (un par caractéristique), **2 restent hors set** (`setId` nul) : 36 pièces, 12 objets libres. Le champ `setId` figure dans `items.fr.json` (généré depuis `sets.mjs`, qui liste les 6 pièces de chaque set). Le tirage de coffres est inchangé : un modèle uniforme parmi les 48, donc 3 chances sur 4 d'obtenir une pièce de set.
 - **Bonus** selon le nombre de pièces **équipées** de la panoplie ; le palier atteint **remplace** le précédent (pas de cumul des paliers) :

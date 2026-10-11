@@ -1,0 +1,562 @@
+[
+  {
+    "id": "second-souffle",
+    "classId": "guerrier",
+    "rarity": "commun",
+    "family": "dungeon",
+    "ability": "CON",
+    "name": "Second souffle",
+    "glyph": "💨",
+    "blurb": "Une grande inspiration, et la fatigue recule d’un pas."
+  },
+  {
+    "id": "style-de-combat",
+    "classId": "guerrier",
+    "rarity": "commun",
+    "family": "stat",
+    "ability": "FOR",
+    "name": "Style de combat",
+    "glyph": "🥋",
+    "blurb": "Une façon de se battre travaillée mille fois, jusqu’au réflexe."
+  },
+  {
+    "id": "critique-ameliore",
+    "classId": "guerrier",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "FOR",
+    "name": "Critique amélioré",
+    "glyph": "🎯",
+    "blurb": "Tes meilleurs efforts comptent double quand tu vises juste."
+  },
+  {
+    "id": "athlete-accompli",
+    "classId": "guerrier",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "FOR",
+    "name": "Athlète accompli",
+    "glyph": "🏃",
+    "blurb": "Courir, grimper, sauter : tout devient entraînement."
+  },
+  {
+    "id": "fougue",
+    "classId": "guerrier",
+    "rarity": "rare",
+    "family": "raid",
+    "ability": "FOR",
+    "name": "Fougue",
+    "glyph": "⚡",
+    "blurb": "Un sursaut d’énergie pour frapper deux fois plus fort quand il le faut."
+  },
+  {
+    "id": "attaque-supplementaire",
+    "classId": "guerrier",
+    "rarity": "rare",
+    "family": "stat",
+    "ability": "FOR",
+    "name": "Attaque supplémentaire",
+    "glyph": "🗡️",
+    "blurb": "Un geste de plus à chaque assaut : la force devient méthode."
+  },
+  {
+    "id": "inflexible",
+    "classId": "guerrier",
+    "rarity": "epique",
+    "family": "xp",
+    "ability": "FOR",
+    "name": "Inflexible",
+    "glyph": "🧱",
+    "blurb": "Un échec ne compte jamais deux fois : tu te relèves et tu recommences."
+  },
+  {
+    "id": "triple-attaque-supplementaire",
+    "classId": "guerrier",
+    "rarity": "legendaire",
+    "family": "raid",
+    "ability": "FOR",
+    "name": "Triple attaque supplémentaire",
+    "glyph": "🌪️",
+    "blurb": "Trois coups pour le prix d’un : les boss sentent le vent tourner."
+  },
+  {
+    "id": "imposition-des-mains",
+    "classId": "paladin",
+    "rarity": "commun",
+    "family": "dungeon",
+    "ability": "CON",
+    "name": "Imposition des mains",
+    "glyph": "🤲",
+    "blurb": "Un contact chaleureux referme les plaies et redonne du courage."
+  },
+  {
+    "id": "sens-divin",
+    "classId": "paladin",
+    "rarity": "commun",
+    "family": "stat",
+    "ability": "CHA",
+    "name": "Sens divin",
+    "glyph": "👁️",
+    "blurb": "Tu perçois ce qui est juste, et les autres le sentent en ta présence."
+  },
+  {
+    "id": "benediction",
+    "classId": "paladin",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "CHA",
+    "name": "Bénédiction",
+    "glyph": "🕊️",
+    "blurb": "Une prière brève, et chaque effort compte un peu plus."
+  },
+  {
+    "id": "protection-contre-le-mal-et-le-bien",
+    "classId": "paladin",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "CHA",
+    "name": "Protection contre le mal et le bien",
+    "glyph": "🛡️",
+    "blurb": "Un cercle de lumière tient les mauvaises influences à distance."
+  },
+  {
+    "id": "chatiment-divin",
+    "classId": "paladin",
+    "rarity": "rare",
+    "family": "raid",
+    "ability": "FOR",
+    "name": "Châtiment divin",
+    "glyph": "☀️",
+    "blurb": "Chaque coup du paladin s’illumine d’une énergie radieuse."
+  },
+  {
+    "id": "aura-de-protection",
+    "classId": "paladin",
+    "rarity": "rare",
+    "family": "dungeon",
+    "ability": "CON",
+    "name": "Aura de protection",
+    "glyph": "💠",
+    "blurb": "Une lueur protège le paladin et tous ceux qui marchent à ses côtés."
+  },
+  {
+    "id": "frappes-radiantes",
+    "classId": "paladin",
+    "rarity": "epique",
+    "family": "xp",
+    "ability": "CHA",
+    "name": "Frappes radiantes",
+    "glyph": "✨",
+    "blurb": "Tes engagements brillent de l’intérieur et se voient de loin."
+  },
+  {
+    "id": "nimbe-sacre",
+    "classId": "paladin",
+    "rarity": "legendaire",
+    "family": "raid",
+    "ability": "FOR",
+    "name": "Nimbe sacré",
+    "glyph": "😇",
+    "blurb": "Un halo de lumière solaire consume les ténèbres autour de toi."
+  },
+  {
+    "id": "marque-du-chasseur",
+    "classId": "rodeur",
+    "rarity": "commun",
+    "family": "raid",
+    "ability": "DEX",
+    "name": "Marque du chasseur",
+    "glyph": "🎯",
+    "blurb": "Une proie désignée, et chaque flèche sait où aller."
+  },
+  {
+    "id": "ennemi-jure",
+    "classId": "rodeur",
+    "rarity": "commun",
+    "family": "stat",
+    "ability": "DEX",
+    "name": "Ennemi juré",
+    "glyph": "🐺",
+    "blurb": "À force d’étudier tes adversaires, tu les devances."
+  },
+  {
+    "id": "fin-explorateur",
+    "classId": "rodeur",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "SAG",
+    "name": "Fin explorateur",
+    "glyph": "🧭",
+    "blurb": "Les terrains inconnus ne te perdent plus : tu y trouves des leçons."
+  },
+  {
+    "id": "passage-sans-trace",
+    "classId": "rodeur",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "SAG",
+    "name": "Passage sans trace",
+    "glyph": "🍂",
+    "blurb": "Tu avances en silence et tu observes mieux que personne."
+  },
+  {
+    "id": "proie-du-chasseur",
+    "classId": "rodeur",
+    "rarity": "rare",
+    "family": "chest",
+    "ability": "SAG",
+    "name": "Proie du chasseur",
+    "glyph": "🦌",
+    "blurb": "Un bon chasseur rentre toujours avec un beau butin."
+  },
+  {
+    "id": "tactiques-defensives",
+    "classId": "rodeur",
+    "rarity": "rare",
+    "family": "dungeon",
+    "ability": "CON",
+    "name": "Tactiques défensives",
+    "glyph": "🪵",
+    "blurb": "Tu sais te replier, te couvrir et revenir plus fort."
+  },
+  {
+    "id": "voile-de-la-nature",
+    "classId": "rodeur",
+    "rarity": "epique",
+    "family": "xp",
+    "ability": "SAG",
+    "name": "Voile de la nature",
+    "glyph": "🌿",
+    "blurb": "La forêt te couvre, et ta patience porte ses fruits."
+  },
+  {
+    "id": "tueur-implacable",
+    "classId": "rodeur",
+    "rarity": "legendaire",
+    "family": "gold",
+    "ability": "DEX",
+    "name": "Tueur implacable",
+    "glyph": "🏔️",
+    "blurb": "Rien n’échappe à ta traque, et chaque expédition ramène un trésor."
+  },
+  {
+    "id": "flamme-sacree",
+    "classId": "clerc",
+    "rarity": "commun",
+    "family": "stat",
+    "ability": "SAG",
+    "name": "Flamme sacrée",
+    "glyph": "🔥",
+    "blurb": "Une flamme venue du ciel éclaire ton esprit et affine ton discernement."
+  },
+  {
+    "id": "soins",
+    "classId": "clerc",
+    "rarity": "commun",
+    "family": "dungeon",
+    "ability": "CON",
+    "name": "Soins",
+    "glyph": "💚",
+    "blurb": "Un toucher, un mot, et les blessures se referment."
+  },
+  {
+    "id": "arme-spirituelle",
+    "classId": "clerc",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "SAG",
+    "name": "Arme spirituelle",
+    "glyph": "🔱",
+    "blurb": "Une lame de lumière combat pour toi pendant que tu médites."
+  },
+  {
+    "id": "mot-de-guerison",
+    "classId": "clerc",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "SAG",
+    "name": "Mot de guérison",
+    "glyph": "🗣️",
+    "blurb": "Un mot doux suffit parfois à remettre quelqu’un debout."
+  },
+  {
+    "id": "esprits-gardiens",
+    "classId": "clerc",
+    "rarity": "rare",
+    "family": "dungeon",
+    "ability": "CON",
+    "name": "Esprits gardiens",
+    "glyph": "👼",
+    "blurb": "Des esprits veillent sur toi et tiennent les monstres à distance."
+  },
+  {
+    "id": "frappes-benies",
+    "classId": "clerc",
+    "rarity": "rare",
+    "family": "raid",
+    "ability": "SAG",
+    "name": "Frappes bénies",
+    "glyph": "🌟",
+    "blurb": "Chaque coup porte la force de ta foi."
+  },
+  {
+    "id": "resurrection",
+    "classId": "clerc",
+    "rarity": "epique",
+    "family": "xp",
+    "ability": "SAG",
+    "name": "Résurrection",
+    "glyph": "🌅",
+    "blurb": "Rien n’est perdu : chaque matin ramène un nouveau départ."
+  },
+  {
+    "id": "intervention-divine",
+    "classId": "clerc",
+    "rarity": "legendaire",
+    "family": "dungeon",
+    "ability": "CON",
+    "name": "Intervention divine",
+    "glyph": "🙌",
+    "blurb": "Quand tout semble perdu, ton dieu répond à l’appel."
+  },
+  {
+    "id": "moquerie-cruelle",
+    "classId": "barde",
+    "rarity": "commun",
+    "family": "raid",
+    "ability": "CHA",
+    "name": "Moquerie cruelle",
+    "glyph": "😈",
+    "blurb": "Une raillerie bien tournée et le boss perd ses moyens."
+  },
+  {
+    "id": "inspiration-bardique",
+    "classId": "barde",
+    "rarity": "commun",
+    "family": "stat",
+    "ability": "CHA",
+    "name": "Inspiration bardique",
+    "glyph": "🎶",
+    "blurb": "Une mélodie qui donne envie de se dépasser."
+  },
+  {
+    "id": "fou-rire-de-tasha",
+    "classId": "barde",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "CHA",
+    "name": "Fou rire de Tasha",
+    "glyph": "🤣",
+    "blurb": "Le rire détend, rassemble, et rend tout plus facile."
+  },
+  {
+    "id": "contre-charme",
+    "classId": "barde",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "CHA",
+    "name": "Contre-charme",
+    "glyph": "🎼",
+    "blurb": "Une mélodie chasse la peur et remet les amis sur pied."
+  },
+  {
+    "id": "suggestion",
+    "classId": "barde",
+    "rarity": "rare",
+    "family": "gold",
+    "ability": "CHA",
+    "name": "Suggestion",
+    "glyph": "💬",
+    "blurb": "Un mot bien choisi, et le marchand baisse ses prix."
+  },
+  {
+    "id": "motif-hypnotique",
+    "classId": "barde",
+    "rarity": "rare",
+    "family": "chest",
+    "ability": "CHA",
+    "name": "Motif hypnotique",
+    "glyph": "🌀",
+    "blurb": "Un tourbillon de couleurs fascine, et le hasard te sourit."
+  },
+  {
+    "id": "mot-de-pouvoir-etourdissant",
+    "classId": "barde",
+    "rarity": "epique",
+    "family": "xp",
+    "ability": "CHA",
+    "name": "Mot de pouvoir étourdissant",
+    "glyph": "💥",
+    "blurb": "Une parole si forte qu’elle te fait avancer sans réfléchir."
+  },
+  {
+    "id": "mot-de-pouvoir-mortel",
+    "classId": "barde",
+    "rarity": "legendaire",
+    "family": "raid",
+    "ability": "CHA",
+    "name": "Mot de pouvoir mortel",
+    "glyph": "☠️",
+    "blurb": "Un seul mot, murmuré au bon moment, achève le boss."
+  },
+  {
+    "id": "attaque-sournoise",
+    "classId": "roublard",
+    "rarity": "commun",
+    "family": "raid",
+    "ability": "DEX",
+    "name": "Attaque sournoise",
+    "glyph": "🗡️",
+    "blurb": "Frapper là où ça fait mal, quand personne ne regarde."
+  },
+  {
+    "id": "expertise",
+    "classId": "roublard",
+    "rarity": "commun",
+    "family": "stat",
+    "ability": "INT",
+    "name": "Expertise",
+    "glyph": "🔍",
+    "blurb": "Un talent travaillé jusqu’à la maîtrise."
+  },
+  {
+    "id": "ruse",
+    "classId": "roublard",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "INT",
+    "name": "Ruse",
+    "glyph": "🦊",
+    "blurb": "Un détour malin vaut mieux qu’un effort brut."
+  },
+  {
+    "id": "esquive-instinctive",
+    "classId": "roublard",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "INT",
+    "name": "Esquive instinctive",
+    "glyph": "🌀",
+    "blurb": "Tu sens le coup venir et tu apprends de chaque esquive."
+  },
+  {
+    "id": "savoir-faire",
+    "classId": "roublard",
+    "rarity": "rare",
+    "family": "gold",
+    "ability": "INT",
+    "name": "Savoir-faire",
+    "glyph": "🪙",
+    "blurb": "Tu sais toujours où se cache la meilleure affaire."
+  },
+  {
+    "id": "esquive-totale",
+    "classId": "roublard",
+    "rarity": "rare",
+    "family": "dungeon",
+    "ability": "CON",
+    "name": "Esquive totale",
+    "glyph": "💨",
+    "blurb": "Les pièges ne t’effleurent même plus."
+  },
+  {
+    "id": "assassinat",
+    "classId": "roublard",
+    "rarity": "epique",
+    "family": "xp",
+    "ability": "INT",
+    "name": "Assassinat",
+    "glyph": "🥷",
+    "blurb": "Une préparation minutieuse rend chaque effort décisif."
+  },
+  {
+    "id": "coup-de-chance",
+    "classId": "roublard",
+    "rarity": "legendaire",
+    "family": "chest",
+    "ability": "DEX",
+    "name": "Coup de chance",
+    "glyph": "🎲",
+    "blurb": "Quand tout dérape, le dé tombe toujours de ton côté."
+  },
+  {
+    "id": "projectile-magique",
+    "classId": "magicien",
+    "rarity": "commun",
+    "family": "raid",
+    "ability": "INT",
+    "name": "Projectile magique",
+    "glyph": "🌠",
+    "blurb": "Trois traits de force pure qui ne ratent jamais leur cible."
+  },
+  {
+    "id": "lumiere",
+    "classId": "magicien",
+    "rarity": "commun",
+    "family": "stat",
+    "ability": "INT",
+    "name": "Lumière",
+    "glyph": "💡",
+    "blurb": "Une petite lueur pour y voir plus clair, au propre comme au figuré."
+  },
+  {
+    "id": "mains-brulantes",
+    "classId": "magicien",
+    "rarity": "peu_commun",
+    "family": "xp",
+    "ability": "INT",
+    "name": "Mains brûlantes",
+    "glyph": "🤲",
+    "blurb": "La curiosité te brûle les doigts et nourrit ton apprentissage."
+  },
+  {
+    "id": "bouclier",
+    "classId": "magicien",
+    "rarity": "peu_commun",
+    "family": "dungeon",
+    "ability": "CON",
+    "name": "Bouclier",
+    "glyph": "🔮",
+    "blurb": "Une barrière d’énergie arcanique dévie les coups avant qu’ils ne t’atteignent."
+  },
+  {
+    "id": "boule-de-feu",
+    "classId": "magicien",
+    "rarity": "rare",
+    "family": "raid",
+    "ability": "INT",
+    "name": "Boule de feu",
+    "glyph": "🔥",
+    "blurb": "Une explosion qui fait trembler le plus grand des boss."
+  },
+  {
+    "id": "eclair",
+    "classId": "magicien",
+    "rarity": "rare",
+    "family": "xp",
+    "ability": "INT",
+    "name": "Éclair",
+    "glyph": "⚡",
+    "blurb": "Une idée soudaine qui illumine toute une leçon."
+  },
+  {
+    "id": "mur-de-force",
+    "classId": "magicien",
+    "rarity": "epique",
+    "family": "dungeon",
+    "ability": "CON",
+    "name": "Mur de force",
+    "glyph": "🧊",
+    "blurb": "Une paroi invisible que rien ne traverse."
+  },
+  {
+    "id": "souhait",
+    "classId": "magicien",
+    "rarity": "legendaire",
+    "family": "xp",
+    "ability": "all",
+    "name": "Souhait",
+    "glyph": "🌌",
+    "blurb": "Le plus puissant des sorts : il nourrit toutes tes maîtrises."
+  }
+]

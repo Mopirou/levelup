@@ -50,7 +50,7 @@ const ids = {
 async function mkUser(id: string, username: string, level = 3) {
   await admin(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [id, `${username}@ex.fr`, JSON.stringify({ username, birth_year: 1995 })]);
   await admin(
-    `insert into public.characters (profile_id, name, class_id, base_scores, level, total_xp) values ($1, $2, 'eclaireur', '{"FOR":15,"DEX":8,"CON":15,"INT":8,"SAG":8,"CHA":8}', $3, 100)`,
+    `insert into public.characters (profile_id, name, class_id, base_scores, level, total_xp) values ($1, $2, 'guerrier', '{"FOR":15,"DEX":8,"CON":15,"INT":8,"SAG":8,"CHA":8}', $3, 100)`,
     [id, username[0].toUpperCase() + username.slice(1), level],
   );
   await admin(`insert into public.settings (profile_id, oath) values ($1, 'serment secret de ' || $2)`, [id, username]);
@@ -73,6 +73,8 @@ beforeAll(async () => {
   await db.exec(read('migrations/20261013000001_raids.sql'));
   await db.exec(read('migrations/20261014000001_seasons.sql'));
   await db.exec(read('migrations/20261015000001_daily_chest.sql'));
+  await db.exec(read('migrations/20261016000001_classes.sql'));
+  await db.exec(read('migrations/20261017000001_spells.sql'));
   await db.exec(read('seed.sql'));
   await mkUser(ids.alice, 'alice');
   await mkUser(ids.bob, 'bob');
@@ -594,7 +596,7 @@ describe('aventure : ressources, équipement, coffres, donjons', () => {
   const adv = '00000000-0000-0000-0000-0000000000d1';
   const other = '00000000-0000-0000-0000-0000000000d2';
   beforeAll(async () => {
-    await mkUser(adv, 'eclaireur-adv');
+    await mkUser(adv, 'guerrier-adv');
     await mkUser(other, 'compagnon-adv');
   });
 
@@ -1197,5 +1199,169 @@ describe('saisons : classement de puissance entre amis, cadre de portrait, équi
     expect((await as(s1, `select count(*)::int n from season_leaderboard('S1')`))[0].n).toBe(1);
     await wipe();
     await admin(`delete from chests where source = 'season'`);
+  });
+});
+
+describe('classes D&D : migration des anciens personnages', () => {
+  const file = 'migrations/20261016000001_classes.sql';
+  const legacy: [string, string | null, string, string | null][] = [
+    // [ancienne classe, ancienne voie, nouvelle classe, nouvelle voie]
+    ['eclaireur', 'eclaireur-sentier', 'guerrier', 'guerrier-champion'],
+    ['eclaireur', 'eclaireur-bastion', 'guerrier', 'guerrier-champion'],
+    ['rassembleur', 'rassembleur-feu', 'paladin', 'paladin-devotion'],
+    ['rassembleur', 'rassembleur-roc', 'paladin', 'paladin-vengeance'],
+    ['aventurier', 'aventurier-ombre', 'rodeur', 'rodeur-chasseur'],
+    ['aventurier', 'aventurier-tempete', 'rodeur', 'rodeur-belluaire'],
+    ['explorateur', 'explorateur-druide', 'clerc', 'clerc-savoir'],
+    ['explorateur', 'explorateur-nomade', 'clerc', 'clerc-vie'],
+    ['gardien', 'gardien-guerisseur', 'clerc', 'clerc-vie'],
+    ['gardien', 'gardien-protecteur', 'clerc', 'clerc-vie'],
+    ['troubadour', 'troubadour-conteur', 'barde', 'barde-savoir'],
+    ['troubadour', 'troubadour-meneur', 'barde', 'barde-vaillance'],
+    ['artisan', 'artisan-inventeur', 'roublard', 'roublard-voleur'],
+    ['artisan', 'artisan-maitre', 'roublard', 'roublard-voleur'],
+    ['erudit', 'erudit-savant', 'magicien', 'magicien-evocation'],
+    ['erudit', 'erudit-ermite', 'magicien', 'magicien-abjuration'],
+    ['gardien', null, 'clerc', null], // pas encore de voie (niveau < 3)
+  ];
+  const uid = (i: number) => `00000000-0000-0000-0000-0000016000${String(i).padStart(2, '0')}`;
+  const row = async (id: string) => (await admin(`select class_id, path_id, title_equipped, class_notice, class_changed, level, total_xp, streak_current from public.characters where profile_id = $1`, [id]))[0];
+
+  beforeAll(async () => {
+    for (const [i, [cls, path]] of legacy.entries()) {
+      await mkUser(uid(i), `ancien${i}`, 5);
+      await admin(`update public.characters set class_id = $2, path_id = $3, total_xp = 777, streak_current = 9, class_notice = false where profile_id = $1`, [uid(i), cls, path]);
+    }
+    await admin(`update public.characters set title_equipped = 'Rassembleur' where profile_id = $1`, [uid(0)]);
+    await mkUser(uid(50), 'nouveau50', 5); // déjà en classe D&D
+    await admin(`update public.characters set class_id = 'magicien', path_id = 'magicien-abjuration' where profile_id = $1`, [uid(50)]);
+    await db.exec(read(file));
+  });
+
+  it('applique la table de correspondance du §4 à toutes les classes et voies, sans rien perdre', async () => {
+    for (const [i, [, , cls, path]] of legacy.entries()) {
+      expect(await row(uid(i)), `ancien personnage ${i}`).toMatchObject({ class_id: cls, path_id: path, class_notice: true, class_changed: false, level: 5, total_xp: 777, streak_current: 9 });
+    }
+  });
+
+  it('migre le titre honorifique et le catalogue des trophées', async () => {
+    expect((await row(uid(0))).title_equipped).toBe('Cœur de la compagnie');
+    expect((await row(uid(1))).title_equipped).toBeNull();
+    expect((await admin(`select count(*)::int n from public.characters where title_equipped = 'Rassembleur'`))[0].n).toBe(0);
+  });
+
+  it('ne touche pas aux personnages déjà en classe D&D', async () => {
+    expect(await row(uid(50))).toMatchObject({ class_id: 'magicien', path_id: 'magicien-abjuration', class_notice: false, class_changed: false });
+  });
+
+  it('est rejouable : un second passage ne change rien (annonce et reclassification comprises)', async () => {
+    await admin(`update public.characters set class_notice = false, class_changed = true, class_id = 'barde' where profile_id = $1`, [uid(0)]);
+    const before = await admin(`select profile_id, class_id, path_id, class_notice, class_changed from public.characters order by profile_id`);
+    await db.exec(read(file));
+    await db.exec(read(file));
+    expect(await admin(`select profile_id, class_id, path_id, class_notice, class_changed from public.characters order by profile_id`)).toEqual(before);
+  });
+
+  it('plus aucun ancien identifiant de classe ni de voie', async () => {
+    const olds = `'eclaireur','rassembleur','aventurier','explorateur','troubadour','artisan','erudit','gardien'`;
+    expect((await admin(`select count(*)::int n from public.characters where class_id in (${olds})`))[0].n).toBe(0);
+    expect((await admin(`select count(*)::int n from public.characters where split_part(path_id, '-', 1) in (${olds})`))[0].n).toBe(0);
+  });
+
+  it('les colonnes de reclassification ne sont pas modifiables par le joueur', async () => {
+    await expect(as(uid(1), `update public.characters set class_changed = false where profile_id = $1`, [uid(1)])).rejects.toThrow();
+    await expect(as(uid(1), `update public.characters set class_id = 'barde' where profile_id = $1`, [uid(1)])).rejects.toThrow();
+  });
+});
+
+describe('V4 : capacités de classe (Grimoire) et migration des objets', () => {
+  const file = 'migrations/20261017000001_spells.sql';
+  const g1 = '00000000-0000-0000-0000-000000170001';
+  const g2 = '00000000-0000-0000-0000-000000170002';
+  const item = (profile: string, tpl: string, slot: string, ability: string, equipped = false, rarity = 'rare', level = 0) =>
+    admin(`insert into inventory_items (profile_id, template_id, rarity, slot, ability, equipped, level) values ($1, $2, $3, $4, $5, $6, $7)`, [profile, tpl, rarity, slot, ability, equipped, level]);
+  const spell = (profile: string, id: string, level = 1, slot: number | null = null) =>
+    admin(`insert into spells_known (profile_id, spell_id, level, equipped_slot) values ($1, $2, $3, $4)`, [profile, id, level, slot]);
+
+  beforeAll(async () => {
+    await mkUser(g1, 'mage-v4');
+    await mkUser(g2, 'voisin-v4');
+  });
+
+  it('une capacité par joueur, niveau 1 à 5, emplacement 1 à 3, un seul sort par emplacement', async () => {
+    await spell(g1, 'boule-de-feu', 1, 1);
+    await expect(spell(g1, 'boule-de-feu')).rejects.toThrow(); // clé primaire : une ligne par capacité
+    await expect(spell(g1, 'eclair', 6)).rejects.toThrow();
+    await expect(spell(g1, 'eclair', 0)).rejects.toThrow();
+    await expect(spell(g1, 'eclair', 1, 4)).rejects.toThrow();
+    await expect(spell(g1, 'eclair', 1, 0)).rejects.toThrow();
+    await expect(spell(g1, 'eclair', 1, 1)).rejects.toThrow(); // emplacement déjà pris
+    await spell(g1, 'eclair', 3, 2);
+    await spell(g1, 'souhait', 5, null); // plusieurs capacités non équipées possibles
+    await spell(g1, 'lumiere', 1, null);
+    await spell(g2, 'boule-de-feu', 2, 1); // l'emplacement 1 d'un autre joueur est libre
+    expect((await admin(`select count(*)::int n from spells_known where profile_id = $1`, [g1]))[0].n).toBe(4);
+  });
+
+  it('RLS : chacun lit ses capacités seulement ; aucune écriture côté client', async () => {
+    expect((await admin(`select relrowsecurity r from pg_class where oid = 'public.spells_known'::regclass`))[0].r).toBe(true);
+    expect((await as(g1, `select * from spells_known`)).length).toBe(4);
+    expect((await as(g2, `select * from spells_known`)).length).toBe(1);
+    expect(await as(g2, `select * from spells_known where profile_id = $1`, [g1])).toEqual([]);
+    expect(await as(null, `select * from spells_known`)).toEqual([]);
+    await expect(as(g1, `insert into spells_known (profile_id, spell_id) values ($1, 'mur-de-force')`, [g1])).rejects.toThrow();
+    await expect(as(g1, `update spells_known set level = 5 where profile_id = $1`, [g1])).rejects.toThrow();
+    await expect(as(g1, `delete from spells_known`)).rejects.toThrow();
+    await expect(as(null, `insert into spells_known (profile_id, spell_id) values ($1, 'mur-de-force')`, [g1])).rejects.toThrow();
+  });
+
+  it('migre les anciens objets vers un modèle de même emplacement et de même caractéristique, sans rien perdre', async () => {
+    await item(g2, 'epee-du-sentier', 'arme', 'FOR', true, 'epique', 4);
+    await item(g2, 'bandeau-du-guerrier', 'tete', 'FOR', true, 'rare', 2);
+    await item(g2, 'cotte-de-mailles', 'torse', 'CON', true, 'legendaire', 10); // l'ancien identifiant « cotte-de-mailles » (CON)
+    await item(g2, 'dague-vive', 'arme', 'DEX', false, 'commun');
+    await item(g2, 'talisman-de-force', 'amulette', 'FOR', true, 'commun'); // garde son identifiant
+    const cols = `id, rarity, level, equipped, slot, ability, created_at`;
+    const before = await admin(`select ${cols} from inventory_items where profile_id = $1 order by id`, [g2]);
+    await db.exec(read(file));
+    const after = await admin(`select ${cols} from inventory_items where profile_id = $1 order by id`, [g2]);
+    expect(after).toEqual(before); // rareté, niveau, équipé, emplacement, caractéristique, date : intacts
+    const tpl = Object.fromEntries((await admin(`select slot || ':' || ability k, template_id t from inventory_items where profile_id = $1 and equipped`, [g2])).map((r: any) => [r.k, r.t]));
+    expect(tpl['arme:FOR']).toBe('espadon');
+    expect(tpl['tete:FOR']).toBe('bandeau-de-combattant');
+    expect(tpl['torse:CON']).toBe('robe-consacree');
+    expect(tpl['amulette:FOR']).toBe('talisman-de-force');
+    expect((await admin(`select template_id from inventory_items where profile_id = $1 and slot = 'arme' and not equipped`, [g2]))[0].template_id).toBe('arc-long');
+  });
+
+  it('est rejouable : un second passage ne change aucun objet', async () => {
+    const snapshot = () => admin(`select id, template_id, rarity, level, equipped from inventory_items order by id`);
+    const before = await snapshot();
+    await db.exec(read(file));
+    await db.exec(read(file));
+    expect(await snapshot()).toEqual(before);
+    const spellsBefore = (await admin(`select count(*)::int n from spells_known`))[0].n;
+    await db.exec(read(file));
+    expect((await admin(`select count(*)::int n from spells_known`))[0].n).toBe(spellsBefore);
+    await expect(spell(g1, 'eclair', 1, 1)).rejects.toThrow(); // l'index d'unicité est conservé
+  });
+
+  it('chaque ancien identifiant de la table de correspondance vise un modèle du catalogue, de même emplacement et de même caractéristique', async () => {
+    const sql = read(file);
+    const items = JSON.parse(read('../packages/content/data/items.fr.json')) as { id: string; slot: string; ability: string }[];
+    const pairs = [...sql.matchAll(/\('([a-z0-9-]+)', '([a-z0-9-]+)'\)/g)].map((m) => [m[1], m[2]]);
+    expect(pairs).toHaveLength(48);
+    expect(new Set(pairs.map((p) => p[0])).size).toBe(48);
+    for (const [, target] of pairs) expect(items.some((i) => i.id === target), target).toBe(true);
+  });
+
+  it('le Grimoire disparaît avec le compte (cascade à la purge)', async () => {
+    const gone = '00000000-0000-0000-0000-000000170009';
+    await mkUser(gone, 'mage-parti');
+    await spell(gone, 'souhait', 2, 3);
+    await admin(`update profiles set deleted_at = now() - interval '31 days' where id = $1`, [gone]);
+    expect((await admin(`select purge_deleted_accounts() n`))[0].n).toBeGreaterThanOrEqual(1);
+    expect((await admin(`select count(*)::int n from spells_known where profile_id = $1`, [gone]))[0].n).toBe(0);
+    expect((await admin(`select count(*)::int n from spells_known where profile_id = $1`, [g1]))[0].n).toBe(4);
   });
 });

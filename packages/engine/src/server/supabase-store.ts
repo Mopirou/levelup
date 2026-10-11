@@ -64,6 +64,8 @@ export class SupabaseStore {
       motto: data.motto,
       oath: s?.oath ?? '',
       titleEquipped: data.title_equipped,
+      classNotice: data.class_notice ?? false,
+      classChanged: data.class_changed ?? false,
       baseScores: data.base_scores,
       improvements: data.improvements,
       improvementsChosen: data.improvements_chosen,
@@ -100,6 +102,8 @@ export class SupabaseStore {
         frame_color: c.frameColor,
         motto: c.motto,
         title_equipped: c.titleEquipped ?? null,
+        class_notice: c.classNotice ?? false,
+        class_changed: c.classChanged ?? false,
         base_scores: c.baseScores,
         improvements: c.improvements,
         improvements_chosen: c.improvementsChosen,
@@ -390,6 +394,20 @@ export class SupabaseStore {
       { onConflict: 'profile_id,dungeon_id' },
     );
     fail(error, 'dungeon_progress.upsert');
+  }
+
+  async listSpells(userId: string): Promise<any[]> {
+    const { data, error } = await this.db.from('spells_known').select('*').eq('profile_id', userId).order('spell_id', { ascending: true });
+    fail(error, 'spells_known.select');
+    return (data ?? []).map((r: any) => ({ spellId: r.spell_id, level: r.level, equippedSlot: r.equipped_slot ?? null }));
+  }
+
+  async saveSpell(userId: string, spell: any): Promise<void> {
+    const { error } = await this.db.from('spells_known').upsert(
+      { profile_id: userId, spell_id: spell.spellId, level: spell.level, equipped_slot: spell.equippedSlot ?? null },
+      { onConflict: 'profile_id,spell_id' },
+    );
+    fail(error, 'spells_known.upsert');
   }
 
   // ───── Raids d'amis

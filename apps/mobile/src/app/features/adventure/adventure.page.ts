@@ -8,16 +8,17 @@ import { fmt } from '../../shared/format';
 import type { DungeonEntry, EquipSlot, ItemView } from '../../core/api/types';
 import { RaidCardComponent } from '../raid/raid-card.component';
 import { SeasonCardComponent } from '../season/season-card.component';
+import { GrimoireCardComponent } from './grimoire-card.component';
 import { AdventureStore } from './adventure.store';
 import {
-  ABILITY_NAME, CHEST_GLYPH, CHEST_LABEL, CHEST_RARITIES, ITEM_LABEL, ITEM_RARITIES, MAX_ITEM_LEVEL, SLOTS, SLOT_GLYPH, SLOT_LABEL, itemInfo, setInfo, tierLabel,
+  ABILITY_NAME, CHEST_GLYPH, CHEST_LABEL, CHEST_RARITIES, FAMILY_GLYPH, FAMILY_LABEL, ITEM_LABEL, ITEM_RARITIES, MAX_ITEM_LEVEL, SLOTS, SLOT_GLYPH, SLOT_LABEL, SPELL_FLAVOR, classInfo, isBigSpell, itemInfo, setInfo, spellInfo, tierLabel,
   type ItemRarity,
 } from './adventure.model';
 
 /** Onglet « Aventure » (docs/DONJONS.md §13) : puissance, expédition, coffres, équipement, donjons. */
 @Component({
   selector: 'app-adventure',
-  imports: [IonContent, PageHeaderComponent, ModalComponent, ItemChipComponent, RaidCardComponent, SeasonCardComponent],
+  imports: [IonContent, PageHeaderComponent, ModalComponent, ItemChipComponent, GrimoireCardComponent, RaidCardComponent, SeasonCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content>
@@ -31,7 +32,7 @@ import {
             <div class="pp">
               <span class="lu-eyebrow" id="h-pp">PUISSANCE</span>
               <strong class="ppv" data-testid="pp">{{ fmt(state.power) }} PP</strong>
-              <span class="xs muted" data-testid="pp-detail">Niveau {{ state.powerBreakdown.level }} · caractéristiques {{ state.powerBreakdown.scores }} · équipement {{ state.powerBreakdown.items }}@if (state.powerBreakdown.sets) { · panoplies {{ state.powerBreakdown.sets }} }</span>
+              <span class="xs muted" data-testid="pp-detail">Niveau {{ state.powerBreakdown.level }} · caractéristiques {{ state.powerBreakdown.scores }} · équipement {{ state.powerBreakdown.items }}@if (state.powerBreakdown.sets) { · panoplies {{ state.powerBreakdown.sets }} }@if (state.powerBreakdown.spells) { · capacités {{ state.powerBreakdown.spells }} }</span>
             </div>
             <ul class="res" aria-label="Ressources">
               <li><span aria-hidden="true">🪙</span><strong>{{ fmt(state.gold) }}</strong><span class="xs muted">Or</span></li>
@@ -97,8 +98,8 @@ import {
               @for (slot of slots; track slot) {
                 <li>
                   @if (equippedIn(slot); as it) {
-                    <button type="button" class="slot on r-border" [attr.data-rarity]="it.rarity" [attr.aria-label]="slotLabel[slot] + ' : ' + name(it) + ', ' + itemLabel[it.rarity] + ', niveau ' + it.level + '. Voir le détail'" (click)="selected.set(it.id)">
-                      <span class="sg" aria-hidden="true">{{ glyph(it) }}</span>
+                    <button type="button" class="slot on r-border" [attr.data-rarity]="it.rarity" [attr.aria-label]="slotLabel[slot] + ' : ' + name(it) + ', ' + itemLabel[it.rarity] + ', niveau ' + it.level + (it.affinity ? ', affinité de classe' : '') + '. Voir le détail'" (click)="selected.set(it.id)">
+                      <span class="sg" aria-hidden="true">{{ glyph(it) }}@if (it.affinity) { <span class="aff">★</span> }</span>
                       <span class="sl">{{ slotLabel[slot] }}</span>
                       <span class="sp">{{ it.power }} PP</span>
                     </button>
@@ -114,12 +115,13 @@ import {
             </ul>
 
             <h3 class="sh2">Panoplies</h3>
+            <p class="small muted" data-testid="affinity-help">Les objets de ta classe ({{ myClass().icon }} {{ myClass().name }}), marqués d’une ★, donnent +20 % de PP. Les objets universels et ceux des autres classes s’équipent sans bonus.</p>
             <p class="small muted">Équipe plusieurs pièces d’une même panoplie : à 2, 4 puis 6 pièces, elle ajoute de la puissance et un bonus de caractéristique.</p>
             <ul class="sets" data-testid="sets">
               @for (p of s.sets(); track p.setId) {
                 <li class="set" [class.active]="!!p.tier" [attr.data-testid]="'set-' + p.setId">
                   <div class="row">
-                    <strong>{{ setInfo(p.setId).glyph }} {{ setInfo(p.setId).name }}</strong>
+                    <strong>{{ setInfo(p.setId).glyph }} {{ setInfo(p.setId).name }}@if (p.setId === state.heroClass) { <span class="aff" title="Panoplie de ta classe">★<span class="sr-only"> panoplie de ta classe</span></span> }</strong>
                     <span class="lu-chip" [attr.aria-label]="p.equipped + ' pièces équipées sur 6, ' + p.owned + ' possédées'">{{ p.equipped }}/6</span>
                   </div>
                   <ul class="pcs" aria-hidden="true">
@@ -159,6 +161,9 @@ import {
               }
             }
           </section>
+
+          <!-- Grimoire : capacités de classe (V4) -->
+          <lu-grimoire-card />
 
           <!-- Raid d'amis (chargé à la demande pour alléger le bundle initial) -->
           @defer (on idle) {
@@ -224,6 +229,11 @@ import {
             </div>
           </div>
           <p class="small"><strong>{{ it.power }} PP</strong> · +{{ it.abilityBonus }} {{ abilityName(it.ability) }}{{ it.equipped ? ' · équipé' : '' }}</p>
+          <p class="xs" data-testid="item-class">
+            @if (it.affinity) { <span class="aff" aria-hidden="true">★</span> <strong>Objet de ta classe : +20 % de PP</strong> }
+            @else if (it.classId) { {{ classLabel(it.classId) }} : pas d’affinité pour toi }
+            @else { 🎒 Objet universel : sans affinité }
+          </p>
           @if (it.setId; as sid) { <p class="xs" data-testid="item-set">{{ setInfo(sid).glyph }} Pièce de la {{ setInfo(sid).name }} ({{ setCount(sid) }}/6 équipées)</p> }
           @if (blurb(it)) { <p class="xs muted">{{ blurb(it) }}</p> }
           <div class="acts">
@@ -247,15 +257,35 @@ import {
       @if (s.opened(); as o) {
         <lu-modal label="Coffre ouvert" (close)="s.opened.set(null)">
           <h2 class="mt">Coffre {{ chestLabel[o.chest.rarity] }} ouvert</h2>
-          @let it = o.item;
-          <div class="dhead r-border" [attr.data-rarity]="it.rarity" data-testid="open-result">
-            <span class="big" aria-hidden="true">{{ glyph(it) }}</span>
-            <div>
-              <h3 class="mt2">{{ name(it) }}</h3>
-              <p class="xs"><span class="dot r-bg" aria-hidden="true"></span> {{ itemLabel[it.rarity] }} · {{ slotLabel[it.slot] }} · {{ it.power }} PP</p>
+          @if (o.spell; as sg) {
+            @let sp = spellInfo(sg.spell.id);
+            @if (big(sg.spell.rarity)) {
+              <p class="wow" data-testid="spell-announce" role="status">✨ {{ sp.name }} !</p>
+              <p class="small muted">{{ flavor[sg.spell.rarity] }}</p>
+            }
+            <div class="dhead r-border" [attr.data-rarity]="sg.spell.rarity" data-testid="open-result">
+              <span class="big" aria-hidden="true">{{ sp.glyph }}</span>
+              <div>
+                <h3 class="mt2">{{ sp.name }}</h3>
+                <p class="xs"><span class="dot r-bg" aria-hidden="true"></span> Capacité {{ itemLabel[sg.spell.rarity].toLowerCase() }} · {{ famGlyph[sg.spell.family] }} {{ famLabel[sg.spell.family] }}@if (sg.spell.ownClass) { · ★ ta classe }</p>
+                <p class="xs">{{ sg.spell.effect }}</p>
+              </div>
             </div>
-          </div>
-          @if (o.guaranteed) { <p class="xs gold">La chance te sourit : un objet {{ o.guaranteed === 'legendaire' ? 'légendaire' : 'épique' }} t’était garanti.</p> }
+            <p class="small" data-testid="spell-gain">
+              @if (sg.isNew) { Nouvelle capacité ! Elle est dans ton Grimoire, niveau 1. }
+              @else if (sg.fragments) { Déjà au niveau maximal ({{ sg.spell.maxLevel }}) : elle se transforme en {{ sg.fragments }} 🔹 fragments. }
+              @else { Tu la connaissais déjà : elle passe du niveau {{ sg.levelBefore }} au niveau {{ sg.spell.level }}/{{ sg.spell.maxLevel }}. }
+            </p>
+          } @else if (o.item; as it) {
+            <div class="dhead r-border" [attr.data-rarity]="it.rarity" data-testid="open-result">
+              <span class="big" aria-hidden="true">{{ glyph(it) }}</span>
+              <div>
+                <h3 class="mt2">{{ name(it) }}</h3>
+                <p class="xs"><span class="dot r-bg" aria-hidden="true"></span> {{ itemLabel[it.rarity] }} · {{ slotLabel[it.slot] }} · {{ it.power }} PP@if (it.affinity) { · ★ ta classe }</p>
+              </div>
+            </div>
+          }
+          @if (o.guaranteed) { <p class="xs gold">La chance te sourit : un butin {{ o.guaranteed === 'legendaire' ? 'légendaire' : 'épique' }} t’était garanti.</p> }
           <p class="gain"><span>🔹 +{{ o.fragments }} fragments</span><span>🪙 +{{ o.gold }} or</span></p>
           <button type="button" class="lu-btn mint" (click)="s.opened.set(null)">Super</button>
         </lu-modal>
@@ -311,6 +341,8 @@ import {
     .how p { margin: 4px 0 0; }
     .gain { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; font-weight: 600; font-size: 15px; }
     .gold { color: var(--lu-gold); }
+    .aff { color: var(--lu-gold); font-size: 0.7em; vertical-align: super; font-weight: 700; }
+    .wow { font-family: var(--lu-font-title); font-size: 28px; margin: 4px 0 0; text-align: center; color: var(--lu-gold); }
     .chests, .bag, .dj { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
     .crow, .drow { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 14px; background: var(--lu-surface-2); border: 1px solid var(--lu-border); }
     .crow { border-left: 4px solid var(--r); flex-wrap: wrap; }
@@ -355,9 +387,15 @@ export class AdventurePage {
   readonly slotGlyph = SLOT_GLYPH;
   readonly maxLevel = MAX_ITEM_LEVEL;
   readonly setInfo = setInfo;
+  readonly spellInfo = spellInfo;
+  readonly famLabel = FAMILY_LABEL;
+  readonly famGlyph = FAMILY_GLYPH;
+  readonly flavor = SPELL_FLAVOR;
+  readonly big = isBigSpell;
   readonly tierLabel = tierLabel;
   readonly selected = signal<string | null>(null);
 
+  readonly myClass = computed(() => classInfo(this.st()?.heroClass));
   readonly totalChests = computed(() => this.st()?.chests.length ?? 0);
   readonly current = computed(() => (this.st()?.items ?? []).find((i) => i.id === this.selected()) ?? null);
   readonly sortedStock = computed(() =>
@@ -377,6 +415,7 @@ export class AdventurePage {
 
   equippedIn = (slot: EquipSlot): ItemView | undefined => this.s.equipped().find((i) => i.slot === slot);
   abilityName = (a: string) => ABILITY_NAME[a] ?? a;
+  classLabel = (id: string) => `${classInfo(id).icon} Objet ${classInfo(id).name === 'Universel' ? '' : 'du ' + classInfo(id).name.toLowerCase()}`;
   pieceGlyph = (pc: { slot: EquipSlot; templateId: string }) => itemInfo(pc).glyph;
   setCount = (setId: string): number => this.s.sets().find((p) => p.setId === setId)?.equipped ?? 0;
 

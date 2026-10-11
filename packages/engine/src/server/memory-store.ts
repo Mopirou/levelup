@@ -5,9 +5,11 @@ import {
   QuestInstance,
   QuestPreference,
   QuestTemplate,
+  SpellKnown,
   TrackState,
   emptyAdventureFields,
 } from '../types';
+import { migrateLegacyItems } from '../legacy-items';
 import { RAID_MAX_MEMBERS, type RaidOutcome } from '../raid';
 import type { SeasonScoreLike } from '../seasons';
 import {
@@ -52,6 +54,8 @@ export interface UserData {
   items?: InventoryItem[];
   chests?: Chest[];
   dungeons?: DungeonProgress[];
+  /** Capacités connues (V4, absentes des anciens instantanés) */
+  spells?: SpellKnown[];
   /** Saisons : puissance publiée et résultats (absents des anciens instantanés) */
   seasonScores?: SeasonScoreRecord[];
   seasonResults?: SeasonResultRecord[];
@@ -76,6 +80,7 @@ export const emptyUserData = (): UserData => ({
   items: [],
   chests: [],
   dungeons: [],
+  spells: [],
   seasonScores: [],
   seasonResults: [],
 });
@@ -108,9 +113,10 @@ export class MemoryStore implements GameStore {
       this.users.set(userId, d);
     }
     d.tracks ??= [];
-    d.items ??= [];
+    d.items = migrateLegacyItems(d.items ?? []);
     d.chests ??= [];
     d.dungeons ??= [];
+    d.spells ??= [];
     d.seasonScores ??= [];
     d.seasonResults ??= [];
     return d;
@@ -300,6 +306,21 @@ export class MemoryStore implements GameStore {
     const i = list.findIndex((x) => x.dungeonId === p.dungeonId);
     if (i >= 0) list[i] = structuredClone(p);
     else list.push(structuredClone(p));
+    this.touch();
+  }
+
+  async listSpells(userId: string) {
+    return structuredClone(this.data(userId).spells!);
+  }
+  async saveSpell(userId: string, spell: SpellKnown) {
+    const list = this.data(userId).spells!;
+    // Un seul sort par emplacement du Grimoire (comme l'index unique de la base).
+    if (spell.equippedSlot !== null && list.some((x) => x.spellId !== spell.spellId && x.equippedSlot === spell.equippedSlot)) {
+      throw new Error('spells.save: emplacement déjà occupé');
+    }
+    const i = list.findIndex((x) => x.spellId === spell.spellId);
+    if (i >= 0) list[i] = structuredClone(spell);
+    else list.push(structuredClone(spell));
     this.touch();
   }
 

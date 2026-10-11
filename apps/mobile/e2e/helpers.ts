@@ -18,7 +18,7 @@ export async function createHero(page: Page, name = 'Aldric', username = 'aldric
   await page.getByRole('button', { name: 'J’ai compris' }).click();
   await page.getByLabel('Nom du personnage').fill(name);
   await page.getByRole('button', { name: 'Continuer' }).click();
-  await page.getByRole('button', { name: /Éclaireur/ }).click();
+  await page.getByRole('button', { name: /^Guerrier/ }).click();
   await page.getByRole('button', { name: 'Choisir cette classe' }).click();
   await page.getByLabel('Pseudo', { exact: true }).fill(username);
   await expect(page.getByText('Ce pseudo est libre')).toBeVisible();

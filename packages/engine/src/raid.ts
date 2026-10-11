@@ -86,11 +86,13 @@ export interface RaidDamageInput {
   forScore: number;
   /** Bonus de CHA du groupe (0..0,30) */
   chaBonus: number;
+  /** Capacités : +% de dégâts de raid (famille « raid »), 0 par défaut */
+  spellBonusPct?: number;
 }
 
-/** Dégâts avant encouragements : `PP × (1 + FOR/60) × (1 + bonus CHA)`. */
+/** Dégâts avant encouragements : `PP × (1 + FOR/60) × (1 + bonus CHA) × (1 + capacités)`. */
 export function raidBaseDamage(i: RaidDamageInput): number {
-  return Math.floor(Math.max(0, i.pp) * (1 + Math.max(0, i.forScore) / RAID_FOR_DIV) * (1 + Math.min(RAID_CHA_CAP, Math.max(0, i.chaBonus))));
+  return Math.floor(Math.max(0, i.pp) * (1 + Math.max(0, i.forScore) / RAID_FOR_DIV) * (1 + Math.min(RAID_CHA_CAP, Math.max(0, i.chaBonus))) * (1 + Math.max(0, i.spellBonusPct ?? 0) / 100));
 }
 
 /** Dégâts du jour : dégâts de base × `(1 + encouragements)`. */

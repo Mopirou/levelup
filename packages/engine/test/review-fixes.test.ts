@@ -41,7 +41,7 @@ const date = (day: number) => `2026-10-${String(day).padStart(2, '0')}`;
 
 const heroInput = {
   name: 'Aldric',
-  classId: 'eclaireur',
+  classId: 'guerrier',
   scores: { FOR: 5, DEX: 2, CON: 5, INT: 2, SAG: 2, CHA: 2 },
   portraitId: 'p1',
   frameColor: '#2f5a47',

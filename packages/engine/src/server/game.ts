@@ -37,6 +37,7 @@ import {
   AchievementProgress,
 } from '../achievements';
 import { ClassDef, masteriesOf, pathAbilityOf } from '../content-types';
+import { heroXpBonus } from './hero-stats';
 import { TRACK_RUNGS, advanceOnCompletion, applyMisses, effectiveRung, revertCompletion, rungTemplateId, trackShapes } from '../tracks';
 import {
   ABILITIES,
@@ -930,6 +931,7 @@ export async function completeQuestAction(ctx: ServerContext, userId: string, re
     progress: req.progress,
     stepsDone: req.stepsDone,
     journalText: req.journalText,
+    abilityXpBonus: await heroXpBonus(store, userId, env.character),
   });
   if (!check.ok) return fail(check.error as GameError);
 
@@ -1238,6 +1240,30 @@ export async function choosePath(ctx: ServerContext, userId: string, pathId: str
   const cls = CLASSES.find((c) => c.id === env.character.classId);
   if (!cls?.paths.some((p) => p.id === pathId)) return fail('invalid');
   const character = { ...env.character, pathId };
+  await ctx.store.saveCharacter(userId, character);
+  return { ok: true, character };
+}
+
+/**
+ * Reclassification gratuite, une seule fois, pour les personnages migrés des anciennes classes (« Ta classe a évolué »).
+ * Choisir sa classe actuelle referme simplement l'annonce. Changer de classe remet la voie à la première voie de la
+ * nouvelle classe (si une voie était déjà choisie).
+ */
+export async function changeClass(ctx: ServerContext, userId: string, classId: string): Promise<Result<{ character: CharacterRecord }>> {
+  const env = await loadEnv(ctx, userId);
+  if (!env) return fail('no-character');
+  const c = env.character;
+  if (!c.classNotice || c.classChanged) return fail('forbidden', 'La reclassification gratuite n’est plus disponible.');
+  const next = CLASSES.find((x) => x.id === classId);
+  if (!next) return fail('invalid', 'Classe inconnue.');
+  const same = classId === c.classId;
+  const character: CharacterRecord = {
+    ...c,
+    classId,
+    pathId: same || !c.pathId ? c.pathId ?? null : next.paths[0].id,
+    classNotice: false,
+    classChanged: !same,
+  };
   await ctx.store.saveCharacter(userId, character);
   return { ok: true, character };
 }

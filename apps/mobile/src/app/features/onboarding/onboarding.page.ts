@@ -116,11 +116,11 @@ function loadDraft(): Draft | null {
           @case (3) {
             <section class="step fade-in">
               <h1 class="lu-title s">Choisis ta classe</h1>
-              <p class="lead">Elle donne la maîtrise de deux caractéristiques. Elle ne bloque rien : toutes les quêtes restent accessibles.</p>
+              <p class="lead">Sept classes de Donjons &amp; Dragons. Elle donne la maîtrise de deux caractéristiques. Elle ne bloque rien : toutes les quêtes restent accessibles.</p>
               <div class="classes">
                 @for (c of classes; track c.id) {
                   <button type="button" class="class" [class.on]="classId() === c.id" (click)="openClass.set(c)">
-                    <lu-icon [name]="c.icon === 'footsteps-outline' ? 'footprints' : iconFor(c)" [size]="24" />
+                    <span class="glyph" aria-hidden="true">{{ c.icon }}</span>
                     <strong>{{ c.name }}</strong>
                     <span class="pills"><i [style.--c]="color(c.masteries[0])">{{ short(c.masteries[0]) }}</i><i [style.--c]="color(c.masteries[1])">{{ short(c.masteries[1]) }}</i></span>
                     <span class="xs muted">{{ c.profile }}</span>
@@ -283,7 +283,7 @@ function loadDraft(): Draft | null {
     .classes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .class { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; text-align: left; padding: 14px; border-radius: 18px; border: 1px solid var(--lu-border); background: var(--lu-surface-grad); color: var(--lu-text); cursor: pointer; }
     .class.on { border-color: var(--lu-accent); }
-    .class lu-icon { color: var(--lu-accent); }
+    .class .glyph { font-size: 26px; line-height: 1; }
     .class strong { font-family: var(--lu-font-title); font-size: 18px; font-weight: 500; }
     .pills { display: flex; gap: 6px; }
     .pills i { font-style: normal; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 100px; color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); }
@@ -345,7 +345,7 @@ export class OnboardingPage {
   readonly step = signal(this.d?.step ?? 0);
   readonly card = signal(0);
   readonly name = signal(this.d?.name ?? '');
-  readonly classId = signal<string | null>(this.d?.classId ?? null);
+  readonly classId = signal<string | null>(CLASSES.some((c) => c.id === this.d?.classId) ? this.d!.classId : null);
   readonly openClass = signal<ClassDef | null>(null);
   readonly username = signal(this.d?.username ?? '');
   readonly userState = signal<'idle' | 'checking' | 'ok' | 'taken' | 'bad'>('idle');
@@ -387,10 +387,6 @@ export class OnboardingPage {
   short = (a: AbilityId) => ABILITY_LABEL[a];
   color = (a: AbilityId) => ABILITY_COLOR[a];
   tagline = (a: AbilityId) => ABILITY_TAGLINE[a];
-  iconFor(c: ClassDef): string {
-    return ({ aventurier: 'compass', artisan: 'hammer', troubadour: 'music', rassembleur: 'users', erudit: 'library', gardien: 'heart', explorateur: 'leaf', eclaireur: 'footprints' } as Record<string, string>)[c.id] ?? 'sparkles';
-  }
-
   next(): void {
     this.step.update((s) => Math.min(s + 1, STEPS.length - 1));
     window.scrollTo?.(0, 0);

@@ -10,7 +10,10 @@ import type {
   DungeonProgress,
   EquipSlot,
   ExpeditionClaim,
+  GrimoireState,
   ItemView,
+  SpellGain,
+  SpellView,
   RaidHit,
   RaidInvitationView,
   RaidMemberView,
@@ -43,6 +46,7 @@ import type {
 } from '@levelup/engine';
 
 export type { CompleteRequest, CompleteResponse, CreateCharacterInput, GameError, ImprovementChoice };
+export type { GrimoireState, SpellGain, SpellView };
 export type { AdventureState, Chest, ChestOpening, ChestRarity, DungeonEntry, DungeonProgress, DungeonRunResult, EquipSlot, ExpeditionClaim, ItemView };
 export type { SeasonResultView, SeasonState, SetProgress };
 export type { RaidHit, RaidInvitationView, RaidMemberView, RaidResult, RaidRules, RaidState, RaidStatus, RaidTeamView };
@@ -112,6 +116,8 @@ export interface GameApi {
   complete(req: CompleteRequest): Promise<CommandResult<{ data: CompleteResponse }>>;
   undo(instanceId: string): Promise<CommandResult<{ character: CharacterRecord; instance: QuestInstance }>>;
   choosePath(pathId: string): Promise<CommandResult<{ character: CharacterRecord }>>;
+  /** Reclassification gratuite (une fois) après la refonte des classes, voir docs/CLASSES.md §4 */
+  changeClass(classId: string): Promise<CommandResult<{ character: CharacterRecord }>>;
   chooseImprovement(choice: ImprovementChoice): Promise<CommandResult<{ character: CharacterRecord }>>;
   declareRest(): Promise<CommandResult<{ day: string }>>;
   equipTitle(title: string | null): Promise<CommandResult<{ character: CharacterRecord }>>;
@@ -136,6 +142,10 @@ export interface GameApi {
   /** 3 objets non équipés de même rareté -> 1 objet de rareté supérieure */
   itemMerge(itemIds: string[]): Promise<CommandResult<{ item: ItemView }>>;
   itemDismantle(itemId: string): Promise<CommandResult<{ fragments: number; character: CharacterRecord }>>;
+  /** Grimoire (V4) : équipe une capacité connue dans un emplacement (1 à 3), le premier libre par défaut */
+  spellEquip(spellId: string, slot?: number): Promise<CommandResult<{ grimoire: GrimoireState; character: CharacterRecord }>>;
+  /** Retire la capacité d'un emplacement du Grimoire */
+  spellUnequip(slot: number): Promise<CommandResult<{ grimoire: GrimoireState; character: CharacterRecord }>>;
   dungeonList(): Promise<CommandResult<{ dungeons: DungeonEntry[]; keys: number; maxKeys: number; power: number }>>;
   /** Consomme 1 Clé et résout la run côté serveur */
   dungeonRun(dungeonId: string): Promise<CommandResult<{ result: DungeonRunResult; progress: DungeonProgress; chest: Chest | null; character: CharacterRecord }>>;

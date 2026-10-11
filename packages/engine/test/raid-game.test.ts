@@ -39,7 +39,7 @@ let counter = 0;
 
 const heroInput = (name: string, scores = { FOR: 5, DEX: 2, CON: 5, INT: 2, SAG: 2, CHA: 2 }) => ({
   name,
-  classId: 'eclaireur',
+  classId: 'guerrier',
   scores,
   portraitId: 'p1',
   frameColor: '#2f5a47',

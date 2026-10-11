@@ -16,12 +16,14 @@ import {
   dungeonBossPower,
   dungeonRoomPower,
   expeditionYield,
+  hasAffinity,
   itemAbilityBonus,
   itemPower,
   nextChestRarity,
   nextItemRarity,
   pickTemplateForSlot,
   resolveDungeon,
+  spellMaxFragments,
   rollExpeditionKey,
   rungChestRarity,
   streakMilestoneChest,
@@ -35,6 +37,7 @@ import {
 import { gameDate } from '../dates';
 import { ClassDef, masteriesOf } from '../content-types';
 import { setsProgress, type SetProgress } from '../sets';
+import { freeSpellSlot, nextSpellLevel, spellEffectLabel, spellEffectPoints, type SpellBonuses } from '../spells';
 import {
   AbilityId,
   CHEST_RARITIES,
@@ -49,9 +52,13 @@ import {
   InventoryItem,
   ItemDef,
   ItemRarity,
+  SPELL_MAX_LEVEL,
+  SPELL_SLOTS,
+  SpellDef,
+  SpellKnown,
 } from '../types';
 import type { GameError, Result } from './game';
-import { SETS, buildSnapshot, type HeroSnapshot } from './hero-stats';
+import { SETS, SPELL_BY_ID, SPELL_DEFS, buildSnapshot, withItemClass, type HeroSnapshot } from './hero-stats';
 import { evaluateSeasons, recordPower, type SeasonResultView } from './season-game';
 import type { CharacterRecord, GameStore, ServerContext, SettingsRecord } from './types';
 
@@ -72,6 +79,8 @@ interface AdvEnv {
   nowIso: string;
   today: string;
   masteries: AbilityId[];
+  /** Classe du héros (affinité des objets et des capacités) */
+  classId: string;
 }
 
 async function loadAdv(ctx: ServerContext, userId: string): Promise<AdvEnv | null> {
@@ -87,6 +96,7 @@ async function loadAdv(ctx: ServerContext, userId: string): Promise<AdvEnv | nul
     nowIso: new Date(nowMs).toISOString(),
     today: gameDate(nowMs, settings.timezone, settings.resetHour),
     masteries: masteriesOf(CLASSES, character.classId),
+    classId: character.classId,
   };
 }
 
@@ -96,6 +106,10 @@ export interface ItemView extends InventoryItem {
   setId: string | null;
   /** PP de l'objet (niveau et affinité de classe compris) */
   power: number;
+  /** Classe du modèle (null : objet universel) */
+  classId: string | null;
+  /** Objet de la classe du héros : +20 % de PP */
+  affinity: boolean;
   /** Bonus de score d'aventure donné à `ability` */
   abilityBonus: number;
   /** Coût de l'amélioration suivante, `null` au niveau maximal */
@@ -106,12 +120,15 @@ export interface ItemView extends InventoryItem {
 
 const SET_OF = new Map<string, string>(ITEMS.filter((i) => i.setId).map((i) => [i.id, i.setId as string]));
 
-function viewOf(item: InventoryItem, masteries: readonly AbilityId[]): ItemView {
+function viewOf(raw: InventoryItem, heroClassId: string): ItemView {
+  const [item] = withItemClass([raw]);
   return {
     ...item,
+    classId: item.classId ?? null,
+    affinity: hasAffinity(item, heroClassId),
     setId: SET_OF.get(item.templateId) ?? null,
-    power: itemPower(item, masteries),
-    abilityBonus: itemAbilityBonus(item, masteries),
+    power: itemPower(item, heroClassId),
+    abilityBonus: itemAbilityBonus(item, heroClassId),
     upgradeCost: upgradeCost(item.level),
     dismantleValue: dismantleValue(item.rarity),
   };
@@ -130,7 +147,8 @@ function expeditionStart(env: AdvEnv): number {
 type Snapshot = HeroSnapshot;
 
 async function snapshot(env: AdvEnv, knownItems?: InventoryItem[]): Promise<Snapshot> {
-  return buildSnapshot(env.character, knownItems ?? (await env.ctx.store.listItems(env.userId)));
+  const [items, spells] = await Promise.all([knownItems ?? env.ctx.store.listItems(env.userId), env.ctx.store.listSpells(env.userId)]);
+  return buildSnapshot(env.character, items, spells);
 }
 
 /** Après un changement d'équipement : recalcule la puissance et la publie (carte de compagnon, classement de saison). */
@@ -154,7 +172,7 @@ export interface AdventureState {
   today: string;
   /** Puissance totale (PP) et son détail */
   power: number;
-  powerBreakdown: { level: number; scores: number; items: number; sets: number };
+  powerBreakdown: { level: number; scores: number; items: number; sets: number; spells: number };
   /** Scores d'aventure (scores du personnage + bonus des objets équipés) */
   scores: Record<AbilityId, number>;
   gold: number;
@@ -174,13 +192,78 @@ export interface AdventureState {
   sets: SetProgress[];
   /** Bonus total des panoplies équipées (PP et scores) */
   setBonus: { pp: number; abilities: Partial<Record<AbilityId, number>> };
+  /** Grimoire (V4) : capacités connues, emplacements (3) et bonus actifs (plafonnés) */
+  grimoire: GrimoireState;
+  /** Classe du héros : l'affinité donne +20 % de PP aux objets de sa classe, +25 % d'effet à ses capacités */
+  heroClass: string;
   /** Saisons terminées évaluées par cette lecture (récompense versée une seule fois : à annoncer) */
   seasonEvaluated: SeasonResultView[];
 }
 
+/** Capacité connue, avec ses valeurs calculées pour l'affichage. */
+export interface SpellView {
+  id: string;
+  classId: string;
+  rarity: ItemRarity;
+  family: SpellDef['family'];
+  ability: SpellDef['ability'];
+  level: number;
+  maxLevel: number;
+  /** Emplacement du Grimoire (1 à 3), null si la capacité n'est pas équipée */
+  equippedSlot: number | null;
+  /** Capacité de la classe du héros : +25 % d'effet */
+  ownClass: boolean;
+  /** Points d'effet (rareté, niveau et classe compris) */
+  points: number;
+  /** Effet en une phrase, ex. « +13 % d'XP en Force » */
+  effect: string;
+}
+
+export interface GrimoireState {
+  slots: number;
+  /** Id de la capacité équipée à chaque emplacement (index 0 = emplacement 1), null si libre */
+  equipped: (string | null)[];
+  spells: SpellView[];
+  /** Bonus actifs des capacités équipées, déjà plafonnés */
+  bonus: Pick<SpellBonuses, 'pp' | 'xp' | 'stats' | 'raid' | 'gold' | 'chest' | 'dungeon'>;
+}
+
+function spellViewOf(k: SpellKnown, heroClassId: string): SpellView | null {
+  const def = SPELL_BY_ID.get(k.spellId);
+  if (!def) return null;
+  const ownClass = def.classId === heroClassId;
+  const points = spellEffectPoints(def.rarity, k.level, ownClass);
+  return {
+    id: def.id,
+    classId: def.classId,
+    rarity: def.rarity,
+    family: def.family,
+    ability: def.ability,
+    level: k.level,
+    maxLevel: SPELL_MAX_LEVEL,
+    equippedSlot: k.equippedSlot,
+    ownClass,
+    points,
+    effect: spellEffectLabel(def, points),
+  };
+}
+
+function grimoireOf(snap: Snapshot, heroClassId: string): GrimoireState {
+  const spells = snap.spells.map((k) => spellViewOf(k, heroClassId)).filter((x): x is SpellView => !!x);
+  const equipped: (string | null)[] = Array.from({ length: SPELL_SLOTS }, (_, i) => spells.find((x) => x.equippedSlot === i + 1)?.id ?? null);
+  const { pp, xp, stats, raid, gold, chest, dungeon } = snap.spellBonus;
+  return { slots: SPELL_SLOTS, equipped, spells, bonus: { pp, xp, stats, raid, gold, chest, dungeon } };
+}
+
 function expeditionOf(env: AdvEnv, snap: Snapshot): ExpeditionState {
   const startMs = expeditionStart(env);
-  const y = expeditionYield({ pp: snap.power.total, scores: snap.scores, streak: env.character.streakCurrent, elapsedMs: env.nowMs - startMs });
+  const y = expeditionYield({
+    pp: snap.power.total,
+    scores: snap.scores,
+    streak: env.character.streakCurrent,
+    elapsedMs: env.nowMs - startMs,
+    goldBonusPct: snap.spellBonus.gold,
+  });
   return {
     ...y,
     startedAt: new Date(startMs).toISOString(),
@@ -200,7 +283,7 @@ async function stateOf(env: AdvEnv): Promise<AdventureState> {
   return {
     today: env.today,
     power: snap.power.total,
-    powerBreakdown: { level: snap.power.level, scores: snap.power.scores, items: snap.power.items, sets: snap.power.sets },
+    powerBreakdown: { level: snap.power.level, scores: snap.power.scores, items: snap.power.items, sets: snap.power.sets, spells: snap.power.spells },
     scores: snap.scores,
     gold: env.character.gold,
     fragments: env.character.fragments,
@@ -211,10 +294,12 @@ async function stateOf(env: AdvEnv): Promise<AdventureState> {
     chestCounts: counts,
     opens: { today: used, max: CHEST_OPENS_PER_DAY, remaining: Math.max(0, CHEST_OPENS_PER_DAY - used) },
     pity: env.character.chestPity,
-    items: snap.items.map((i) => viewOf(i, env.masteries)),
+    items: snap.items.map((i) => viewOf(i, env.classId)),
     equipped,
     sets: setsProgress(SETS, snap.items),
     setBonus: { pp: snap.setBonus.pp, abilities: snap.setBonus.abilities },
+    grimoire: grimoireOf(snap, env.classId),
+    heroClass: env.classId,
     seasonEvaluated: [],
   };
 }
@@ -281,9 +366,23 @@ const newChest = (env: Pick<AdvEnv, 'ctx' | 'nowIso'>, rarity: ChestRarity, sour
   openedAt: null,
 });
 
+/** Capacité obtenue dans un coffre : nouvelle, niveau supplémentaire, ou fragments au niveau maximal. */
+export interface SpellGain {
+  spell: SpellView;
+  /** Première fois que le joueur obtient cette capacité */
+  isNew: boolean;
+  /** Niveau avant l'ouverture (0 : nouvelle) */
+  levelBefore: number;
+  /** Fragments rendus quand la capacité était déjà au niveau maximal (0 sinon) */
+  fragments: number;
+}
+
 export interface ChestOpening {
   chest: Chest;
-  item: ItemView;
+  /** Objet obtenu (null quand le coffre donne une capacité) */
+  item: ItemView | null;
+  /** Capacité obtenue (null quand le coffre donne un objet) */
+  spell: SpellGain | null;
   gold: number;
   fragments: number;
   /** La pitié a imposé la rareté de l'objet */
@@ -309,40 +408,59 @@ export async function openChest(ctx: ServerContext, userId: string, input: { che
     // Graine : profil + compteur d'ouvertures (déterministe pour les tests).
     seed: `${userId}|chest|${chests.filter((c) => c.openedAt).length}`,
     templates: ITEMS,
+    spells: SPELL_DEFS,
+    classId: env.classId,
+    chestShift: snap.spellBonus.chest,
   });
   // Ouverture atomique : un double appel ne donne qu'un seul objet.
   if (!(await ctx.store.markChestOpened(userId, chest.id, env.nowIso))) return fail('not-found', 'Ce coffre est déjà ouvert.');
-  const item: InventoryItem = {
-    id: ctx.uuid(),
-    templateId: draw.template.id,
-    rarity: draw.rarity,
-    slot: draw.template.slot,
-    ability: draw.template.ability,
-    level: 0,
-    equipped: false,
-    createdAt: env.nowIso,
-  };
-  await ctx.store.insertItems(userId, [item]);
+  let item: InventoryItem | null = null;
+  let spell: SpellGain | null = null;
+  let extraFragments = 0;
+  if (draw.template) {
+    item = {
+      id: ctx.uuid(),
+      templateId: draw.template.id,
+      rarity: draw.rarity,
+      slot: draw.template.slot,
+      ability: draw.template.ability,
+      level: 0,
+      equipped: false,
+      createdAt: env.nowIso,
+    };
+    await ctx.store.insertItems(userId, [item]);
+  } else if (draw.spell) {
+    // Capacité déjà connue : +1 niveau (max 5), au-delà des fragments. Nouvelle : niveau 1, non équipée.
+    const known = snap.spells.find((k) => k.spellId === draw.spell!.id);
+    const before = known?.level ?? 0;
+    const next = known ? nextSpellLevel(known.level) : 1;
+    if (next === null) extraFragments = spellMaxFragments(draw.spell.rarity);
+    const after: SpellKnown = { spellId: draw.spell.id, level: next ?? SPELL_MAX_LEVEL, equippedSlot: known?.equippedSlot ?? null };
+    if (next !== null) await ctx.store.saveSpell(userId, after);
+    spell = { spell: spellViewOf(after, env.classId)!, isNew: !known, levelBefore: before, fragments: extraFragments };
+  }
   const character: CharacterRecord = {
     ...env.character,
     gold: env.character.gold + draw.gold,
-    fragments: env.character.fragments + draw.fragments,
+    fragments: env.character.fragments + draw.fragments + extraFragments,
     chestPity: draw.pity,
     chestOpensDate: env.today,
     chestOpensToday: used + 1,
   };
   await ctx.store.saveCharacter(userId, character);
+  const synced = spell && spell.spell.equippedSlot !== null ? await syncGear(env, character) : character;
   return {
     ok: true,
     opening: {
       chest: { ...chest, openedAt: env.nowIso },
-      item: viewOf(item, env.masteries),
+      item: item ? viewOf(item, env.classId) : null,
+      spell,
       gold: draw.gold,
-      fragments: draw.fragments,
+      fragments: draw.fragments + extraFragments,
       guaranteed: draw.guaranteed,
       opensToday: used + 1,
     },
-    character,
+    character: synced,
   };
 }
 
@@ -440,13 +558,13 @@ export async function equipItem(ctx: ServerContext, userId: string, input: { ite
   const items = await ctx.store.listItems(userId);
   const item = items.find((i) => i.id === input.itemId);
   if (!item) return itemNotFound();
-  if (item.equipped) return { ok: true, item: viewOf(item, env.masteries), replaced: null };
+  if (item.equipped) return { ok: true, item: viewOf(item, env.classId), replaced: null };
   const current = items.find((i) => i.slot === item.slot && i.equipped);
   // Retirer d'abord : un seul objet équipé par emplacement (index unique en base).
   if (current) await ctx.store.updateItem(userId, current.id, { equipped: false });
   await ctx.store.updateItem(userId, item.id, { equipped: true });
   await syncGear(env);
-  return { ok: true, item: viewOf({ ...item, equipped: true }, env.masteries), replaced: current?.id ?? null };
+  return { ok: true, item: viewOf({ ...item, equipped: true }, env.classId), replaced: current?.id ?? null };
 }
 
 /** Retire l'objet équipé d'un emplacement. */
@@ -458,7 +576,7 @@ export async function unequipSlot(ctx: ServerContext, userId: string, input: { s
   if (!current) return fail('not-found', 'Aucun objet équipé à cet emplacement.');
   await ctx.store.updateItem(userId, current.id, { equipped: false });
   await syncGear(env);
-  return { ok: true, item: viewOf({ ...current, equipped: false }, env.masteries) };
+  return { ok: true, item: viewOf({ ...current, equipped: false }, env.classId) };
 }
 
 /** Améliore un objet d'un niveau : `5 × (niveau + 1)` fragments et `100 × (niveau + 1)^1,5` or. */
@@ -476,7 +594,7 @@ export async function upgradeItem(ctx: ServerContext, userId: string, input: { i
   await ctx.store.saveCharacter(userId, character);
   await ctx.store.updateItem(userId, item.id, { level: item.level + 1 });
   const synced = item.equipped ? await syncGear(env, character) : character;
-  return { ok: true, item: viewOf({ ...item, level: item.level + 1 }, env.masteries), character: synced };
+  return { ok: true, item: viewOf({ ...item, level: item.level + 1 }, env.classId), character: synced };
 }
 
 /** Forge : 3 objets non équipés de même rareté donnent 1 objet de rareté supérieure, à l'emplacement du premier. */
@@ -494,7 +612,7 @@ export async function mergeItems(ctx: ServerContext, userId: string, input: { it
   if (picked.some((i) => i.rarity !== rarity)) return fail('invalid', 'Les 3 objets doivent avoir la même rareté.');
   const next = nextItemRarity(rarity);
   if (!next) return fail('invalid', 'Un objet légendaire ne peut pas être fusionné.');
-  const template = pickTemplateForSlot(ITEMS, picked[0].slot, `${userId}|${ids.join(',')}`);
+  const template = pickTemplateForSlot(ITEMS, picked[0].slot, `${userId}|${ids.join(',')}`, env.classId);
   if (!template) return fail('invalid', 'Aucun modèle d’objet pour cet emplacement.');
   await ctx.store.deleteItems(userId, ids);
   const item: InventoryItem = {
@@ -508,7 +626,7 @@ export async function mergeItems(ctx: ServerContext, userId: string, input: { it
     createdAt: env.nowIso,
   };
   await ctx.store.insertItems(userId, [item]);
-  return { ok: true, item: viewOf(item, env.masteries) };
+  return { ok: true, item: viewOf(item, env.classId) };
 }
 
 /** Démonte un objet non équipé contre des fragments (2, 5, 12, 30 ou 80 selon la rareté). */
@@ -588,6 +706,7 @@ export async function runDungeon(
     scores: snap.scores,
     firstBossVictory: before.bossDefeatedTier < dungeon.tier,
     seed: `${userId}|${dungeon.id}|${env.today}|${env.character.keys}`,
+    conBonusPct: snap.spellBonus.dungeon,
   });
   let chest: Chest | null = null;
   if (result.chest) {
@@ -609,4 +728,52 @@ export async function runDungeon(
   };
   await ctx.store.saveCharacter(userId, character);
   return { ok: true, result: { ...result, chest: chest ? chest.rarity : null }, progress, chest, character };
+}
+
+// ───────────────────────── Grimoire : capacités de classe ─────────────────────────
+
+const spellNotFound = () => fail('not-found', 'Capacité inconnue ou pas encore obtenue.');
+
+async function grimoireNow(env: AdvEnv): Promise<GrimoireState> {
+  return grimoireOf(await snapshot(env), env.classId);
+}
+
+/** Équipe une capacité connue dans un emplacement du Grimoire (1 à 3). Sans emplacement : le premier libre, sinon le dernier ; un emplacement occupé est remplacé. */
+export async function equipSpell(
+  ctx: ServerContext,
+  userId: string,
+  input: { spellId: string; slot?: number },
+): Promise<Result<{ grimoire: GrimoireState; character: CharacterRecord }>> {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail('no-character');
+  const known = await ctx.store.listSpells(userId);
+  const spell = known.find((k) => k.spellId === input.spellId);
+  if (!spell || !SPELL_BY_ID.has(spell.spellId)) return spellNotFound();
+  if (input.slot === undefined && spell.equippedSlot !== null) return { ok: true, grimoire: await grimoireNow(env), character: env.character };
+  const slot = input.slot ?? freeSpellSlot(known) ?? SPELL_SLOTS;
+  if (!Number.isInteger(slot) || slot < 1 || slot > SPELL_SLOTS) return fail('invalid', `Le Grimoire compte ${SPELL_SLOTS} emplacements.`);
+  if (spell.equippedSlot !== slot) {
+    // Libère d'abord l'emplacement visé (un seul sort par emplacement), puis déplace la capacité.
+    const current = known.find((k) => k.equippedSlot === slot);
+    if (current) await ctx.store.saveSpell(userId, { ...current, equippedSlot: null });
+    await ctx.store.saveSpell(userId, { ...spell, equippedSlot: slot });
+  }
+  const character = await syncGear(env);
+  return { ok: true, grimoire: await grimoireNow({ ...env, character }), character };
+}
+
+/** Retire la capacité équipée à un emplacement (ou la capacité `spellId`). */
+export async function unequipSpell(
+  ctx: ServerContext,
+  userId: string,
+  input: { spellId?: string; slot?: number },
+): Promise<Result<{ grimoire: GrimoireState; character: CharacterRecord }>> {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail('no-character');
+  const known = await ctx.store.listSpells(userId);
+  const current = known.find((k) => k.equippedSlot !== null && (input.spellId ? k.spellId === input.spellId : k.equippedSlot === input.slot));
+  if (!current) return fail('not-found', 'Aucune capacité équipée à cet emplacement.');
+  await ctx.store.saveSpell(userId, { ...current, equippedSlot: null });
+  const character = await syncGear(env);
+  return { ok: true, grimoire: await grimoireNow({ ...env, character }), character };
 }

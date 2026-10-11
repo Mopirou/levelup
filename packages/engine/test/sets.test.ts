@@ -27,6 +27,7 @@ const piece = (set: SetDef, slot: (typeof EQUIP_SLOTS)[number], equipped = true,
   rarity,
   slot,
   ability: set.ability,
+  classId: set.id,
   level: 0,
   equipped,
   createdAt: '2026-10-01T00:00:00Z',
@@ -41,11 +42,12 @@ const hero = {
 };
 
 describe('contenu des panoplies', () => {
-  it('6 sets de 6 pièces : une par emplacement, une par caractéristique, jamais deux fois le même objet', () => {
-    expect(SETS).toHaveLength(6);
+  it('7 sets de 6 pièces : un par classe, une pièce par emplacement, jamais deux fois le même objet', () => {
+    expect(SETS).toHaveLength(7);
     expect(SETS).toEqual(data('sets.fr.json'));
-    expect(new Set(SETS.map((s) => s.id)).size).toBe(6);
-    expect(new Set(SETS.map((s) => s.ability))).toEqual(new Set(ABILITIES));
+    expect(SETS.map((s) => s.id)).toEqual(['guerrier', 'paladin', 'rodeur', 'clerc', 'barde', 'roublard', 'magicien']);
+    // la caractéristique du set est la première maîtrise de la classe : toutes les caractéristiques sont couvertes
+    expect(new Set(SETS.map((s) => s.ability))).toEqual(new Set(['FOR', 'DEX', 'SAG', 'CHA', 'INT']));
     const used = new Set<string>();
     for (const set of SETS) {
       expect(set.name.trim().length).toBeGreaterThan(5);
@@ -55,7 +57,7 @@ describe('contenu des panoplies', () => {
         const it = ITEMS.find((i) => i.id === set.pieces[slot])!;
         expect(it, `${set.id}/${slot}`).toBeDefined();
         expect(it.slot).toBe(slot);
-        expect(it.ability).toBe(set.ability);
+        expect(it.classId).toBe(set.id);
         expect(it.setId).toBe(set.id);
         expect(used.has(it.id)).toBe(false);
         used.add(it.id);
@@ -67,10 +69,11 @@ describe('contenu des panoplies', () => {
     }
   });
 
-  it('36 objets de set, 12 objets hors set (setId nul)', () => {
-    expect(ITEMS.filter((i) => i.setId)).toHaveLength(36);
+  it('42 objets de set (un par classe et par emplacement), 12 objets universels hors set (setId nul)', () => {
+    expect(ITEMS.filter((i) => i.setId)).toHaveLength(42);
     expect(ITEMS.filter((i) => !i.setId)).toHaveLength(12);
     for (const slot of EQUIP_SLOTS) expect(ITEMS.filter((i) => i.slot === slot && !i.setId)).toHaveLength(2);
+    expect(ITEMS.filter((i) => !i.setId).every((i) => !i.classId)).toBe(true);
   });
 });
 
@@ -101,11 +104,12 @@ describe('paliers et bonus', () => {
     expect(setBonusTotals(SETS, wear(titan, 4))).toMatchObject({ pp: 12, abilities: { FOR: titan.bonuses[1].ability } });
     const six = setBonusTotals(SETS, wear(titan, 6));
     expect(six).toMatchObject({ pp: 25, abilities: { FOR: titan.bonuses[2].ability } });
-    expect(six.active).toEqual([{ setId: 'titan', pieces: 6, tier: titan.bonuses[2] }]);
+    expect(six.active).toEqual([{ setId: 'guerrier', pieces: 6, tier: titan.bonuses[2] }]);
   });
 
   it('seules les pièces équipées comptent, chacune dans son emplacement ; deux sets se cumulent', () => {
-    const [titan, ombre] = SETS;
+    const [titan] = SETS;
+    const ombre = SETS[2];
     const items = [...EQUIP_SLOTS.slice(0, 3).map((s) => piece(titan, s, false)), piece(titan, 'arme', true), piece(titan, 'tete', true)];
     // les doublons d'exemplaires non équipés ne comptent pas
     expect(setBonusTotals(SETS, items).pp).toBe(5);
@@ -114,7 +118,7 @@ describe('paliers et bonus', () => {
     const both = setBonusTotals(SETS, [...wear(titan, 2), ...wear(ombre, 4)]);
     expect(both.pp).toBe(5 + 12);
     expect(both.abilities).toEqual({ FOR: titan.bonuses[0].ability, DEX: ombre.bonuses[1].ability });
-    expect(both.active.map((a) => a.setId)).toEqual(['titan', 'ombre']);
+    expect(both.active.map((a) => a.setId)).toEqual(['guerrier', 'rodeur']);
   });
 
   it('la rareté de l’exemplaire ne change pas le palier', () => {
@@ -130,23 +134,23 @@ describe('puissance et scores avec panoplies', () => {
 
   it('heroPower ajoute les PP du palier atteint', () => {
     const bonus = setBonusTotals(SETS, worn);
-    const items = worn.reduce((n, i) => n + itemPower(i), 0);
-    const without = heroPower(hero, worn);
-    const withSets = heroPower(hero, worn, [], bonus);
+    const items = worn.reduce((n, i) => n + itemPower(i, 'guerrier'), 0);
+    const without = heroPower(hero, worn, 'guerrier');
+    const withSets = heroPower(hero, worn, 'guerrier', bonus);
     expect(withSets - without).toBe(25);
-    const b = heroPowerBreakdown(hero, worn, [], bonus);
+    const b = heroPowerBreakdown(hero, worn, 'guerrier', bonus);
     expect(b).toMatchObject({ items, sets: 25, total: b.level + b.scores + items + 25 });
     // sans bonus passé : aucun changement pour les appels existants
-    expect(heroPowerBreakdown(hero, worn).sets).toBe(0);
+    expect(heroPowerBreakdown(hero, worn, 'guerrier').sets).toBe(0);
   });
 
   it('adventureScores ajoute le bonus de caractéristique du set (jamais à l’XP)', () => {
     const scores = { FOR: 10, DEX: 12, CON: 9, INT: 8, SAG: 10, CHA: 11 };
     const bonus = setBonusTotals(SETS, wear(titan, 4));
-    const withSets = adventureScores(scores, [], [], bonus);
+    const withSets = adventureScores(scores, [], 'guerrier', bonus);
     expect(withSets.FOR).toBe(10 + titan.bonuses[1].ability);
     expect(withSets.DEX).toBe(12);
-    expect(adventureScores(scores, [], [])).toEqual(scores);
+    expect(adventureScores(scores, [])).toEqual(scores);
   });
 });
 
@@ -155,7 +159,7 @@ describe('progression des panoplies', () => {
     const [titan] = SETS;
     const items = [piece(titan, 'arme', true), piece(titan, 'tete', false), { ...piece(titan, 'torse', false), id: 'x2' }];
     const [p] = setsProgress(SETS, items);
-    expect(p).toMatchObject({ setId: 'titan', equipped: 1, owned: 3, tier: null });
+    expect(p).toMatchObject({ setId: 'guerrier', equipped: 1, owned: 3, tier: null });
     expect(p.next?.pieces).toBe(2);
     expect(p.pieces.map((x) => [x.slot, x.owned, x.equipped])).toEqual([
       ['arme', true, true],
@@ -168,6 +172,6 @@ describe('progression des panoplies', () => {
     const full = setsProgress(SETS, wear(titan, 6))[0];
     expect(full).toMatchObject({ equipped: 6, owned: 6, next: null });
     expect(full.tier?.pp).toBe(25);
-    expect(setsProgress(SETS, [])).toHaveLength(6);
+    expect(setsProgress(SETS, [])).toHaveLength(7);
   });
 });

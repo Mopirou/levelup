@@ -50,7 +50,7 @@ import taverne from '@levelup/content/taverne.fr.json';
 import { TRACKS, suggestTracks, trackDef, trackLock, trackProgress, type TrackLock, type TrackProgress } from '../shared/tracks';
 import { BackendService } from './backend.service';
 import { offline, type PendingAction } from './offline';
-import type { AdventureState, Chest, ChestOpening, ChestRarity, CommandResult, CompleteRequest, CompleteResponse, DungeonEntry, DungeonProgress, DungeonRunResult, EquipSlot, ExpeditionClaim, ItemView, RaidState, SeasonResultView, SeasonState } from './api/types';
+import type { AdventureState, Chest, ChestOpening, ChestRarity, CommandResult, CompleteRequest, CompleteResponse, DungeonEntry, DungeonProgress, DungeonRunResult, EquipSlot, ExpeditionClaim, GrimoireState, ItemView, RaidState, SeasonResultView, SeasonState } from './api/types';
 
 export type Overlay =
   | { kind: 'level-up'; level: number }
@@ -837,6 +837,12 @@ export class GameService {
   async dismantleItem(itemId: string): Promise<number | null> {
     return (await this.adventureCmd(() => this.be.game.itemDismantle(itemId)))?.fragments ?? null;
   }
+  async equipSpell(spellId: string, slot?: number): Promise<GrimoireState | null> {
+    return (await this.adventureCmd(() => this.be.game.spellEquip(spellId, slot)))?.grimoire ?? null;
+  }
+  async unequipSpell(slot: number): Promise<GrimoireState | null> {
+    return (await this.adventureCmd(() => this.be.game.spellUnequip(slot)))?.grimoire ?? null;
+  }
   async loadDungeons(): Promise<{ dungeons: DungeonEntry[]; keys: number; maxKeys: number; power: number } | null> {
     return this.adventureCmd(() => this.be.game.dungeonList());
   }
@@ -912,6 +918,19 @@ export class GameService {
 
   async choosePath(pathId: string): Promise<boolean> {
     const r = await this.be.game.choosePath(pathId);
+    if (r.ok) {
+      this.character.set(r.character);
+      return true;
+    }
+    this.toast(this.errorMessage(r.error, r.message), 'error');
+    return false;
+  }
+
+  /** « Ta classe a évolué » : reclassification gratuite unique (choisir sa classe actuelle referme simplement l'annonce). */
+  readonly classNotice = computed(() => !!this.character()?.classNotice && !this.character()?.classChanged);
+
+  async changeClass(classId: string): Promise<boolean> {
+    const r = await this.be.game.changeClass(classId);
     if (r.ok) {
       this.character.set(r.character);
       return true;

@@ -48,7 +48,7 @@ function mapAuthor(p: any) {
     username: p?.username ?? '?',
     name: ch.name ?? p?.username ?? '?',
     level: ch.level ?? 1,
-    classId: ch.class_id ?? 'explorateur',
+    classId: ch.class_id ?? 'guerrier',
     portraitId: ch.portrait_id ?? 'p01',
     frameColor: ch.frame_color ?? '#2f5a47',
   };
@@ -223,6 +223,7 @@ export function createCloudBackend(): Backend {
     complete: (req) => cmd('complete', req as any),
     undo: (instanceId) => cmd('undo', { instanceId }),
     choosePath: (pathId) => cmd('choose-path', { pathId }),
+    changeClass: (classId) => cmd('class-change', { classId }),
     chooseImprovement: (choice) => cmd('choose-improvement', { choice }),
     declareRest: () => cmd('declare-rest'),
     equipTitle: (title) => cmd('equip-title', { title }),
@@ -238,6 +239,8 @@ export function createCloudBackend(): Backend {
     itemUpgrade: (itemId) => cmd('item-upgrade', { itemId }),
     itemMerge: (itemIds) => cmd('item-merge', { itemIds }),
     itemDismantle: (itemId) => cmd('item-dismantle', { itemId }),
+    spellEquip: (spellId, slot) => cmd('spell-equip', slot === undefined ? { spellId } : { spellId, slot }),
+    spellUnequip: (slot) => cmd('spell-unequip', { slot }),
     dungeonList: () => cmd('dungeon-list'),
     dungeonRun: (dungeonId) => cmd('dungeon-run', { dungeonId }),
     raidState: () => cmd('raid-state'),
@@ -449,7 +452,7 @@ export function createCloudBackend(): Backend {
       const { data, error } = await sb.rpc('friends_overview');
       if (error) throw error;
       return (data ?? []).map((r: any) => ({
-        profileId: r.profile_id, username: r.username, name: r.name ?? r.username, level: r.level ?? 1, classId: r.class_id ?? 'explorateur',
+        profileId: r.profile_id, username: r.username, name: r.name ?? r.username, level: r.level ?? 1, classId: r.class_id ?? 'guerrier',
         portraitId: r.portrait_id ?? 'p01', frameColor: r.frame_color ?? '#2f5a47', lastTitle: r.last_title, lastAt: r.last_at,
       }));
     },
@@ -580,7 +583,7 @@ export function createCloudBackend(): Backend {
       const { data, error } = await sb.rpc('weekly_leaderboard');
       if (error) throw error;
       return (data ?? []).map((r: any) => ({
-        profileId: r.profile_id, username: r.username, name: r.name ?? r.username, level: r.level ?? 1, classId: r.class_id ?? 'explorateur',
+        profileId: r.profile_id, username: r.username, name: r.name ?? r.username, level: r.level ?? 1, classId: r.class_id ?? 'guerrier',
         portraitId: r.portrait_id ?? 'p01', frameColor: r.frame_color ?? '#2f5a47', xp: Number(r.xp ?? 0),
       }));
     },
@@ -588,7 +591,7 @@ export function createCloudBackend(): Backend {
       const { data, error } = await sb.rpc('season_leaderboard', { p_season: season });
       if (error) throw error;
       return (data ?? []).map((r: any) => ({
-        profileId: r.profile_id, username: r.username, name: r.name ?? r.username, level: r.level ?? 1, classId: r.class_id ?? 'explorateur',
+        profileId: r.profile_id, username: r.username, name: r.name ?? r.username, level: r.level ?? 1, classId: r.class_id ?? 'guerrier',
         portraitId: r.portrait_id ?? 'p01', frameColor: r.frame_color ?? '#2f5a47', frameStyle: r.frame_style ?? null, power: Number(r.power ?? 0),
       }));
     },

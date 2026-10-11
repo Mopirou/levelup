@@ -46,7 +46,7 @@ const rows = [
   ['rang-legendaire', 'maitrise', 'Au-delà du plafond', 'Faire passer une caractéristique au rang légendaire (score 21).', { kind: 'legendary_abilities', target: 1 }, 500, 'Au-delà des limites'],
   // ── Exploration (16)
   ['decouvreur-10', 'exploration', 'Premiers horizons', 'Accomplir 10 quêtes différentes.', { kind: 'discovered', target: 10 }, 50, null],
-  ['decouvreur-50', 'exploration', 'Explorateur du catalogue', 'Accomplir 50 quêtes différentes.', { kind: 'discovered', target: 50 }, 150, 'Curieux'],
+  ['decouvreur-50', 'exploration', 'Fouilleur du catalogue', 'Accomplir 50 quêtes différentes.', { kind: 'discovered', target: 50 }, 150, 'Curieux'],
   ['decouvreur-100', 'exploration', 'Cartographe', 'Accomplir 100 quêtes différentes.', { kind: 'discovered', target: 100 }, 250, null],
   ['decouvreur-200', 'exploration', 'Catalogue complet', 'Accomplir 200 quêtes différentes.', { kind: 'discovered', target: 200 }, 500, 'Bibliothécaire'],
   ['premier-journal', 'exploration', 'Première page', 'Valider une quête Journal.', { kind: 'journal_entries', target: 1 }, 25, null],
@@ -59,7 +59,7 @@ const rows = [
   ['cinquante-publications', 'exploration', 'Cinquante publications', 'Publier 50 victoires au Village.', { kind: 'posts_shared', target: 50 }, 250, 'Cinquante publications'],
   ['premier-compagnon', 'exploration', 'Une main tendue', 'Ajouter ton premier compagnon.', { kind: 'friends', target: 1 }, 50, null],
   ['cinq-compagnons', 'exploration', 'Cinq amis', 'Avoir 5 compagnons.', { kind: 'friends', target: 5 }, 100, null],
-  ['vingt-compagnons', 'exploration', 'Vingt amis', 'Avoir 20 compagnons.', { kind: 'friends', target: 20 }, 250, 'Rassembleur'],
+  ['vingt-compagnons', 'exploration', 'Vingt amis', 'Avoir 20 compagnons.', { kind: 'friends', target: 20 }, 250, 'Cœur de la compagnie'],
   ['encourageur', 'exploration', 'Le Mot Gentil', 'Encourager 100 publications de tes compagnons.', { kind: 'reactions_given', target: 100 }, 150, 'Le Bienveillant'],
   // ── Exploits (11)
   ['tueur-de-dragons-1', 'exploits', 'Première quête légendaire', 'Accomplir une quête Légendaire.', { kind: 'quests_by_difficulty', difficulty: 'expert', target: 1 }, 100, null],

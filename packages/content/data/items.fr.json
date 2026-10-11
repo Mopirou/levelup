@@ -1,434 +1,542 @@
 [
   {
-    "id": "epee-du-sentier",
+    "id": "espadon",
     "slot": "arme",
     "ability": "FOR",
-    "name": "Épée du sentier",
+    "name": "Espadon",
     "glyph": "⚔️",
-    "blurb": "Une lame honnête, forgée pour ceux qui avancent un pas après l’autre.",
-    "setId": "titan"
+    "blurb": "Une lame à deux mains que seuls les combattants aguerris savent faire chanter.",
+    "classId": "guerrier",
+    "setId": "guerrier"
   },
   {
-    "id": "dague-vive",
+    "id": "marteau-de-guerre",
+    "slot": "arme",
+    "ability": "FOR",
+    "name": "Marteau de guerre",
+    "glyph": "🔨",
+    "blurb": "Béni avant la bataille, il frappe pour le serment plus que pour la gloire.",
+    "classId": "paladin",
+    "setId": "paladin"
+  },
+  {
+    "id": "arc-long",
     "slot": "arme",
     "ability": "DEX",
-    "name": "Dague vive",
-    "glyph": "🗡️",
-    "blurb": "Légère et rapide, elle récompense les gestes précis.",
-    "setId": "ombre"
+    "name": "Arc long",
+    "glyph": "🏹",
+    "blurb": "Portée infinie pour qui sait lire le vent et la forêt.",
+    "classId": "rodeur",
+    "setId": "rodeur"
   },
   {
-    "id": "baton-des-sages",
-    "slot": "arme",
-    "ability": "INT",
-    "name": "Bâton des sages",
-    "glyph": "🪄",
-    "blurb": "Il s’éclaire quand on réfléchit avant d’agir.",
-    "setId": "erudit"
-  },
-  {
-    "id": "arc-de-l-aube",
+    "id": "masse-d-armes",
     "slot": "arme",
     "ability": "SAG",
-    "name": "Arc de l’aube",
-    "glyph": "🏹",
-    "blurb": "Il ne rate jamais ceux qui savent attendre le bon moment.",
-    "setId": "aube"
+    "name": "Masse d’armes",
+    "glyph": "⚒️",
+    "blurb": "Elle assomme sans verser le sang, comme le veulent les temples.",
+    "classId": "clerc",
+    "setId": "clerc"
   },
   {
-    "id": "sceptre-d-eloquence",
-    "slot": "arme",
-    "ability": "CHA",
-    "name": "Sceptre d’éloquence",
-    "glyph": "🔱",
-    "blurb": "Les foules se taisent quand on le brandit.",
-    "setId": "troubadour"
-  },
-  {
-    "id": "masse-du-rempart",
-    "slot": "arme",
-    "ability": "CON",
-    "name": "Masse du rempart",
-    "glyph": "🔨",
-    "blurb": "Lourde à porter, plus lourde encore à encaisser.",
-    "setId": "rempart"
-  },
-  {
-    "id": "hache-du-forgeron",
-    "slot": "arme",
-    "ability": "FOR",
-    "name": "Hache du forgeron",
-    "glyph": "🪓",
-    "blurb": "Chaque coup raconte des heures d’entraînement.",
-    "setId": null
-  },
-  {
-    "id": "fleuret-leger",
+    "id": "rapiere",
     "slot": "arme",
     "ability": "DEX",
-    "name": "Fleuret léger",
+    "name": "Rapière",
     "glyph": "🤺",
-    "blurb": "Une pointe fine pour des appuis parfaits.",
+    "blurb": "Fine, vive, élégante : une réplique aussi tranchante qu’une lame.",
+    "classId": "barde",
+    "setId": "barde"
+  },
+  {
+    "id": "dagues-jumelles",
+    "slot": "arme",
+    "ability": "DEX",
+    "name": "Dagues jumelles",
+    "glyph": "🗡️",
+    "blurb": "Deux lames, un sourire, et personne n’a rien vu venir.",
+    "classId": "roublard",
+    "setId": "roublard"
+  },
+  {
+    "id": "baton-du-mage",
+    "slot": "arme",
+    "ability": "INT",
+    "name": "Bâton du mage",
+    "glyph": "🪄",
+    "blurb": "Taillé dans un bois ancien, il vibre chaque fois qu’on pense à une formule.",
+    "classId": "magicien",
+    "setId": "magicien"
+  },
+  {
+    "id": "gourdin-de-voyageur",
+    "slot": "arme",
+    "ability": "CON",
+    "name": "Gourdin de voyageur",
+    "glyph": "🏏",
+    "blurb": "Un bon bout de chêne : il tient la route aussi bien que son porteur.",
+    "classId": null,
     "setId": null
   },
   {
-    "id": "casque-de-fer",
+    "id": "sceptre-de-heraut",
+    "slot": "arme",
+    "ability": "CHA",
+    "name": "Sceptre de héraut",
+    "glyph": "🔱",
+    "blurb": "Quand on le lève, les conversations s’arrêtent.",
+    "classId": null,
+    "setId": null
+  },
+  {
+    "id": "heaume",
     "slot": "tete",
     "ability": "CON",
-    "name": "Casque de fer",
+    "name": "Heaume",
+    "glyph": "🪖",
+    "blurb": "Un casque de fer qui en a vu d’autres, et qui tient toujours.",
+    "classId": "guerrier",
+    "setId": "guerrier"
+  },
+  {
+    "id": "heaume-de-brillance",
+    "slot": "tete",
+    "ability": "CHA",
+    "name": "Heaume de brillance",
+    "glyph": "🌟",
+    "blurb": "Il rayonne d’une lumière sacrée dès que son porteur lève la voix.",
+    "classId": "paladin",
+    "setId": "paladin"
+  },
+  {
+    "id": "capuchon-de-pisteur",
+    "slot": "tete",
+    "ability": "SAG",
+    "name": "Capuchon de pisteur",
+    "glyph": "🧢",
+    "blurb": "Sous son ombre, on entend les bois respirer.",
+    "classId": "rodeur",
+    "setId": "rodeur"
+  },
+  {
+    "id": "mitre",
+    "slot": "tete",
+    "ability": "CON",
+    "name": "Mitre",
     "glyph": "⛑️",
-    "blurb": "Il en a vu d’autres, et il tient toujours.",
-    "setId": "rempart"
+    "blurb": "Coiffe de cérémonie, lourde de prières et de patience.",
+    "classId": "clerc",
+    "setId": "clerc"
+  },
+  {
+    "id": "chapeau-de-deguisement",
+    "slot": "tete",
+    "ability": "CHA",
+    "name": "Chapeau de déguisement",
+    "glyph": "🎩",
+    "blurb": "Une plume, un clin d’œil, et chacun se souvient de vous autrement.",
+    "classId": "barde",
+    "setId": "barde"
+  },
+  {
+    "id": "capuche-de-voleur",
+    "slot": "tete",
+    "ability": "INT",
+    "name": "Capuche de voleur",
+    "glyph": "🥷",
+    "blurb": "Elle avale la lumière et garde les secrets.",
+    "classId": "roublard",
+    "setId": "roublard"
+  },
+  {
+    "id": "chapeau-de-sorcier",
+    "slot": "tete",
+    "ability": "INT",
+    "name": "Chapeau de sorcier",
+    "glyph": "🧙",
+    "blurb": "Pointu, étoilé, vaguement poussiéreux : un classique d’érudit.",
+    "classId": "magicien",
+    "setId": "magicien"
+  },
+  {
+    "id": "bandeau-de-combattant",
+    "slot": "tete",
+    "ability": "FOR",
+    "name": "Bandeau de combattant",
+    "glyph": "🏴",
+    "blurb": "Noué serré, il retient la sueur et le doute.",
+    "classId": null,
+    "setId": null
   },
   {
     "id": "chapeau-de-voyageur",
     "slot": "tete",
     "ability": "DEX",
     "name": "Chapeau de voyageur",
-    "glyph": "🎩",
-    "blurb": "Un chapeau qui aime le grand air et les chemins de traverse.",
-    "setId": "ombre"
-  },
-  {
-    "id": "couronne-de-lauriers",
-    "slot": "tete",
-    "ability": "CHA",
-    "name": "Couronne de lauriers",
-    "glyph": "👑",
-    "blurb": "Offerte à celui qui a su rassembler.",
-    "setId": "troubadour"
-  },
-  {
-    "id": "diademe-du-savant",
-    "slot": "tete",
-    "ability": "INT",
-    "name": "Diadème du savant",
-    "glyph": "🎓",
-    "blurb": "Il scintille à chaque nouvelle idée.",
-    "setId": "erudit"
-  },
-  {
-    "id": "capuche-du-veilleur",
-    "slot": "tete",
-    "ability": "SAG",
-    "name": "Capuche du veilleur",
-    "glyph": "🥷",
-    "blurb": "Sous sa capuche, on entend mieux ce qui compte.",
-    "setId": "aube"
-  },
-  {
-    "id": "bandeau-du-guerrier",
-    "slot": "tete",
-    "ability": "FOR",
-    "name": "Bandeau du guerrier",
-    "glyph": "🏴",
-    "blurb": "Noué serré, il retient la sueur et le doute.",
-    "setId": "titan"
-  },
-  {
-    "id": "heaume-du-gardien",
-    "slot": "tete",
-    "ability": "CON",
-    "name": "Heaume du gardien",
-    "glyph": "🪖",
-    "blurb": "Un heaume qui n’a jamais cédé.",
+    "glyph": "👒",
+    "blurb": "Il aime le grand air et les chemins de traverse.",
+    "classId": null,
     "setId": null
   },
   {
-    "id": "lunettes-d-erudit",
-    "slot": "tete",
-    "ability": "INT",
-    "name": "Lunettes d’érudit",
-    "glyph": "👓",
-    "blurb": "Elles lisent entre les lignes.",
-    "setId": null
-  },
-  {
-    "id": "cotte-de-mailles",
+    "id": "harnois",
     "slot": "torse",
-    "ability": "CON",
-    "name": "Cotte de mailles",
+    "ability": "FOR",
+    "name": "Harnois",
     "glyph": "🛡️",
-    "blurb": "Des milliers d’anneaux, pour une seule certitude : tenir bon.",
-    "setId": "rempart"
+    "blurb": "L’armure complète des chevaliers : chaque plaque compte des heures de forge.",
+    "classId": "guerrier",
+    "setId": "guerrier"
   },
   {
-    "id": "tunique-du-voyageur",
-    "slot": "torse",
-    "ability": "DEX",
-    "name": "Tunique du voyageur",
-    "glyph": "👕",
-    "blurb": "Souple et légère, elle suit tous les mouvements.",
-    "setId": "ombre"
-  },
-  {
-    "id": "armure-de-plates",
+    "id": "cotte-de-mailles-paladin",
     "slot": "torse",
     "ability": "FOR",
-    "name": "Armure de plates",
-    "glyph": "🦺",
-    "blurb": "Pour qui porte sa force avec fierté.",
-    "setId": "titan"
+    "name": "Cotte de mailles",
+    "glyph": "⛓️",
+    "blurb": "Des milliers d’anneaux pour une seule certitude : tenir bon.",
+    "classId": "paladin",
+    "setId": "paladin"
   },
   {
-    "id": "robe-de-sagesse",
+    "id": "armure-de-cuir-cloute",
     "slot": "torse",
-    "ability": "SAG",
-    "name": "Robe de sagesse",
-    "glyph": "👘",
-    "blurb": "Elle apaise tout ce qui la touche.",
-    "setId": "aube"
-  },
-  {
-    "id": "manteau-d-orateur",
-    "slot": "torse",
-    "ability": "CHA",
-    "name": "Manteau d’orateur",
-    "glyph": "🧥",
-    "blurb": "Un manteau qui donne envie de prendre la parole.",
-    "setId": "troubadour"
-  },
-  {
-    "id": "veste-de-l-artisan",
-    "slot": "torse",
-    "ability": "INT",
-    "name": "Veste de l’artisan",
-    "glyph": "🥼",
-    "blurb": "Pleine de poches, pleine de solutions.",
-    "setId": "erudit"
-  },
-  {
-    "id": "plastron-de-cuir",
-    "slot": "torse",
-    "ability": "CON",
-    "name": "Plastron de cuir",
+    "ability": "DEX",
+    "name": "Armure de cuir clouté",
     "glyph": "🥋",
-    "blurb": "Éprouvé par mille entraînements.",
-    "setId": null
+    "blurb": "Souple, silencieuse, renforcée là où ça compte.",
+    "classId": "rodeur",
+    "setId": "rodeur"
   },
   {
-    "id": "cape-du-conteur",
+    "id": "robe-consacree",
+    "slot": "torse",
+    "ability": "CON",
+    "name": "Robe consacrée",
+    "glyph": "👘",
+    "blurb": "Tissée de prières, elle apaise tout ce qu’elle touche.",
+    "classId": "clerc",
+    "setId": "clerc"
+  },
+  {
+    "id": "pourpoint-de-velours",
     "slot": "torse",
     "ability": "CHA",
-    "name": "Cape du conteur",
+    "name": "Pourpoint de velours",
+    "glyph": "🧥",
+    "blurb": "Taillé pour les scènes de taverne et les salons de nobles.",
+    "classId": "barde",
+    "setId": "barde"
+  },
+  {
+    "id": "armure-de-cuir",
+    "slot": "torse",
+    "ability": "DEX",
+    "name": "Armure de cuir",
+    "glyph": "🦺",
+    "blurb": "Légère comme une ombre, parfaite pour les ruelles.",
+    "classId": "roublard",
+    "setId": "roublard"
+  },
+  {
+    "id": "robe-d-archimage",
+    "slot": "torse",
+    "ability": "CON",
+    "name": "Robe d’archimage",
+    "glyph": "🥼",
+    "blurb": "Les runes brodées protègent celui qui les a apprises.",
+    "classId": "magicien",
+    "setId": "magicien"
+  },
+  {
+    "id": "veste-d-erudit",
+    "slot": "torse",
+    "ability": "INT",
+    "name": "Veste d’érudit",
+    "glyph": "👔",
+    "blurb": "Pleine de poches, pleine de solutions.",
+    "classId": null,
+    "setId": null
+  },
+  {
+    "id": "manteau-de-pelerin",
+    "slot": "torse",
+    "ability": "SAG",
+    "name": "Manteau de pèlerin",
     "glyph": "🧣",
-    "blurb": "Elle claque au vent quand l’histoire commence.",
+    "blurb": "Il connaît chaque chemin et chaque auberge.",
+    "classId": null,
     "setId": null
   },
   {
-    "id": "gantelets-de-force",
+    "id": "gantelets-de-puissance-d-ogre",
     "slot": "mains",
     "ability": "FOR",
-    "name": "Gantelets de force",
-    "glyph": "🧤",
-    "blurb": "Ils serrent plus fort qu’on ne l’imagine.",
-    "setId": "titan"
-  },
-  {
-    "id": "gants-d-artisan",
-    "slot": "mains",
-    "ability": "DEX",
-    "name": "Gants d’artisan",
-    "glyph": "✋",
-    "blurb": "Un tour de main hérité de générations d’ateliers.",
-    "setId": "ombre"
-  },
-  {
-    "id": "bracelets-de-calme",
-    "slot": "mains",
-    "ability": "SAG",
-    "name": "Bracelets de calme",
-    "glyph": "📿",
-    "blurb": "Un souffle, un grain, un instant de paix.",
-    "setId": "aube"
-  },
-  {
-    "id": "mitaines-d-ecriture",
-    "slot": "mains",
-    "ability": "INT",
-    "name": "Mitaines d’écriture",
-    "glyph": "✍️",
-    "blurb": "Elles laissent les doigts libres pour la plume.",
-    "setId": "erudit"
-  },
-  {
-    "id": "poignets-du-rempart",
-    "slot": "mains",
-    "ability": "CON",
-    "name": "Poignets du rempart",
-    "glyph": "🤲",
-    "blurb": "Rien ne les fait plier.",
-    "setId": "rempart"
-  },
-  {
-    "id": "gants-de-velours",
-    "slot": "mains",
-    "ability": "CHA",
-    "name": "Gants de velours",
-    "glyph": "🤝",
-    "blurb": "Pour les poignées de main qui scellent les amitiés.",
-    "setId": "troubadour"
-  },
-  {
-    "id": "poings-d-acier",
-    "slot": "mains",
-    "ability": "FOR",
-    "name": "Poings d’acier",
+    "name": "Gantelets de puissance d’ogre",
     "glyph": "🥊",
-    "blurb": "Une garde solide, une volonté plus solide encore.",
-    "setId": null
+    "blurb": "Ils serrent plus fort qu’on ne l’imagine.",
+    "classId": "guerrier",
+    "setId": "guerrier"
   },
   {
-    "id": "anneau-de-vivacite",
+    "id": "gantelets-de-serment",
+    "slot": "mains",
+    "ability": "CHA",
+    "name": "Gantelets de serment",
+    "glyph": "🧤",
+    "blurb": "Gravés des vœux d’un ordre, ils ne tremblent jamais.",
+    "classId": "paladin",
+    "setId": "paladin"
+  },
+  {
+    "id": "gants-de-nage-et-d-escalade",
     "slot": "mains",
     "ability": "DEX",
-    "name": "Anneau de vivacité",
-    "glyph": "💍",
-    "blurb": "Il rend chaque geste plus vif.",
+    "name": "Gants de nage et d’escalade",
+    "glyph": "🧗",
+    "blurb": "Aucune falaise, aucun torrent ne leur résiste.",
+    "classId": "rodeur",
+    "setId": "rodeur"
+  },
+  {
+    "id": "mitaines-de-benediction",
+    "slot": "mains",
+    "ability": "SAG",
+    "name": "Mitaines de bénédiction",
+    "glyph": "🙏",
+    "blurb": "Chaque geste y devient une prière silencieuse.",
+    "classId": "clerc",
+    "setId": "clerc"
+  },
+  {
+    "id": "gants-de-menestrel",
+    "slot": "mains",
+    "ability": "DEX",
+    "name": "Gants de ménestrel",
+    "glyph": "✋",
+    "blurb": "Pour pincer les cordes sans jamais manquer une note.",
+    "classId": "barde",
+    "setId": "barde"
+  },
+  {
+    "id": "outils-de-voleur",
+    "slot": "mains",
+    "ability": "INT",
+    "name": "Outils de voleur",
+    "glyph": "🗝️",
+    "blurb": "Aucune serrure ne résiste à celui qui sait écouter le déclic.",
+    "classId": "roublard",
+    "setId": "roublard"
+  },
+  {
+    "id": "bracelets-de-defense",
+    "slot": "mains",
+    "ability": "CON",
+    "name": "Bracelets de défense",
+    "glyph": "🔰",
+    "blurb": "Une barrière invisible entoure les poignets de leur porteur.",
+    "classId": "magicien",
+    "setId": "magicien"
+  },
+  {
+    "id": "gants-de-travail",
+    "slot": "mains",
+    "ability": "FOR",
+    "name": "Gants de travail",
+    "glyph": "🪵",
+    "blurb": "Rien de magique, juste de bonnes mains à l’ouvrage.",
+    "classId": null,
     "setId": null
   },
   {
-    "id": "bottes-de-sept-lieues",
-    "slot": "bottes",
-    "ability": "DEX",
-    "name": "Bottes de sept lieues",
-    "glyph": "🥾",
-    "blurb": "Elles avalent les kilomètres sans fatigue.",
-    "setId": "ombre"
+    "id": "anneau-de-protection",
+    "slot": "mains",
+    "ability": "CON",
+    "name": "Anneau de protection",
+    "glyph": "💍",
+    "blurb": "Un simple anneau, une certitude : on s’en sortira.",
+    "classId": null,
+    "setId": null
   },
   {
-    "id": "sandales-du-pelerin",
-    "slot": "bottes",
-    "ability": "SAG",
-    "name": "Sandales du pèlerin",
-    "glyph": "🩴",
-    "blurb": "Elles connaissent le chemin, même sans carte.",
-    "setId": "aube"
-  },
-  {
-    "id": "bottes-de-fer",
+    "id": "bottes-de-marche-et-de-saut",
     "slot": "bottes",
     "ability": "CON",
-    "name": "Bottes de fer",
-    "glyph": "👢",
-    "blurb": "Elles ancrent leur porteur dans la terre.",
-    "setId": "rempart"
+    "name": "Bottes de marche et de saut",
+    "glyph": "🥾",
+    "blurb": "Elles avalent les lieues et franchissent les ravins.",
+    "classId": "guerrier",
+    "setId": "guerrier"
   },
   {
-    "id": "souliers-de-danse",
-    "slot": "bottes",
-    "ability": "CHA",
-    "name": "Souliers de danse",
-    "glyph": "👞",
-    "blurb": "Impossible de les porter sans sourire.",
-    "setId": "troubadour"
-  },
-  {
-    "id": "chaussons-de-lecture",
-    "slot": "bottes",
-    "ability": "INT",
-    "name": "Chaussons de lecture",
-    "glyph": "🧦",
-    "blurb": "Pour les longues soirées avec un bon livre.",
-    "setId": "erudit"
-  },
-  {
-    "id": "sabots-du-bucheron",
+    "id": "sabatons-benis",
     "slot": "bottes",
     "ability": "FOR",
-    "name": "Sabots du bûcheron",
-    "glyph": "🪵",
-    "blurb": "Solides comme le chêne qu’ils ont vu tomber.",
-    "setId": "titan"
+    "name": "Sabatons bénis",
+    "glyph": "👢",
+    "blurb": "Ils ancrent le paladin face à toutes les tempêtes.",
+    "classId": "paladin",
+    "setId": "paladin"
   },
   {
-    "id": "bottines-de-sentier",
+    "id": "bottes-elfiques",
+    "slot": "bottes",
+    "ability": "SAG",
+    "name": "Bottes elfiques",
+    "glyph": "🍃",
+    "blurb": "Un pas léger, pas un bruit : la forêt vous adopte.",
+    "classId": "rodeur",
+    "setId": "rodeur"
+  },
+  {
+    "id": "sandales-de-pelerin",
     "slot": "bottes",
     "ability": "CON",
-    "name": "Bottines de sentier",
-    "glyph": "🥿",
-    "blurb": "Elles tiennent la distance, saison après saison.",
-    "setId": null
+    "name": "Sandales de pèlerin",
+    "glyph": "🩴",
+    "blurb": "Elles ont parcouru toutes les routes saintes.",
+    "classId": "clerc",
+    "setId": "clerc"
   },
   {
-    "id": "baskets-du-coureur",
+    "id": "bottes-de-danse",
     "slot": "bottes",
     "ability": "DEX",
-    "name": "Baskets du coureur",
-    "glyph": "👟",
-    "blurb": "Légères, fidèles, toujours prêtes à partir.",
+    "name": "Bottes de danse",
+    "glyph": "👞",
+    "blurb": "Impossible de les porter sans avoir envie de danser.",
+    "classId": "barde",
+    "setId": "barde"
+  },
+  {
+    "id": "souliers-de-velours",
+    "slot": "bottes",
+    "ability": "DEX",
+    "name": "Souliers de velours",
+    "glyph": "🥿",
+    "blurb": "On n’entend que le silence quand ils passent.",
+    "classId": "roublard",
+    "setId": "roublard"
+  },
+  {
+    "id": "bottes-de-levitation",
+    "slot": "bottes",
+    "ability": "CON",
+    "name": "Bottes de lévitation",
+    "glyph": "🪽",
+    "blurb": "Le sol n’est qu’une suggestion.",
+    "classId": "magicien",
+    "setId": "magicien"
+  },
+  {
+    "id": "pantoufles-d-erudit",
+    "slot": "bottes",
+    "ability": "INT",
+    "name": "Pantoufles d’érudit",
+    "glyph": "🧦",
+    "blurb": "Pour les longues veillées avec un bon grimoire.",
+    "classId": null,
     "setId": null
   },
   {
-    "id": "pendentif-du-sage",
+    "id": "bottes-d-apparat",
+    "slot": "bottes",
+    "ability": "CHA",
+    "name": "Bottes d’apparat",
+    "glyph": "👠",
+    "blurb": "Cirées, brillantes : elles annoncent votre arrivée.",
+    "classId": null,
+    "setId": null
+  },
+  {
+    "id": "amulette-de-sante",
+    "slot": "amulette",
+    "ability": "CON",
+    "name": "Amulette de santé",
+    "glyph": "❤️",
+    "blurb": "Elle bat au rythme de ton endurance.",
+    "classId": "guerrier",
+    "setId": "guerrier"
+  },
+  {
+    "id": "reliquaire",
+    "slot": "amulette",
+    "ability": "CHA",
+    "name": "Reliquaire",
+    "glyph": "🏺",
+    "blurb": "Il renferme un souvenir sacré qui inspire ceux qui suivent le paladin.",
+    "classId": "paladin",
+    "setId": "paladin"
+  },
+  {
+    "id": "medaillon-de-pensees",
+    "slot": "amulette",
+    "ability": "SAG",
+    "name": "Médaillon de pensées",
+    "glyph": "📿",
+    "blurb": "Il murmure ce que la nature essaie de dire.",
+    "classId": "rodeur",
+    "setId": "rodeur"
+  },
+  {
+    "id": "symbole-sacre",
+    "slot": "amulette",
+    "ability": "SAG",
+    "name": "Symbole sacré",
+    "glyph": "✝️",
+    "blurb": "Focaliseur de foi : il brille quand on prie avec sincérité.",
+    "classId": "clerc",
+    "setId": "clerc"
+  },
+  {
+    "id": "luth",
+    "slot": "amulette",
+    "ability": "CHA",
+    "name": "Luth",
+    "glyph": "🪕",
+    "blurb": "Un instrument porté en bandoulière, prêt pour la prochaine ballade.",
+    "classId": "barde",
+    "setId": "barde"
+  },
+  {
+    "id": "amulette-de-protection-contre-la-detection",
     "slot": "amulette",
     "ability": "INT",
-    "name": "Pendentif du sage",
-    "glyph": "🔮",
-    "blurb": "Il murmure la réponse à ceux qui cherchent.",
-    "setId": "erudit"
+    "name": "Amulette de protection contre la détection",
+    "glyph": "🧿",
+    "blurb": "Ni sort ni regard ne peut vous suivre.",
+    "classId": "roublard",
+    "setId": "roublard"
+  },
+  {
+    "id": "grimoire",
+    "slot": "amulette",
+    "ability": "INT",
+    "name": "Grimoire",
+    "glyph": "📖",
+    "blurb": "Chaque page est un sort ; chaque sort, une promesse.",
+    "classId": "magicien",
+    "setId": "magicien"
   },
   {
     "id": "talisman-de-force",
     "slot": "amulette",
     "ability": "FOR",
     "name": "Talisman de force",
-    "glyph": "🧿",
+    "glyph": "💪",
     "blurb": "Il chauffe quand l’effort se fait sentir.",
-    "setId": "titan"
-  },
-  {
-    "id": "medaillon-de-l-aube",
-    "slot": "amulette",
-    "ability": "SAG",
-    "name": "Médaillon de l’aube",
-    "glyph": "🌅",
-    "blurb": "Il brille chaque matin où l’on recommence.",
-    "setId": "aube"
-  },
-  {
-    "id": "collier-du-troubadour",
-    "slot": "amulette",
-    "ability": "CHA",
-    "name": "Collier du troubadour",
-    "glyph": "📯",
-    "blurb": "Les chansons y sont gravées.",
-    "setId": "troubadour"
-  },
-  {
-    "id": "amulette-de-vigueur",
-    "slot": "amulette",
-    "ability": "CON",
-    "name": "Amulette de vigueur",
-    "glyph": "❤️",
-    "blurb": "Elle bat au rythme de ton endurance.",
-    "setId": "rempart"
-  },
-  {
-    "id": "breloque-agile",
-    "slot": "amulette",
-    "ability": "DEX",
-    "name": "Breloque agile",
-    "glyph": "🍀",
-    "blurb": "Un porte-bonheur pour les pieds légers.",
-    "setId": "ombre"
-  },
-  {
-    "id": "sautoir-d-erudit",
-    "slot": "amulette",
-    "ability": "INT",
-    "name": "Sautoir d’érudit",
-    "glyph": "📜",
-    "blurb": "Il porte la mémoire de mille lectures.",
+    "classId": null,
     "setId": null
   },
   {
-    "id": "sceau-du-gardien",
+    "id": "pierre-de-chance",
     "slot": "amulette",
-    "ability": "SAG",
-    "name": "Sceau du gardien",
-    "glyph": "🪬",
-    "blurb": "Il veille sur ceux qui veillent sur les autres.",
+    "ability": "DEX",
+    "name": "Pierre de chance",
+    "glyph": "🍀",
+    "blurb": "Un galet poli qui fait tourner le hasard en votre faveur.",
+    "classId": null,
     "setId": null
   }
 ]

@@ -1,17 +1,17 @@
 [
   {
-    "id": "titan",
-    "name": "Panoplie du Titan",
-    "glyph": "🦾",
+    "id": "guerrier",
+    "name": "Panoplie du Guerrier",
+    "glyph": "⚔️",
     "ability": "FOR",
-    "blurb": "Forgée pour ceux qui soulèvent le monde un effort après l’autre.",
+    "blurb": "L’équipement complet du combattant de première ligne.",
     "pieces": {
-      "arme": "epee-du-sentier",
-      "tete": "bandeau-du-guerrier",
-      "torse": "armure-de-plates",
-      "mains": "gantelets-de-force",
-      "bottes": "sabots-du-bucheron",
-      "amulette": "talisman-de-force"
+      "arme": "espadon",
+      "tete": "heaume",
+      "torse": "harnois",
+      "mains": "gantelets-de-puissance-d-ogre",
+      "bottes": "bottes-de-marche-et-de-saut",
+      "amulette": "amulette-de-sante"
     },
     "bonuses": [
       {
@@ -32,18 +32,50 @@
     ]
   },
   {
-    "id": "ombre",
-    "name": "Panoplie de l’Ombre",
-    "glyph": "🌒",
+    "id": "paladin",
+    "name": "Panoplie du Paladin",
+    "glyph": "🔨",
+    "ability": "FOR",
+    "blurb": "Acier béni et serment gravé : l’armure d’une cause sacrée.",
+    "pieces": {
+      "arme": "marteau-de-guerre",
+      "tete": "heaume-de-brillance",
+      "torse": "cotte-de-mailles-paladin",
+      "mains": "gantelets-de-serment",
+      "bottes": "sabatons-benis",
+      "amulette": "reliquaire"
+    },
+    "bonuses": [
+      {
+        "pieces": 2,
+        "pp": 5,
+        "ability": 1
+      },
+      {
+        "pieces": 4,
+        "pp": 12,
+        "ability": 3
+      },
+      {
+        "pieces": 6,
+        "pp": 25,
+        "ability": 6
+      }
+    ]
+  },
+  {
+    "id": "rodeur",
+    "name": "Panoplie du Rôdeur",
+    "glyph": "🏹",
     "ability": "DEX",
-    "blurb": "Légère, silencieuse, toujours un pas devant.",
+    "blurb": "Cuir, plumes et silence : la tenue de ceux qui connaissent les sentiers.",
     "pieces": {
-      "arme": "dague-vive",
-      "tete": "chapeau-de-voyageur",
-      "torse": "tunique-du-voyageur",
-      "mains": "gants-d-artisan",
-      "bottes": "bottes-de-sept-lieues",
-      "amulette": "breloque-agile"
+      "arme": "arc-long",
+      "tete": "capuchon-de-pisteur",
+      "torse": "armure-de-cuir-cloute",
+      "mains": "gants-de-nage-et-d-escalade",
+      "bottes": "bottes-elfiques",
+      "amulette": "medaillon-de-pensees"
     },
     "bonuses": [
       {
@@ -64,82 +96,18 @@
     ]
   },
   {
-    "id": "rempart",
-    "name": "Panoplie du Rempart",
-    "glyph": "🏰",
-    "ability": "CON",
-    "blurb": "Rien ne la fait plier, et rien ne la fait reculer.",
-    "pieces": {
-      "arme": "masse-du-rempart",
-      "tete": "casque-de-fer",
-      "torse": "cotte-de-mailles",
-      "mains": "poignets-du-rempart",
-      "bottes": "bottes-de-fer",
-      "amulette": "amulette-de-vigueur"
-    },
-    "bonuses": [
-      {
-        "pieces": 2,
-        "pp": 5,
-        "ability": 1
-      },
-      {
-        "pieces": 4,
-        "pp": 12,
-        "ability": 3
-      },
-      {
-        "pieces": 6,
-        "pp": 25,
-        "ability": 6
-      }
-    ]
-  },
-  {
-    "id": "erudit",
-    "name": "Panoplie de l’Érudit",
-    "glyph": "📚",
-    "ability": "INT",
-    "blurb": "Chaque pièce garde la trace d’une idée qui a fait ses preuves.",
-    "pieces": {
-      "arme": "baton-des-sages",
-      "tete": "diademe-du-savant",
-      "torse": "veste-de-l-artisan",
-      "mains": "mitaines-d-ecriture",
-      "bottes": "chaussons-de-lecture",
-      "amulette": "pendentif-du-sage"
-    },
-    "bonuses": [
-      {
-        "pieces": 2,
-        "pp": 5,
-        "ability": 1
-      },
-      {
-        "pieces": 4,
-        "pp": 12,
-        "ability": 3
-      },
-      {
-        "pieces": 6,
-        "pp": 25,
-        "ability": 6
-      }
-    ]
-  },
-  {
-    "id": "aube",
-    "name": "Panoplie de l’Aube",
-    "glyph": "🌄",
+    "id": "clerc",
+    "name": "Panoplie du Clerc",
+    "glyph": "🌿",
     "ability": "SAG",
-    "blurb": "Elle brille pour ceux qui recommencent chaque matin.",
+    "blurb": "Foi, laine consacrée et masse bénie : le costume du soigneur divin.",
     "pieces": {
-      "arme": "arc-de-l-aube",
-      "tete": "capuche-du-veilleur",
-      "torse": "robe-de-sagesse",
-      "mains": "bracelets-de-calme",
-      "bottes": "sandales-du-pelerin",
-      "amulette": "medaillon-de-l-aube"
+      "arme": "masse-d-armes",
+      "tete": "mitre",
+      "torse": "robe-consacree",
+      "mains": "mitaines-de-benediction",
+      "bottes": "sandales-de-pelerin",
+      "amulette": "symbole-sacre"
     },
     "bonuses": [
       {
@@ -160,18 +128,82 @@
     ]
   },
   {
-    "id": "troubadour",
-    "name": "Panoplie du Troubadour",
-    "glyph": "🎭",
+    "id": "barde",
+    "name": "Panoplie du Barde",
+    "glyph": "🎵",
     "ability": "CHA",
-    "blurb": "Faite pour rassembler : on la porte pour qu’on vous suive.",
+    "blurb": "Velours, plumes et ballades : tout pour faire lever la salle.",
     "pieces": {
-      "arme": "sceptre-d-eloquence",
-      "tete": "couronne-de-lauriers",
-      "torse": "manteau-d-orateur",
-      "mains": "gants-de-velours",
-      "bottes": "souliers-de-danse",
-      "amulette": "collier-du-troubadour"
+      "arme": "rapiere",
+      "tete": "chapeau-de-deguisement",
+      "torse": "pourpoint-de-velours",
+      "mains": "gants-de-menestrel",
+      "bottes": "bottes-de-danse",
+      "amulette": "luth"
+    },
+    "bonuses": [
+      {
+        "pieces": 2,
+        "pp": 5,
+        "ability": 1
+      },
+      {
+        "pieces": 4,
+        "pp": 12,
+        "ability": 3
+      },
+      {
+        "pieces": 6,
+        "pp": 25,
+        "ability": 6
+      }
+    ]
+  },
+  {
+    "id": "roublard",
+    "name": "Panoplie du Roublard",
+    "glyph": "🗡️",
+    "ability": "DEX",
+    "blurb": "Cuir noir, lames fines et outils discrets : le matériel du cambrioleur.",
+    "pieces": {
+      "arme": "dagues-jumelles",
+      "tete": "capuche-de-voleur",
+      "torse": "armure-de-cuir",
+      "mains": "outils-de-voleur",
+      "bottes": "souliers-de-velours",
+      "amulette": "amulette-de-protection-contre-la-detection"
+    },
+    "bonuses": [
+      {
+        "pieces": 2,
+        "pp": 5,
+        "ability": 1
+      },
+      {
+        "pieces": 4,
+        "pp": 12,
+        "ability": 3
+      },
+      {
+        "pieces": 6,
+        "pp": 25,
+        "ability": 6
+      }
+    ]
+  },
+  {
+    "id": "magicien",
+    "name": "Panoplie du Magicien",
+    "glyph": "🔮",
+    "ability": "INT",
+    "blurb": "Robes brodées de runes, bâton et grimoire : l’attirail de l’érudit des arcanes.",
+    "pieces": {
+      "arme": "baton-du-mage",
+      "tete": "chapeau-de-sorcier",
+      "torse": "robe-d-archimage",
+      "mains": "bracelets-de-defense",
+      "bottes": "bottes-de-levitation",
+      "amulette": "grimoire"
     },
     "bonuses": [
       {

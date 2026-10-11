@@ -132,6 +132,10 @@ export async function createLocalBackend(): Promise<Backend> {
   if (legacy && engine.hasLegacyBaseScores(legacy.baseScores)) {
     await store.saveCharacter(LOCAL_ID, { ...legacy, baseScores: engine.rescaleLegacyBaseScores(legacy.baseScores) });
   }
+  // Ancien personnage local d'une des 8 anciennes classes : converti en classe D&D (mêmes tables que la migration SQL).
+  const legacyClass = await store.getCharacter(LOCAL_ID);
+  const migrated = legacyClass && engine.migrateLegacyClass(legacyClass);
+  if (migrated) await store.saveCharacter(LOCAL_ID, migrated);
   // Enregistre immédiatement quand la page se ferme ou passe en arrière-plan.
   const flush = () => void db.kv.put({ key: 'game', value: store.snapshot() }).catch(() => undefined);
   window.addEventListener('pagehide', flush);
@@ -239,6 +243,7 @@ export async function createLocalBackend(): Promise<Backend> {
     complete: (req) => wrap(() => engine.completeQuestAction(ctx, LOCAL_ID, req)),
     undo: (id) => wrap(() => engine.undoQuest(ctx, LOCAL_ID, id)),
     choosePath: (id) => wrap(() => engine.choosePath(ctx, LOCAL_ID, id)),
+    changeClass: (id) => wrap(() => engine.changeClass(ctx, LOCAL_ID, id)),
     chooseImprovement: (c) => wrap(() => engine.chooseImprovement(ctx, LOCAL_ID, c)),
     declareRest: () => wrap(() => engine.declareRest(ctx, LOCAL_ID)),
     equipTitle: (t) => wrap(() => engine.equipTitle(ctx, LOCAL_ID, t)),
@@ -254,6 +259,8 @@ export async function createLocalBackend(): Promise<Backend> {
     itemUpgrade: (itemId) => wrap(() => engine.upgradeItem(ctx, LOCAL_ID, { itemId })),
     itemMerge: (itemIds) => wrap(() => engine.mergeItems(ctx, LOCAL_ID, { itemIds })),
     itemDismantle: (itemId) => wrap(() => engine.dismantleItem(ctx, LOCAL_ID, { itemId })),
+    spellEquip: (spellId, slot) => wrap(() => engine.equipSpell(ctx, LOCAL_ID, { spellId, slot })),
+    spellUnequip: (slot) => wrap(() => engine.unequipSpell(ctx, LOCAL_ID, { slot })),
     dungeonList: () => wrap(() => engine.listDungeons(ctx, LOCAL_ID)),
     dungeonRun: (dungeonId) => wrap(() => engine.runDungeon(ctx, LOCAL_ID, { dungeonId })),
     // Raids d'amis : pas d'équipes sans compte. L'état est vide (boss de la semaine seulement), les commandes sont refusées poliment.

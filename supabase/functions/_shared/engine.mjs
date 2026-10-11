@@ -18,6 +18,9 @@ var TRACK_DEMOTE_MISSES = 4;
 var CHEST_RARITIES = ["bois", "bronze", "argent", "or", "mythique"];
 var ITEM_RARITIES = ["commun", "peu_commun", "rare", "epique", "legendaire"];
 var EQUIP_SLOTS = ["arme", "tete", "torse", "mains", "bottes", "amulette"];
+var SPELL_FAMILIES = ["xp", "stat", "raid", "gold", "chest", "dungeon"];
+var SPELL_SLOTS = 3;
+var SPELL_MAX_LEVEL = 5;
 var emptyAdventureFields = () => ({
   gold: 0,
   fragments: 0,
@@ -664,6 +667,206 @@ function tuneXpScale(s) {
   return Math.min(Math.max(now / base, 0.4), 1.6);
 }
 
+// packages/engine/src/labels.ts
+var ABILITY_LABEL = {
+  FOR: "Force",
+  DEX: "Dext\xE9rit\xE9",
+  CON: "Constitution",
+  INT: "Intelligence",
+  SAG: "Sagesse",
+  CHA: "Charisme"
+};
+var ABILITY_DND_NAME = {
+  FOR: "Force",
+  DEX: "Dext\xE9rit\xE9",
+  CON: "Constitution",
+  INT: "Intelligence",
+  SAG: "Sagesse",
+  CHA: "Charisme"
+};
+var ABILITY_SHORT = {
+  FOR: "FOR",
+  DEX: "DEX",
+  CON: "CON",
+  INT: "INT",
+  SAG: "SAG",
+  CHA: "CHA"
+};
+var ABILITY_COLOR = {
+  FOR: "#c8553d",
+  DEX: "#5f9e6e",
+  CON: "#e0893d",
+  INT: "#4a82b8",
+  SAG: "#8a6bb8",
+  CHA: "#d9ae3a"
+};
+var ABILITY_TAGLINE = {
+  FOR: "Le physique pur : pousser, porter, tenir.",
+  DEX: "L\u2019agilit\xE9 sous toutes ses formes : souplesse, coordination, r\xE9flexes, adresse, esprit vif.",
+  CON: "La sant\xE9 du corps : sommeil, repas, eau, marche.",
+  INT: "Apprendre, informations ou comp\xE9tences : lire, \xE9tudier, pratiquer.",
+  SAG: "Prendre soin de soi \xE0 l\u2019int\xE9rieur : calme, \xE9motions, attention.",
+  CHA: "Le social : \xE9couter, parler, donner des nouvelles."
+};
+var DIFFICULTY_LABEL = {
+  easy: "Facile",
+  medium: "Mod\xE9r\xE9e",
+  high: "Audacieuse",
+  expert: "L\xE9gendaire"
+};
+var DIFFICULTY_SWORDS = { easy: 1, medium: 2, high: 3, expert: 4 };
+var PERIOD_LABEL = {
+  daily: "Quotidienne",
+  weekly: "Hebdomadaire",
+  monthly: "Mensuelle",
+  epic: "\xC9pique"
+};
+var PERIOD_TAB_LABEL = {
+  daily: "Jour",
+  weekly: "Semaine",
+  monthly: "Mois",
+  epic: "\xC9pique"
+};
+var PERIOD_SHORT = { daily: "J", weekly: "S", monthly: "M", epic: "\xC9" };
+var VALIDATION_LABEL = {
+  simple: "Simple",
+  counter: "Compteur",
+  timer: "Chronom\xE8tre",
+  steps: "Checklist",
+  journal: "Journal"
+};
+var REACTION_LABEL = {
+  bravo: "Bravo",
+  inspirant: "Inspirant",
+  respect: "Respect",
+  rire: "Rire"
+};
+var REACTION_KINDS = Object.keys(REACTION_LABEL);
+var REACTION_EMOJI = {
+  bravo: "\u{1F44F}",
+  inspirant: "\u2728",
+  respect: "\u{1FAE1}",
+  rire: "\u{1F604}"
+};
+
+// packages/engine/src/spells.ts
+var SPELL_POINTS = { commun: 3, peu_commun: 5, rare: 8, epique: 12, legendaire: 18 };
+var SPELL_LEVEL_STEP = 0.2;
+var SPELL_CLASS_BONUS = 0.25;
+var SPELL_XP_CAP = 25;
+var SPELL_OTHER_CAP = 30;
+var SPELL_STAT_DIV = 4;
+var SPELL_CHEST_DIV = 4;
+var SPELL_DUNGEON_DIV = 2;
+var SPELL_MAX_FRAGMENTS = { commun: 4, peu_commun: 10, rare: 24, epique: 60, legendaire: 160 };
+function spellEffectPoints(rarity, level, ownClass) {
+  const lvl = Math.min(Math.max(Math.trunc(level) || 1, 1), SPELL_MAX_LEVEL);
+  return SPELL_POINTS[rarity] * (1 + SPELL_LEVEL_STEP * (lvl - 1)) * (ownClass ? 1 + SPELL_CLASS_BONUS : 1);
+}
+var NO_SPELL_BONUS = { pp: 0, xp: {}, stats: {}, raid: 0, gold: 0, chest: 0, dungeon: 0, active: [] };
+function spellRawTotals(equipped, heroClassId, masteries) {
+  const families = Object.fromEntries(SPELL_FAMILIES.map((f) => [f, 0]));
+  const xp = {};
+  const stats = {};
+  for (const { def, level } of equipped) {
+    const pts = spellEffectPoints(def.rarity, level, !!heroClassId && def.classId === heroClassId);
+    families[def.family] += pts;
+    if (def.family === "xp") {
+      const targets = def.ability === "all" ? masteries : [def.ability];
+      for (const a of targets) xp[a] = (xp[a] ?? 0) + pts / (def.ability === "all" ? Math.max(1, targets.length) : 1);
+    } else if (def.family === "stat" && def.ability !== "all") {
+      stats[def.ability] = (stats[def.ability] ?? 0) + Math.floor(pts / SPELL_STAT_DIV);
+    }
+  }
+  return { families, xp, stats };
+}
+function spellBonuses(known, defs, heroClassId, masteries) {
+  const equipped = known.filter((k) => k.equippedSlot !== null && k.equippedSlot >= 1 && k.equippedSlot <= SPELL_SLOTS && defs.has(k.spellId)).sort((a, b) => (a.equippedSlot ?? 0) - (b.equippedSlot ?? 0)).slice(0, SPELL_SLOTS).map((k) => ({ def: defs.get(k.spellId), level: k.level }));
+  if (!equipped.length) return NO_SPELL_BONUS;
+  const raw = spellRawTotals(equipped, heroClassId, masteries);
+  const xp = {};
+  for (const a of ABILITIES) if (raw.xp[a]) xp[a] = Math.min(SPELL_XP_CAP, raw.xp[a]);
+  const active = equipped.map(({ def, level }) => {
+    const ownClass = !!heroClassId && def.classId === heroClassId;
+    return { spellId: def.id, level, points: spellEffectPoints(def.rarity, level, ownClass), ownClass };
+  });
+  return {
+    pp: active.reduce((n, a) => n + Math.round(a.points), 0),
+    xp,
+    stats: raw.stats,
+    raid: Math.min(SPELL_OTHER_CAP, raw.families.raid),
+    gold: Math.min(SPELL_OTHER_CAP, raw.families.gold),
+    chest: Math.min(SPELL_OTHER_CAP, raw.families.chest / SPELL_CHEST_DIV),
+    dungeon: Math.min(SPELL_OTHER_CAP, raw.families.dungeon / SPELL_DUNGEON_DIV),
+    active
+  };
+}
+function nextSpellLevel(level) {
+  return level >= SPELL_MAX_LEVEL ? null : level + 1;
+}
+function freeSpellSlot(known) {
+  const used = new Set(known.map((k) => k.equippedSlot).filter((s) => s !== null));
+  for (let s = 1; s <= SPELL_SLOTS; s++) if (!used.has(s)) return s;
+  return null;
+}
+function combos(list, k) {
+  if (k === 0) return [[]];
+  if (list.length < k) return [];
+  const [head, ...rest] = list;
+  return [...combos(rest, k - 1).map((c) => [head, ...c]), ...combos(rest, k)];
+}
+function classEnvelope(classId, spells, masteries) {
+  const mine = spells.filter((s) => s.classId === classId);
+  const familyPoints = Object.fromEntries(SPELL_FAMILIES.map((f) => [f, 0]));
+  for (const s of mine) familyPoints[s.family] += spellEffectPoints(s.rarity, 1, false);
+  const loadouts = combos(mine, SPELL_SLOTS);
+  let xpMaxRaw = 0;
+  let spellPp = 0;
+  for (const l of loadouts) {
+    const raw = spellRawTotals(l.map((def) => ({ def, level: SPELL_MAX_LEVEL })), classId, masteries);
+    for (const a of ABILITIES) xpMaxRaw = Math.max(xpMaxRaw, raw.xp[a] ?? 0);
+    spellPp = Math.max(spellPp, l.reduce((n, d) => n + Math.round(spellEffectPoints(d.rarity, SPELL_MAX_LEVEL, true)), 0));
+  }
+  const byPoints = [...mine].sort((a, b) => SPELL_POINTS[b.rarity] - SPELL_POINTS[a.rarity]);
+  return {
+    classId,
+    spellCount: mine.length,
+    rarityPlan: mine.map((s) => s.rarity),
+    familyPoints,
+    totalPoints: mine.reduce((n, s) => n + SPELL_POINTS[s.rarity], 0),
+    topThreePoints: byPoints.slice(0, SPELL_SLOTS).reduce((n, s) => n + SPELL_POINTS[s.rarity], 0),
+    xpMaxRaw,
+    xpMax: Math.min(SPELL_XP_CAP, xpMaxRaw),
+    spellPp
+  };
+}
+function applySpellXp(parts, bonus) {
+  if (!bonus) return parts.map((p) => ({ ...p }));
+  return parts.map((p) => {
+    const pct = Math.min(SPELL_XP_CAP, Math.max(0, bonus[p.ability] ?? 0));
+    if (p.amount < 1 || pct <= 0) return { ...p };
+    return { ability: p.ability, amount: Math.max(p.amount, Math.round(p.amount * (1 + pct / 100))) };
+  });
+}
+function spellEffectLabel(def, points) {
+  const ab = def.ability === "all" ? "toutes tes ma\xEEtrises" : ABILITY_LABEL[def.ability];
+  const pct = (n) => String(Math.round(n * 10) / 10).replace(".", ",");
+  switch (def.family) {
+    case "xp":
+      return def.ability === "all" ? `+${pct(points / 2)} % d\u2019XP sur chacune de ${ab}` : `+${pct(points)} % d\u2019XP en ${ab}`;
+    case "stat":
+      return `+${Math.floor(points / SPELL_STAT_DIV)} en ${ab} (aventure)`;
+    case "raid":
+      return `+${pct(points)} % de d\xE9g\xE2ts de raid`;
+    case "gold":
+      return `+${pct(points)} % d\u2019or d\u2019exp\xE9dition`;
+    case "chest":
+      return `butin de coffre meilleur de ${pct(points / SPELL_CHEST_DIV)} points`;
+    case "dungeon":
+      return `+${pct(points / SPELL_DUNGEON_DIV)} % de Constitution en donjon`;
+  }
+}
+
 // packages/engine/src/complete.ts
 var MAX_INSPIRATION = 3;
 var UNDO_WINDOW_MS = 24 * 3600 * 1e3;
@@ -777,7 +980,8 @@ function completeQuest(input) {
   const base = input.useInspiration ? { ...character, inspiration: character.inspiration - 1 } : character;
   const scores = abilityScores(character);
   const baseParts = splitXp(breakdown.total, instance.snapshot.ability, instance.snapshot.secondary);
-  const parts = applyBalance(baseParts, scores);
+  const balanced = applyBalance(baseParts, scores);
+  const parts = applySpellXp(balanced, input.abilityXpBonus);
   const balance = balanceDetails(baseParts, scores);
   const applied = applyXpParts(base, parts);
   return {
@@ -787,6 +991,7 @@ function completeQuest(input) {
       xpAwarded: parts.reduce((n, p) => n + p.amount, 0),
       parts,
       balance,
+      spellXp: parts.reduce((n, p) => n + p.amount, 0) - balanced.reduce((n, p) => n + p.amount, 0),
       breakdown,
       inspirationSpent: input.useInspiration
     }
@@ -1081,7 +1286,7 @@ var CHEST_TABLE = {
 var ITEM_BASE_POWER = { commun: 5, peu_commun: 12, rare: 28, epique: 60, legendaire: 130 };
 var ITEM_LEVEL_STEP = 0.1;
 var ITEM_MAX_LEVEL = 10;
-var ITEM_AFFINITY_BONUS = 0.1;
+var ITEM_AFFINITY_BONUS = 0.2;
 var ITEM_ABILITY_BONUS_DIV = 12;
 var DISMANTLE_FRAGMENTS = { commun: 2, peu_commun: 5, rare: 12, epique: 30, legendaire: 80 };
 var UPGRADE_FRAGMENTS_STEP = 5;
@@ -1102,44 +1307,47 @@ var DUNGEON_SILVER_TIER = 5;
 var DUNGEON_BOSS_ROOM = DUNGEON_ROOMS + 1;
 var STREAK_MILESTONE_CHESTS = { 7: "argent", 30: "or", 100: "mythique" };
 var rarityIndex = (list, r) => list.indexOf(r);
-function itemPower(item, masteries = []) {
+function hasAffinity(item, heroClassId) {
+  return !!heroClassId && !!item.classId && item.classId === heroClassId;
+}
+function itemPower(item, heroClassId) {
   const level = Math.min(Math.max(Math.trunc(item.level) || 0, 0), ITEM_MAX_LEVEL);
-  const affinity = masteries.includes(item.ability) ? 1 + ITEM_AFFINITY_BONUS : 1;
+  const affinity = hasAffinity(item, heroClassId) ? 1 + ITEM_AFFINITY_BONUS : 1;
   return Math.round(ITEM_BASE_POWER[item.rarity] * (1 + ITEM_LEVEL_STEP * level) * affinity);
 }
-function itemAbilityBonus(item, masteries = []) {
-  return Math.floor(itemPower(item, masteries) / ITEM_ABILITY_BONUS_DIV);
+function itemAbilityBonus(item, heroClassId) {
+  return Math.floor(itemPower(item, heroClassId) / ITEM_ABILITY_BONUS_DIV);
 }
-function adventureScores(scores, equipped, masteries = [], sets = NO_SET_BONUS) {
+function adventureScores(scores, equipped, heroClassId, sets = NO_SET_BONUS, spells = NO_SPELL_BONUS) {
   const out = { ...scores };
-  for (const it of equipped) out[it.ability] += itemAbilityBonus(it, masteries);
-  for (const a of ABILITIES) out[a] += sets.abilities[a] ?? 0;
+  for (const it of equipped) out[it.ability] += itemAbilityBonus(it, heroClassId);
+  for (const a of ABILITIES) out[a] += (sets.abilities[a] ?? 0) + (spells.stats[a] ?? 0);
   return out;
 }
-function heroPowerBreakdown(character, equipped, masteries = [], sets = NO_SET_BONUS) {
+function heroPowerBreakdown(character, equipped, heroClassId, sets = NO_SET_BONUS, spells = NO_SPELL_BONUS) {
   const scores = abilityScores(character);
   const level = character.level * 10;
   const sum = ABILITIES.reduce((n, a) => n + scores[a], 0);
-  const items = equipped.filter((i) => i.equipped).reduce((n, i) => n + itemPower(i, masteries), 0);
-  return { total: level + sum + items + sets.pp, level, scores: sum, items, sets: sets.pp };
+  const items = equipped.filter((i) => i.equipped).reduce((n, i) => n + itemPower(i, heroClassId), 0);
+  return { total: level + sum + items + sets.pp + spells.pp, level, scores: sum, items, sets: sets.pp, spells: spells.pp };
 }
-function heroPower(character, equipped, masteries = [], sets = NO_SET_BONUS) {
-  return heroPowerBreakdown(character, equipped, masteries, sets).total;
+function heroPower(character, equipped, heroClassId, sets = NO_SET_BONUS, spells = NO_SPELL_BONUS) {
+  return heroPowerBreakdown(character, equipped, heroClassId, sets, spells).total;
 }
 function streakMultiplier(streak) {
   return 1 + Math.min(EXPEDITION_STREAK_MAX, EXPEDITION_STREAK_STEP * Math.max(0, streak));
 }
-function expeditionRates(pp, scores, streak) {
+function expeditionRates(pp, scores, streak, goldBonusPct = 0) {
   const speed = (1 + Math.max(0, scores.DEX) / EXPEDITION_DEX_DIV) * streakMultiplier(streak);
   return {
-    goldPerHour: EXPEDITION_GOLD_PER_HOUR * (1 + pp / EXPEDITION_GOLD_PP_DIV) * (1 + Math.max(0, scores.INT) / EXPEDITION_INT_DIV) * speed,
+    goldPerHour: EXPEDITION_GOLD_PER_HOUR * (1 + pp / EXPEDITION_GOLD_PP_DIV) * (1 + Math.max(0, scores.INT) / EXPEDITION_INT_DIV) * speed * (1 + Math.max(0, goldBonusPct) / 100),
     fragmentsPerHour: (1 + pp / EXPEDITION_FRAGMENT_PP_DIV) * speed
   };
 }
 function expeditionYield(input) {
   const rawHours = Math.max(0, input.elapsedMs) / 36e5;
   const hours = Math.min(rawHours, EXPEDITION_CAP_HOURS);
-  const rates = expeditionRates(input.pp, input.scores, input.streak);
+  const rates = expeditionRates(input.pp, input.scores, input.streak, input.goldBonusPct ?? 0);
   return {
     ...rates,
     hours,
@@ -1168,22 +1376,37 @@ function nextChestRarity(r) {
 function nextItemRarity(r) {
   return ITEM_RARITIES[rarityIndex(ITEM_RARITIES, r) + 1] ?? null;
 }
-function adjustedOdds(chest, sag) {
+function adjustedOdds(chest, sag, extraShift = 0) {
   const odds = [...CHEST_TABLE[chest].odds];
   const low = odds.findIndex((p) => p > 0);
   let high = odds.length - 1;
   while (high > 0 && odds[high] === 0) high--;
   if (low < 0 || low >= high) return odds;
-  const shift = Math.min(Math.floor(Math.max(0, sag) / SAG_SHIFT_STEP) * SAG_SHIFT_PCT, odds[low]);
+  const shift = Math.min(Math.floor(Math.max(0, sag) / SAG_SHIFT_STEP) * SAG_SHIFT_PCT + Math.max(0, extraShift), odds[low]);
   odds[low] -= shift;
   odds[high] += shift;
   return odds;
+}
+var SPELL_CHANCE = { bois: 0, bronze: 15, argent: 22, or: 30, mythique: 40 };
+var LOOT_CLASS_SHARE = 70;
+var LOOT_UNIVERSAL_SHARE = 20;
+var SPELL_CLASS_SHARE = 80;
+function pickByClass(pool, rng, classId, classShare, universalShare) {
+  if (!pool.length) return null;
+  if (!classId) return pool[Math.min(Math.floor(rng() * pool.length), pool.length - 1)];
+  const own = classId ? pool.filter((t) => t.classId === classId) : [];
+  const universal = pool.filter((t) => !t.classId);
+  const other = pool.filter((t) => !!t.classId && t.classId !== classId);
+  const roll = rng() * 100;
+  const order = roll < classShare ? [own, universal, other] : roll < classShare + universalShare ? [universal, other, own] : [other, universal, own];
+  const list = order.find((l) => l.length) ?? pool;
+  return list[Math.min(Math.floor(rng() * list.length), list.length - 1)];
 }
 function drawChest(input) {
   const { chest } = input;
   if (!input.templates.length) throw new Error("Aucun mod\xE8le d\u2019objet");
   const rng = createRng(input.seed);
-  const odds = adjustedOdds(chest, input.sag);
+  const odds = adjustedOdds(chest, input.sag, input.chestShift ?? 0);
   let roll = rng() * 100;
   let idx = odds.length - 1;
   for (let i = 0; i < odds.length; i++) {
@@ -1210,14 +1433,24 @@ function drawChest(input) {
   }
   if (epicPity) pity[epicKey] = idx >= epicIdx ? 0 : (pity[epicKey] ?? 0) + 1;
   if (legPity) pity[legKey] = idx === legIdx ? 0 : (pity[legKey] ?? 0) + 1;
-  const template = input.templates[Math.min(Math.floor(rng() * input.templates.length), input.templates.length - 1)];
+  const rarity = ITEM_RARITIES[idx];
   const { fragments, gold } = CHEST_TABLE[chest];
-  return { rarity: ITEM_RARITIES[idx], template, fragments, gold, pity, guaranteed };
+  const typeRoll = rng() * 100;
+  const spellPool = (input.spells ?? []).filter((x) => x.rarity === rarity);
+  if (spellPool.length && typeRoll < SPELL_CHANCE[chest]) {
+    const spell = pickByClass(spellPool, rng, input.classId, SPELL_CLASS_SHARE, 0);
+    if (spell) return { rarity, template: null, spell, fragments, gold, pity, guaranteed };
+  }
+  const template = pickByClass(input.templates, rng, input.classId, LOOT_CLASS_SHARE, LOOT_UNIVERSAL_SHARE) ?? input.templates[0];
+  return { rarity, template, spell: null, fragments, gold, pity, guaranteed };
 }
-function pickTemplateForSlot(templates, slot, seed) {
+function pickTemplateForSlot(templates, slot, seed, classId) {
   const pool = templates.filter((t) => t.slot === slot);
   if (!pool.length) return null;
-  return pool[Math.min(Math.floor(createRng(`${seed}|forge`)() * pool.length), pool.length - 1)];
+  return pickByClass(pool, createRng(`${seed}|forge`), classId, LOOT_CLASS_SHARE, LOOT_UNIVERSAL_SHARE);
+}
+function spellMaxFragments(rarity) {
+  return SPELL_MAX_FRAGMENTS[rarity];
 }
 function upgradeCost(level) {
   if (level >= ITEM_MAX_LEVEL) return null;
@@ -1253,7 +1486,8 @@ function resolveDungeon(input) {
   const { dungeon, pp, scores } = input;
   const tier = dungeon.tier;
   const rng = createRng(input.seed);
-  const survive = pp * (1 + Math.max(0, scores.CON) / DUNGEON_CON_DIV);
+  const con = Math.max(0, scores.CON) * (1 + Math.max(0, input.conBonusPct ?? 0) / 100);
+  const survive = pp * (1 + con / DUNGEON_CON_DIV);
   const damage = pp * (1 + Math.max(0, scores.FOR) / DUNGEON_FOR_DIV);
   const roomPowers = Array.from({ length: DUNGEON_ROOMS }, (_, i) => dungeonRoomPower(tier, i));
   const bossPower = dungeonBossPower(tier);
@@ -1267,7 +1501,7 @@ function resolveDungeon(input) {
       cleared++;
       log.push(`Salle ${i + 1} : tu ${pick(WIN_VERBS)} ${monster}.`);
     } else {
-      missing = Math.max(1, Math.ceil(roomPowers[i] / (1 + Math.max(0, scores.CON) / DUNGEON_CON_DIV) - pp));
+      missing = Math.max(1, Math.ceil(roomPowers[i] / (1 + con / DUNGEON_CON_DIV) - pp));
       log.push(`Salle ${i + 1} : ${monster} ${pick(LOSE_VERBS)}. Il te manque ${missing} PP.`);
       break;
     }
@@ -1417,7 +1651,7 @@ function raidEncouragementBonus(count) {
   return Math.min(RAID_ENCOURAGE_CAP, Math.max(0, Math.trunc(count) || 0) * RAID_ENCOURAGE_STEP);
 }
 function raidBaseDamage(i) {
-  return Math.floor(Math.max(0, i.pp) * (1 + Math.max(0, i.forScore) / RAID_FOR_DIV) * (1 + Math.min(RAID_CHA_CAP, Math.max(0, i.chaBonus))));
+  return Math.floor(Math.max(0, i.pp) * (1 + Math.max(0, i.forScore) / RAID_FOR_DIV) * (1 + Math.min(RAID_CHA_CAP, Math.max(0, i.chaBonus))) * (1 + Math.max(0, i.spellBonusPct ?? 0) / 100));
 }
 function raidDamage(base, encouragements) {
   return Math.floor(Math.max(0, base) * (1 + raidEncouragementBonus(encouragements)));
@@ -1539,88 +1773,6 @@ function emptyStats() {
   };
 }
 
-// packages/engine/src/labels.ts
-var ABILITY_LABEL = {
-  FOR: "Force",
-  DEX: "Dext\xE9rit\xE9",
-  CON: "Constitution",
-  INT: "Intelligence",
-  SAG: "Sagesse",
-  CHA: "Charisme"
-};
-var ABILITY_DND_NAME = {
-  FOR: "Force",
-  DEX: "Dext\xE9rit\xE9",
-  CON: "Constitution",
-  INT: "Intelligence",
-  SAG: "Sagesse",
-  CHA: "Charisme"
-};
-var ABILITY_SHORT = {
-  FOR: "FOR",
-  DEX: "DEX",
-  CON: "CON",
-  INT: "INT",
-  SAG: "SAG",
-  CHA: "CHA"
-};
-var ABILITY_COLOR = {
-  FOR: "#c8553d",
-  DEX: "#5f9e6e",
-  CON: "#e0893d",
-  INT: "#4a82b8",
-  SAG: "#8a6bb8",
-  CHA: "#d9ae3a"
-};
-var ABILITY_TAGLINE = {
-  FOR: "Le physique pur : pousser, porter, tenir.",
-  DEX: "L\u2019agilit\xE9 sous toutes ses formes : souplesse, coordination, r\xE9flexes, adresse, esprit vif.",
-  CON: "La sant\xE9 du corps : sommeil, repas, eau, marche.",
-  INT: "Apprendre, informations ou comp\xE9tences : lire, \xE9tudier, pratiquer.",
-  SAG: "Prendre soin de soi \xE0 l\u2019int\xE9rieur : calme, \xE9motions, attention.",
-  CHA: "Le social : \xE9couter, parler, donner des nouvelles."
-};
-var DIFFICULTY_LABEL = {
-  easy: "Facile",
-  medium: "Mod\xE9r\xE9e",
-  high: "Audacieuse",
-  expert: "L\xE9gendaire"
-};
-var DIFFICULTY_SWORDS = { easy: 1, medium: 2, high: 3, expert: 4 };
-var PERIOD_LABEL = {
-  daily: "Quotidienne",
-  weekly: "Hebdomadaire",
-  monthly: "Mensuelle",
-  epic: "\xC9pique"
-};
-var PERIOD_TAB_LABEL = {
-  daily: "Jour",
-  weekly: "Semaine",
-  monthly: "Mois",
-  epic: "\xC9pique"
-};
-var PERIOD_SHORT = { daily: "J", weekly: "S", monthly: "M", epic: "\xC9" };
-var VALIDATION_LABEL = {
-  simple: "Simple",
-  counter: "Compteur",
-  timer: "Chronom\xE8tre",
-  steps: "Checklist",
-  journal: "Journal"
-};
-var REACTION_LABEL = {
-  bravo: "Bravo",
-  inspirant: "Inspirant",
-  respect: "Respect",
-  rire: "Rire"
-};
-var REACTION_KINDS = Object.keys(REACTION_LABEL);
-var REACTION_EMOJI = {
-  bravo: "\u{1F44F}",
-  inspirant: "\u2728",
-  respect: "\u{1FAE1}",
-  rire: "\u{1F604}"
-};
-
 // packages/engine/src/narrative.ts
 function interpolate(text, vars) {
   return text.replace(/\{(\w+)\}/g, (_, k) => k in vars ? String(vars[k]) : `{${k}}`);
@@ -1725,6 +1877,127 @@ function pathAbilityOf(classes, classId, pathId) {
   return c?.paths.find((p) => p.id === pathId)?.ability ?? null;
 }
 
+// packages/engine/src/legacy-classes.ts
+var LEGACY_CLASS_MAP = {
+  eclaireur: "guerrier",
+  rassembleur: "paladin",
+  aventurier: "rodeur",
+  explorateur: "clerc",
+  troubadour: "barde",
+  artisan: "roublard",
+  erudit: "magicien",
+  gardien: "clerc"
+};
+var LEGACY_PATH_ABILITY = {
+  "eclaireur-sentier": "SAG",
+  "eclaireur-bastion": "INT",
+  "aventurier-ombre": "SAG",
+  "aventurier-tempete": "CON",
+  "artisan-inventeur": "INT",
+  "artisan-maitre": "CHA",
+  "troubadour-conteur": "INT",
+  "troubadour-meneur": "CON",
+  "rassembleur-feu": "DEX",
+  "rassembleur-roc": "FOR",
+  "erudit-savant": "INT",
+  "erudit-ermite": "SAG",
+  "gardien-guerisseur": "CON",
+  "gardien-protecteur": "FOR",
+  "explorateur-druide": "INT",
+  "explorateur-nomade": "FOR"
+};
+var LEGACY_PATH_MAP = {
+  "eclaireur-sentier": "guerrier-champion",
+  "eclaireur-bastion": "guerrier-champion",
+  "aventurier-ombre": "rodeur-chasseur",
+  "aventurier-tempete": "rodeur-belluaire",
+  "artisan-inventeur": "roublard-voleur",
+  "artisan-maitre": "roublard-voleur",
+  "troubadour-conteur": "barde-savoir",
+  "troubadour-meneur": "barde-vaillance",
+  "rassembleur-feu": "paladin-devotion",
+  "rassembleur-roc": "paladin-vengeance",
+  "erudit-savant": "magicien-evocation",
+  "erudit-ermite": "magicien-abjuration",
+  "gardien-guerisseur": "clerc-vie",
+  "gardien-protecteur": "clerc-vie",
+  "explorateur-druide": "clerc-savoir",
+  "explorateur-nomade": "clerc-vie"
+};
+var LEGACY_TITLE_MAP = {
+  Rassembleur: "C\u0153ur de la compagnie"
+};
+var isLegacyClassId = (classId) => Object.prototype.hasOwnProperty.call(LEGACY_CLASS_MAP, classId);
+function migrateLegacyClass(c) {
+  const legacyClass = isLegacyClassId(c.classId);
+  const legacyPath = !!c.pathId && Object.prototype.hasOwnProperty.call(LEGACY_PATH_MAP, c.pathId);
+  const legacyTitle = !!c.titleEquipped && Object.prototype.hasOwnProperty.call(LEGACY_TITLE_MAP, c.titleEquipped);
+  if (!legacyClass && !legacyPath && !legacyTitle) return null;
+  return {
+    ...c,
+    classId: legacyClass ? LEGACY_CLASS_MAP[c.classId] : c.classId,
+    pathId: legacyPath ? LEGACY_PATH_MAP[c.pathId] : c.pathId ?? null,
+    titleEquipped: legacyTitle ? LEGACY_TITLE_MAP[c.titleEquipped] : c.titleEquipped ?? null,
+    classNotice: legacyClass ? true : c.classNotice ?? false,
+    classChanged: c.classChanged ?? false
+  };
+}
+
+// packages/engine/src/legacy-items.ts
+var LEGACY_ITEM_MAP = {
+  "epee-du-sentier": "espadon",
+  "dague-vive": "arc-long",
+  "baton-des-sages": "baton-du-mage",
+  "arc-de-l-aube": "masse-d-armes",
+  "sceptre-d-eloquence": "sceptre-de-heraut",
+  "masse-du-rempart": "gourdin-de-voyageur",
+  "hache-du-forgeron": "marteau-de-guerre",
+  "fleuret-leger": "rapiere",
+  "casque-de-fer": "heaume",
+  "chapeau-de-voyageur": "chapeau-de-voyageur",
+  "couronne-de-lauriers": "heaume-de-brillance",
+  "diademe-du-savant": "capuche-de-voleur",
+  "capuche-du-veilleur": "capuchon-de-pisteur",
+  "bandeau-du-guerrier": "bandeau-de-combattant",
+  "heaume-du-gardien": "mitre",
+  "lunettes-d-erudit": "chapeau-de-sorcier",
+  "cotte-de-mailles": "robe-consacree",
+  "tunique-du-voyageur": "armure-de-cuir-cloute",
+  "armure-de-plates": "harnois",
+  "robe-de-sagesse": "manteau-de-pelerin",
+  "manteau-d-orateur": "pourpoint-de-velours",
+  "veste-de-l-artisan": "veste-d-erudit",
+  "plastron-de-cuir": "robe-d-archimage",
+  "cape-du-conteur": "pourpoint-de-velours",
+  "gantelets-de-force": "gants-de-travail",
+  "gants-d-artisan": "gants-de-nage-et-d-escalade",
+  "bracelets-de-calme": "mitaines-de-benediction",
+  "mitaines-d-ecriture": "outils-de-voleur",
+  "poignets-du-rempart": "anneau-de-protection",
+  "gants-de-velours": "gantelets-de-serment",
+  "poings-d-acier": "gantelets-de-puissance-d-ogre",
+  "anneau-de-vivacite": "gants-de-menestrel",
+  "bottes-de-sept-lieues": "bottes-de-danse",
+  "sandales-du-pelerin": "bottes-elfiques",
+  "bottes-de-fer": "bottes-de-marche-et-de-saut",
+  "souliers-de-danse": "bottes-d-apparat",
+  "chaussons-de-lecture": "pantoufles-d-erudit",
+  "sabots-du-bucheron": "sabatons-benis",
+  "bottines-de-sentier": "sandales-de-pelerin",
+  "baskets-du-coureur": "souliers-de-velours",
+  "pendentif-du-sage": "amulette-de-protection-contre-la-detection",
+  "talisman-de-force": "talisman-de-force",
+  "medaillon-de-l-aube": "medaillon-de-pensees",
+  "collier-du-troubadour": "reliquaire",
+  "amulette-de-vigueur": "amulette-de-sante",
+  "breloque-agile": "pierre-de-chance",
+  "sautoir-d-erudit": "grimoire",
+  "sceau-du-gardien": "symbole-sacre"
+};
+function migrateLegacyItems(items) {
+  return items.map((i) => LEGACY_ITEM_MAP[i.templateId] && LEGACY_ITEM_MAP[i.templateId] !== i.templateId ? { ...i, templateId: LEGACY_ITEM_MAP[i.templateId] } : i);
+}
+
 // packages/engine/src/server/types.ts
 var defaultSettings = (timezone = "Europe/Paris") => ({
   resetHour: 4,
@@ -1747,107 +2020,227 @@ var defaultSettings = (timezone = "Europe/Paris") => ({
 // packages/content/data/classes.fr.json
 var classes_fr_default = [
   {
-    id: "eclaireur",
-    name: "\xC9claireur",
-    icon: "footsteps-outline",
-    masteries: ["FOR", "CON"],
-    profile: "Sportif endurant, salle et cardio",
-    description: "Pour les sportifs d\u2019endurance : course, salle, cardio. Tu progresses surtout en Force et en Constitution.",
-    favoredQuests: ["Marche rapide, 30 minutes", "Endurance, 3 s\xE9ances dans la semaine", "Pompes, 40 aujourd\u2019hui"],
+    id: "guerrier",
+    name: "Guerrier",
+    icon: "\u2694\uFE0F",
+    masteries: [
+      "FOR",
+      "CON"
+    ],
+    profile: "Combattant robuste : endurance, sport, r\xE9gularit\xE9",
+    description: "Ma\xEEtre des armes et de l\u2019effort, le guerrier encaisse autant qu\u2019il frappe. Pour les sportifs et les r\xE9guliers : salle, cardio, endurance. Tu progresses surtout en Force et en Constitution.",
+    favoredQuests: [
+      "S\xE9ances de force, 3 dans la semaine",
+      "Endurance, 3 s\xE9ances dans la semaine",
+      "Pompes, 40 aujourd\u2019hui"
+    ],
     paths: [
-      { id: "eclaireur-sentier", name: "Voie du Sentier", ability: "SAG", title: "Marcheur des cimes", description: "Tu cours pour entendre le vent. Ta voie ajoute une affinit\xE9 Sagesse : chaque sortie en nature te rapporte un petit suppl\xE9ment d\u2019XP." },
-      { id: "eclaireur-bastion", name: "Voie du Bastion", ability: "INT", title: "Strat\xE8ge de l\u2019effort", description: "Tu planifies, mesures, ajustes. Ta voie ajoute une affinit\xE9 Intelligence : tes plans d\u2019entra\xEEnement t\u2019apportent un petit suppl\xE9ment d\u2019XP." }
+      {
+        id: "guerrier-champion",
+        name: "Voie du Champion",
+        ability: "FOR",
+        title: "Champion de l\u2019ar\xE8ne",
+        description: "Le champion vise la perfection physique, coup apr\xE8s coup. Ta voie ajoute une affinit\xE9 Force : chaque effort de force te rapporte un petit suppl\xE9ment d\u2019XP."
+      },
+      {
+        id: "guerrier-chevalier",
+        name: "Voie du Chevalier",
+        ability: "CHA",
+        title: "Chevalier de la compagnie",
+        description: "Le chevalier se bat pour entra\xEEner les autres derri\xE8re lui. Ta voie ajoute une affinit\xE9 Charisme : tes qu\xEAtes sociales te rapportent un petit suppl\xE9ment d\u2019XP."
+      }
     ]
   },
   {
-    id: "aventurier",
-    name: "Aventurier",
-    icon: "compass-outline",
-    masteries: ["FOR", "DEX"],
-    profile: "Arts martiaux, yoga, discipline du corps",
-    description: "Pour ceux qui aiment les arts martiaux, le yoga ou toute discipline du corps. Tu progresses surtout en Force et en Dext\xE9rit\xE9.",
-    favoredQuests: ["S\xE9ances de force, 3 dans la semaine", "Nouvelle activit\xE9 de coordination, 2 s\xE9ances", "Parcours d\u2019agilit\xE9, 5 tours"],
+    id: "paladin",
+    name: "Paladin",
+    icon: "\u{1F528}",
+    masteries: [
+      "FOR",
+      "CHA"
+    ],
+    profile: "Combattant sacr\xE9 : force et pr\xE9sence au service des autres",
+    description: "Li\xE9 par un serment, le paladin allie la puissance du guerrier \xE0 la pr\xE9sence d\u2019un meneur. Pour ceux qui s\u2019entra\xEEnent et qui entra\xEEnent les autres. Tu progresses surtout en Force et en Charisme.",
+    favoredQuests: [
+      "Pompes et dips, 30 de chaque",
+      "Aider un voisin ou un proche",
+      "Une activit\xE9 \xE0 plusieurs"
+    ],
     paths: [
-      { id: "aventurier-ombre", name: "Voie de l\u2019Ombre", ability: "SAG", title: "Ma\xEEtre du calme", description: "L\u2019art martial est d\u2019abord un art du souffle. Ta voie ajoute une affinit\xE9 Sagesse." },
-      { id: "aventurier-tempete", name: "Voie de la Temp\xEAte", ability: "CON", title: "C\u0153ur d\u2019orage", description: "Tu aimes l\u2019effort qui dure. Ta voie ajoute une affinit\xE9 Constitution." }
+      {
+        id: "paladin-devotion",
+        name: "Serment de D\xE9votion",
+        ability: "SAG",
+        title: "Lame de lumi\xE8re",
+        description: "Honn\xEAtet\xE9, courage, compassion : tu tiens ta parole. Ta voie ajoute une affinit\xE9 Sagesse : tes moments de calme te rapportent un petit suppl\xE9ment d\u2019XP."
+      },
+      {
+        id: "paladin-vengeance",
+        name: "Serment de Vengeance",
+        ability: "FOR",
+        title: "Bras de la justice",
+        description: "Tu poursuis ton but avec une obstination farouche. Ta voie ajoute une affinit\xE9 Force : tes s\xE9ances de force te rapportent un petit suppl\xE9ment d\u2019XP."
+      }
     ]
   },
   {
-    id: "artisan",
-    name: "Artisan",
-    icon: "hammer-outline",
-    masteries: ["DEX", "INT"],
-    profile: "Bricoleur ing\xE9nieux, apprend par la pratique",
-    description: "Pour ceux qui apprennent en pratiquant : bricolage, projets, techniques. Tu progresses surtout en Dext\xE9rit\xE9 et en Intelligence.",
-    favoredQuests: ["Geste pr\xE9cis, 4 s\xE9ances", "Trois raccourcis clavier", "Programmation, 3 exercices"],
+    id: "rodeur",
+    name: "R\xF4deur",
+    icon: "\u{1F3F9}",
+    masteries: [
+      "DEX",
+      "SAG"
+    ],
+    profile: "Chasseur et protecteur de la nature : agilit\xE9 et attention",
+    description: "Pisteur des terres sauvages, le r\xF4deur observe, s\u2019adapte et frappe avec pr\xE9cision. Pour les amoureux de nature, d\u2019agilit\xE9 et de grands espaces. Tu progresses surtout en Dext\xE9rit\xE9 et en Sagesse.",
+    favoredQuests: [
+      "Parcours d\u2019agilit\xE9, 5 tours",
+      "Un moment dans la nature, sans \xE9cran",
+      "Nature, 2 sorties dans la semaine"
+    ],
     paths: [
-      { id: "artisan-inventeur", name: "Voie de l\u2019Inventeur", ability: "INT", title: "Esprit d\u2019atelier", description: "Tu cherches comment les choses fonctionnent. Ta voie ajoute une affinit\xE9 Intelligence." },
-      { id: "artisan-maitre", name: "Voie du Ma\xEEtre d\u2019\u0153uvre", ability: "CHA", title: "B\xE2tisseur de guildes", description: "Tu sais faire travailler les autres. Ta voie ajoute une affinit\xE9 Charisme." }
+      {
+        id: "rodeur-chasseur",
+        name: "Voie du Chasseur",
+        ability: "FOR",
+        title: "Traqueur de grands fauves",
+        description: "Tu t\u2019attaques aux d\xE9fis les plus costauds. Ta voie ajoute une affinit\xE9 Force : tes efforts physiques te rapportent un petit suppl\xE9ment d\u2019XP."
+      },
+      {
+        id: "rodeur-belluaire",
+        name: "Voie du Ma\xEEtre des b\xEAtes",
+        ability: "CON",
+        title: "Ami des sentiers",
+        description: "Ton compagnon animal et toi, vous allez loin. Ta voie ajoute une affinit\xE9 Constitution : tes sorties longues te rapportent un petit suppl\xE9ment d\u2019XP."
+      }
     ]
   },
   {
-    id: "troubadour",
-    name: "Troubadour",
-    icon: "musical-notes-outline",
-    masteries: ["DEX", "CHA"],
-    profile: "Artiste, musicien, aime la sc\xE8ne",
-    description: "Pour les artistes et les musiciens qui aiment la sc\xE8ne. Tu progresses surtout en Dext\xE9rit\xE9 et en Charisme.",
-    favoredQuests: ["Habilet\xE9 manuelle, 5 s\xE9ances", "Pr\xE9parer et dire un court expos\xE9", "Jonglage, 10 cascades"],
+    id: "clerc",
+    name: "Clerc",
+    icon: "\u{1F33F}",
+    masteries: [
+      "SAG",
+      "CON"
+    ],
+    profile: "Soigneur divin : r\xE9silience et s\xE9r\xE9nit\xE9",
+    description: "Canal d\u2019un pouvoir plus grand que lui, le clerc soigne, prot\xE8ge et garde son calme. Pour ceux qui prennent soin des autres et d\u2019eux-m\xEAmes : sommeil, m\xE9ditation, nature. Tu progresses surtout en Sagesse et en Constitution.",
+    favoredQuests: [
+      "M\xE9ditation, 15 minutes",
+      "Trois gratitudes",
+      "Coucher r\xE9gulier, 5 nuits sur 7"
+    ],
     paths: [
-      { id: "troubadour-conteur", name: "Voie du Conteur", ability: "INT", title: "M\xE9moire vivante", description: "Tu aimes les histoires bien construites. Ta voie ajoute une affinit\xE9 Intelligence." },
-      { id: "troubadour-meneur", name: "Voie du Meneur de bal", ability: "CON", title: "C\u0153ur de la f\xEAte", description: "Tu donnes de l\u2019\xE9nergie aux autres. Ta voie ajoute une affinit\xE9 Constitution." }
+      {
+        id: "clerc-vie",
+        name: "Domaine de la Vie",
+        ability: "CON",
+        title: "Main qui apaise",
+        description: "Tes soins sont plus puissants que ceux de n\u2019importe qui. Ta voie ajoute une affinit\xE9 Constitution : ta vitalit\xE9 te rapporte un petit suppl\xE9ment d\u2019XP."
+      },
+      {
+        id: "clerc-savoir",
+        name: "Domaine du Savoir",
+        ability: "INT",
+        title: "Archiviste de la foi",
+        description: "Tu cherches la v\xE9rit\xE9 dans les textes anciens. Ta voie ajoute une affinit\xE9 Intelligence : tes qu\xEAtes d\u2019\xE9tude te rapportent un petit suppl\xE9ment d\u2019XP."
+      }
     ]
   },
   {
-    id: "rassembleur",
-    name: "Rassembleur",
-    icon: "people-outline",
-    masteries: ["CON", "CHA"],
-    profile: "\xC9nergie naturelle, sociable et r\xE9sistant",
-    description: "Pour les personnes sociables et pleines d\u2019\xE9nergie. Tu progresses surtout en Constitution et en Charisme.",
-    favoredQuests: ["Un vrai repas partag\xE9", "Voir trois personnes diff\xE9rentes", "Une activit\xE9 \xE0 plusieurs"],
+    id: "barde",
+    name: "Barde",
+    icon: "\u{1F3B5}",
+    masteries: [
+      "CHA",
+      "DEX"
+    ],
+    profile: "Charismatique polyvalent : social et cr\xE9ativit\xE9",
+    description: "Conteur, musicien, \xE2me de la f\xEAte : le barde tisse la magie par la parole et la musique. Pour les artistes et les sociables qui aiment la sc\xE8ne. Tu progresses surtout en Charisme et en Dext\xE9rit\xE9.",
+    favoredQuests: [
+      "Pr\xE9parer et dire un court expos\xE9",
+      "Jonglage, 10 cascades",
+      "Danse libre, 2 morceaux"
+    ],
     paths: [
-      { id: "rassembleur-feu", name: "Voie du Feu de camp", ability: "DEX", title: "\xC2me des veill\xE9es", description: "Tu cr\xE9es des moments qui comptent. Ta voie ajoute une affinit\xE9 Dext\xE9rit\xE9." },
-      { id: "rassembleur-roc", name: "Voie du Roc", ability: "FOR", title: "Pilier de la compagnie", description: "Tu es celui sur qui on s\u2019appuie. Ta voie ajoute une affinit\xE9 Force." }
+      {
+        id: "barde-vaillance",
+        name: "Coll\xE8ge de la Vaillance",
+        ability: "FOR",
+        title: "Chantre des batailles",
+        description: "Tu chantes sur le champ de bataille et tu t\u2019y tiens. Ta voie ajoute une affinit\xE9 Force : tes efforts physiques te rapportent un petit suppl\xE9ment d\u2019XP."
+      },
+      {
+        id: "barde-savoir",
+        name: "Coll\xE8ge du Savoir",
+        ability: "INT",
+        title: "M\xE9moire vivante",
+        description: "Tu collectionnes les histoires et les secrets. Ta voie ajoute une affinit\xE9 Intelligence : tes qu\xEAtes d\u2019apprentissage te rapportent un petit suppl\xE9ment d\u2019XP."
+      }
     ]
   },
   {
-    id: "erudit",
-    name: "\xC9rudit",
-    icon: "library-outline",
-    masteries: ["INT", "SAG"],
-    profile: "\xC9tudiant permanent, lecteur, r\xE9fl\xE9chi",
-    description: "Pour les \xE9tudiants permanents, les lecteurs et les curieux. Tu progresses surtout en Intelligence et en Sagesse.",
-    favoredQuests: ["Lecture, 20 pages", "Espagnol, un cours aujourd\u2019hui", "M\xE9ditation, 15 minutes"],
+    id: "roublard",
+    name: "Roublard",
+    icon: "\u{1F5E1}\uFE0F",
+    masteries: [
+      "DEX",
+      "INT"
+    ],
+    profile: "Agile et rus\xE9 : d\xE9brouille, pr\xE9cision, ing\xE9niosit\xE9",
+    description: "Discret, pr\xE9cis, jamais \xE0 court d\u2019id\xE9es : le roublard r\xE9sout les probl\xE8mes par l\u2019astuce plut\xF4t que par la force. Pour les bricoleurs, les strat\xE8ges et ceux qui apprennent en faisant. Tu progresses surtout en Dext\xE9rit\xE9 et en Intelligence.",
+    favoredQuests: [
+      "Geste pr\xE9cis, 4 s\xE9ances",
+      "Trois raccourcis clavier",
+      "Programmation, 3 exercices"
+    ],
     paths: [
-      { id: "erudit-savant", name: "Voie du Savant", ability: "INT", title: "Gardien des savoirs", description: "Tu creuses chaque sujet jusqu\u2019au fond. Ta voie ajoute une affinit\xE9 Intelligence." },
-      { id: "erudit-ermite", name: "Voie de l\u2019Ermite", ability: "SAG", title: "Sage de la Tour", description: "Tu cherches le calme autant que le savoir. Ta voie ajoute une affinit\xE9 Sagesse." }
+      {
+        id: "roublard-voleur",
+        name: "Voie du Voleur",
+        ability: "CHA",
+        title: "Fine lame de la guilde",
+        description: "Tu as la main leste et la langue bien pendue. Ta voie ajoute une affinit\xE9 Charisme : tes qu\xEAtes sociales te rapportent un petit suppl\xE9ment d\u2019XP."
+      },
+      {
+        id: "roublard-assassin",
+        name: "Voie de l\u2019Assassin",
+        ability: "SAG",
+        title: "Patience de l\u2019ombre",
+        description: "Tu observes longtemps pour ne frapper qu\u2019une fois. Ta voie ajoute une affinit\xE9 Sagesse : tes moments d\u2019attention te rapportent un petit suppl\xE9ment d\u2019XP."
+      }
     ]
   },
   {
-    id: "gardien",
-    name: "Gardien",
-    icon: "heart-outline",
-    masteries: ["SAG", "CHA"],
-    profile: "Bienveillant, tourn\xE9 vers les autres",
-    description: "Pour ceux qui prennent soin des autres et d\u2019eux-m\xEAmes. Tu progresses surtout en Sagesse et en Charisme.",
-    favoredQuests: ["M\xE9ditation, 15 minutes", "\xC9coute active, trois reformulations", "Trois gratitudes"],
+    id: "magicien",
+    name: "Magicien",
+    icon: "\u{1F52E}",
+    masteries: [
+      "INT",
+      "CON"
+    ],
+    profile: "\xC9rudit lanceur de sorts : apprentissage et discipline",
+    description: "\xC9tudiant \xE9ternel des arcanes, le magicien tire sa puissance de ses livres et de sa pers\xE9v\xE9rance. Pour les lecteurs, les curieux et ceux qui apprennent sans cesse. Tu progresses surtout en Intelligence et en Constitution.",
+    favoredQuests: [
+      "Lecture, 20 pages",
+      "Cours en ligne, 2 le\xE7ons",
+      "\xC9crans coup\xE9s avant dormir, 5 soirs"
+    ],
     paths: [
-      { id: "gardien-guerisseur", name: "Voie du Gu\xE9risseur", ability: "CON", title: "Main qui apaise", description: "Tu prends soin des corps autant que des c\u0153urs. Ta voie ajoute une affinit\xE9 Constitution." },
-      { id: "gardien-protecteur", name: "Voie du Protecteur", ability: "FOR", title: "Bouclier des siens", description: "Tu d\xE9fends ceux que tu aimes. Ta voie ajoute une affinit\xE9 Force." }
-    ]
-  },
-  {
-    id: "explorateur",
-    name: "Explorateur",
-    icon: "leaf-outline",
-    masteries: ["CON", "SAG"],
-    profile: "Proche de la nature, curieux du vivant",
-    description: "Pour les amoureux de nature et de grands espaces. Tu progresses surtout en Constitution et en Sagesse.",
-    favoredQuests: ["Un moment dans la nature, sans \xE9cran", "Grande sortie, 45 minutes", "Marcher 5 fois dans la semaine"],
-    paths: [
-      { id: "explorateur-druide", name: "Voie du Sentier vert", ability: "INT", title: "Lecteur du vivant", description: "Tu observes, tu notes, tu apprends de la nature. Ta voie ajoute une affinit\xE9 Intelligence." },
-      { id: "explorateur-nomade", name: "Voie du Nomade", ability: "FOR", title: "Marcheur d\u2019horizons", description: "Tu vas toujours un peu plus loin. Ta voie ajoute une affinit\xE9 Force." }
+      {
+        id: "magicien-evocation",
+        name: "Voie de l\u2019\xC9vocation",
+        ability: "INT",
+        title: "Ma\xEEtre des \xE9clairs",
+        description: "Tu canalises ton savoir en puissance brute. Ta voie ajoute une affinit\xE9 Intelligence : tes qu\xEAtes d\u2019\xE9tude te rapportent un petit suppl\xE9ment d\u2019XP."
+      },
+      {
+        id: "magicien-abjuration",
+        name: "Voie de l\u2019Abjuration",
+        ability: "SAG",
+        title: "Rempart des arcanes",
+        description: "Tu prot\xE8ges plus que tu ne d\xE9truis, par le calme et la mesure. Ta voie ajoute une affinit\xE9 Sagesse : tes moments de calme te rapportent un petit suppl\xE9ment d\u2019XP."
+      }
     ]
   }
 ];
@@ -2595,7 +2988,7 @@ var achievements_fr_default = [
   {
     id: "decouvreur-50",
     category: "exploration",
-    name: "Explorateur du catalogue",
+    name: "Fouilleur du catalogue",
     description: "Accomplir 50 qu\xEAtes diff\xE9rentes.",
     condition: {
       kind: "discovered",
@@ -2758,7 +3151,7 @@ var achievements_fr_default = [
       target: 20
     },
     xpBonus: 250,
-    titleUnlocked: "Rassembleur"
+    titleUnlocked: "C\u0153ur de la compagnie"
   },
   {
     id: "encourageur",
@@ -3079,6 +3472,1382 @@ var achievements_fr_default = [
     hint: "Une habitude s\u2019est install\xE9e."
   }
 ];
+
+// packages/content/data/items.fr.json
+var items_fr_default = [
+  {
+    id: "espadon",
+    slot: "arme",
+    ability: "FOR",
+    name: "Espadon",
+    glyph: "\u2694\uFE0F",
+    blurb: "Une lame \xE0 deux mains que seuls les combattants aguerris savent faire chanter.",
+    classId: "guerrier",
+    setId: "guerrier"
+  },
+  {
+    id: "marteau-de-guerre",
+    slot: "arme",
+    ability: "FOR",
+    name: "Marteau de guerre",
+    glyph: "\u{1F528}",
+    blurb: "B\xE9ni avant la bataille, il frappe pour le serment plus que pour la gloire.",
+    classId: "paladin",
+    setId: "paladin"
+  },
+  {
+    id: "arc-long",
+    slot: "arme",
+    ability: "DEX",
+    name: "Arc long",
+    glyph: "\u{1F3F9}",
+    blurb: "Port\xE9e infinie pour qui sait lire le vent et la for\xEAt.",
+    classId: "rodeur",
+    setId: "rodeur"
+  },
+  {
+    id: "masse-d-armes",
+    slot: "arme",
+    ability: "SAG",
+    name: "Masse d\u2019armes",
+    glyph: "\u2692\uFE0F",
+    blurb: "Elle assomme sans verser le sang, comme le veulent les temples.",
+    classId: "clerc",
+    setId: "clerc"
+  },
+  {
+    id: "rapiere",
+    slot: "arme",
+    ability: "DEX",
+    name: "Rapi\xE8re",
+    glyph: "\u{1F93A}",
+    blurb: "Fine, vive, \xE9l\xE9gante : une r\xE9plique aussi tranchante qu\u2019une lame.",
+    classId: "barde",
+    setId: "barde"
+  },
+  {
+    id: "dagues-jumelles",
+    slot: "arme",
+    ability: "DEX",
+    name: "Dagues jumelles",
+    glyph: "\u{1F5E1}\uFE0F",
+    blurb: "Deux lames, un sourire, et personne n\u2019a rien vu venir.",
+    classId: "roublard",
+    setId: "roublard"
+  },
+  {
+    id: "baton-du-mage",
+    slot: "arme",
+    ability: "INT",
+    name: "B\xE2ton du mage",
+    glyph: "\u{1FA84}",
+    blurb: "Taill\xE9 dans un bois ancien, il vibre chaque fois qu\u2019on pense \xE0 une formule.",
+    classId: "magicien",
+    setId: "magicien"
+  },
+  {
+    id: "gourdin-de-voyageur",
+    slot: "arme",
+    ability: "CON",
+    name: "Gourdin de voyageur",
+    glyph: "\u{1F3CF}",
+    blurb: "Un bon bout de ch\xEAne : il tient la route aussi bien que son porteur.",
+    classId: null,
+    setId: null
+  },
+  {
+    id: "sceptre-de-heraut",
+    slot: "arme",
+    ability: "CHA",
+    name: "Sceptre de h\xE9raut",
+    glyph: "\u{1F531}",
+    blurb: "Quand on le l\xE8ve, les conversations s\u2019arr\xEAtent.",
+    classId: null,
+    setId: null
+  },
+  {
+    id: "heaume",
+    slot: "tete",
+    ability: "CON",
+    name: "Heaume",
+    glyph: "\u{1FA96}",
+    blurb: "Un casque de fer qui en a vu d\u2019autres, et qui tient toujours.",
+    classId: "guerrier",
+    setId: "guerrier"
+  },
+  {
+    id: "heaume-de-brillance",
+    slot: "tete",
+    ability: "CHA",
+    name: "Heaume de brillance",
+    glyph: "\u{1F31F}",
+    blurb: "Il rayonne d\u2019une lumi\xE8re sacr\xE9e d\xE8s que son porteur l\xE8ve la voix.",
+    classId: "paladin",
+    setId: "paladin"
+  },
+  {
+    id: "capuchon-de-pisteur",
+    slot: "tete",
+    ability: "SAG",
+    name: "Capuchon de pisteur",
+    glyph: "\u{1F9E2}",
+    blurb: "Sous son ombre, on entend les bois respirer.",
+    classId: "rodeur",
+    setId: "rodeur"
+  },
+  {
+    id: "mitre",
+    slot: "tete",
+    ability: "CON",
+    name: "Mitre",
+    glyph: "\u26D1\uFE0F",
+    blurb: "Coiffe de c\xE9r\xE9monie, lourde de pri\xE8res et de patience.",
+    classId: "clerc",
+    setId: "clerc"
+  },
+  {
+    id: "chapeau-de-deguisement",
+    slot: "tete",
+    ability: "CHA",
+    name: "Chapeau de d\xE9guisement",
+    glyph: "\u{1F3A9}",
+    blurb: "Une plume, un clin d\u2019\u0153il, et chacun se souvient de vous autrement.",
+    classId: "barde",
+    setId: "barde"
+  },
+  {
+    id: "capuche-de-voleur",
+    slot: "tete",
+    ability: "INT",
+    name: "Capuche de voleur",
+    glyph: "\u{1F977}",
+    blurb: "Elle avale la lumi\xE8re et garde les secrets.",
+    classId: "roublard",
+    setId: "roublard"
+  },
+  {
+    id: "chapeau-de-sorcier",
+    slot: "tete",
+    ability: "INT",
+    name: "Chapeau de sorcier",
+    glyph: "\u{1F9D9}",
+    blurb: "Pointu, \xE9toil\xE9, vaguement poussi\xE9reux : un classique d\u2019\xE9rudit.",
+    classId: "magicien",
+    setId: "magicien"
+  },
+  {
+    id: "bandeau-de-combattant",
+    slot: "tete",
+    ability: "FOR",
+    name: "Bandeau de combattant",
+    glyph: "\u{1F3F4}",
+    blurb: "Nou\xE9 serr\xE9, il retient la sueur et le doute.",
+    classId: null,
+    setId: null
+  },
+  {
+    id: "chapeau-de-voyageur",
+    slot: "tete",
+    ability: "DEX",
+    name: "Chapeau de voyageur",
+    glyph: "\u{1F452}",
+    blurb: "Il aime le grand air et les chemins de traverse.",
+    classId: null,
+    setId: null
+  },
+  {
+    id: "harnois",
+    slot: "torse",
+    ability: "FOR",
+    name: "Harnois",
+    glyph: "\u{1F6E1}\uFE0F",
+    blurb: "L\u2019armure compl\xE8te des chevaliers : chaque plaque compte des heures de forge.",
+    classId: "guerrier",
+    setId: "guerrier"
+  },
+  {
+    id: "cotte-de-mailles-paladin",
+    slot: "torse",
+    ability: "FOR",
+    name: "Cotte de mailles",
+    glyph: "\u26D3\uFE0F",
+    blurb: "Des milliers d\u2019anneaux pour une seule certitude : tenir bon.",
+    classId: "paladin",
+    setId: "paladin"
+  },
+  {
+    id: "armure-de-cuir-cloute",
+    slot: "torse",
+    ability: "DEX",
+    name: "Armure de cuir clout\xE9",
+    glyph: "\u{1F94B}",
+    blurb: "Souple, silencieuse, renforc\xE9e l\xE0 o\xF9 \xE7a compte.",
+    classId: "rodeur",
+    setId: "rodeur"
+  },
+  {
+    id: "robe-consacree",
+    slot: "torse",
+    ability: "CON",
+    name: "Robe consacr\xE9e",
+    glyph: "\u{1F458}",
+    blurb: "Tiss\xE9e de pri\xE8res, elle apaise tout ce qu\u2019elle touche.",
+    classId: "clerc",
+    setId: "clerc"
+  },
+  {
+    id: "pourpoint-de-velours",
+    slot: "torse",
+    ability: "CHA",
+    name: "Pourpoint de velours",
+    glyph: "\u{1F9E5}",
+    blurb: "Taill\xE9 pour les sc\xE8nes de taverne et les salons de nobles.",
+    classId: "barde",
+    setId: "barde"
+  },
+  {
+    id: "armure-de-cuir",
+    slot: "torse",
+    ability: "DEX",
+    name: "Armure de cuir",
+    glyph: "\u{1F9BA}",
+    blurb: "L\xE9g\xE8re comme une ombre, parfaite pour les ruelles.",
+    classId: "roublard",
+    setId: "roublard"
+  },
+  {
+    id: "robe-d-archimage",
+    slot: "torse",
+    ability: "CON",
+    name: "Robe d\u2019archimage",
+    glyph: "\u{1F97C}",
+    blurb: "Les runes brod\xE9es prot\xE8gent celui qui les a apprises.",
+    classId: "magicien",
+    setId: "magicien"
+  },
+  {
+    id: "veste-d-erudit",
+    slot: "torse",
+    ability: "INT",
+    name: "Veste d\u2019\xE9rudit",
+    glyph: "\u{1F454}",
+    blurb: "Pleine de poches, pleine de solutions.",
+    classId: null,
+    setId: null
+  },
+  {
+    id: "manteau-de-pelerin",
+    slot: "torse",
+    ability: "SAG",
+    name: "Manteau de p\xE8lerin",
+    glyph: "\u{1F9E3}",
+    blurb: "Il conna\xEEt chaque chemin et chaque auberge.",
+    classId: null,
+    setId: null
+  },
+  {
+    id: "gantelets-de-puissance-d-ogre",
+    slot: "mains",
+    ability: "FOR",
+    name: "Gantelets de puissance d\u2019ogre",
+    glyph: "\u{1F94A}",
+    blurb: "Ils serrent plus fort qu\u2019on ne l\u2019imagine.",
+    classId: "guerrier",
+    setId: "guerrier"
+  },
+  {
+    id: "gantelets-de-serment",
+    slot: "mains",
+    ability: "CHA",
+    name: "Gantelets de serment",
+    glyph: "\u{1F9E4}",
+    blurb: "Grav\xE9s des v\u0153ux d\u2019un ordre, ils ne tremblent jamais.",
+    classId: "paladin",
+    setId: "paladin"
+  },
+  {
+    id: "gants-de-nage-et-d-escalade",
+    slot: "mains",
+    ability: "DEX",
+    name: "Gants de nage et d\u2019escalade",
+    glyph: "\u{1F9D7}",
+    blurb: "Aucune falaise, aucun torrent ne leur r\xE9siste.",
+    classId: "rodeur",
+    setId: "rodeur"
+  },
+  {
+    id: "mitaines-de-benediction",
+    slot: "mains",
+    ability: "SAG",
+    name: "Mitaines de b\xE9n\xE9diction",
+    glyph: "\u{1F64F}",
+    blurb: "Chaque geste y devient une pri\xE8re silencieuse.",
+    classId: "clerc",
+    setId: "clerc"
+  },
+  {
+    id: "gants-de-menestrel",
+    slot: "mains",
+    ability: "DEX",
+    name: "Gants de m\xE9nestrel",
+    glyph: "\u270B",
+    blurb: "Pour pincer les cordes sans jamais manquer une note.",
+    classId: "barde",
+    setId: "barde"
+  },
+  {
+    id: "outils-de-voleur",
+    slot: "mains",
+    ability: "INT",
+    name: "Outils de voleur",
+    glyph: "\u{1F5DD}\uFE0F",
+    blurb: "Aucune serrure ne r\xE9siste \xE0 celui qui sait \xE9couter le d\xE9clic.",
+    classId: "roublard",
+    setId: "roublard"
+  },
+  {
+    id: "bracelets-de-defense",
+    slot: "mains",
+    ability: "CON",
+    name: "Bracelets de d\xE9fense",
+    glyph: "\u{1F530}",
+    blurb: "Une barri\xE8re invisible entoure les poignets de leur porteur.",
+    classId: "magicien",
+    setId: "magicien"
+  },
+  {
+    id: "gants-de-travail",
+    slot: "mains",
+    ability: "FOR",
+    name: "Gants de travail",
+    glyph: "\u{1FAB5}",
+    blurb: "Rien de magique, juste de bonnes mains \xE0 l\u2019ouvrage.",
+    classId: null,
+    setId: null
+  },
+  {
+    id: "anneau-de-protection",
+    slot: "mains",
+    ability: "CON",
+    name: "Anneau de protection",
+    glyph: "\u{1F48D}",
+    blurb: "Un simple anneau, une certitude : on s\u2019en sortira.",
+    classId: null,
+    setId: null
+  },
+  {
+    id: "bottes-de-marche-et-de-saut",
+    slot: "bottes",
+    ability: "CON",
+    name: "Bottes de marche et de saut",
+    glyph: "\u{1F97E}",
+    blurb: "Elles avalent les lieues et franchissent les ravins.",
+    classId: "guerrier",
+    setId: "guerrier"
+  },
+  {
+    id: "sabatons-benis",
+    slot: "bottes",
+    ability: "FOR",
+    name: "Sabatons b\xE9nis",
+    glyph: "\u{1F462}",
+    blurb: "Ils ancrent le paladin face \xE0 toutes les temp\xEAtes.",
+    classId: "paladin",
+    setId: "paladin"
+  },
+  {
+    id: "bottes-elfiques",
+    slot: "bottes",
+    ability: "SAG",
+    name: "Bottes elfiques",
+    glyph: "\u{1F343}",
+    blurb: "Un pas l\xE9ger, pas un bruit : la for\xEAt vous adopte.",
+    classId: "rodeur",
+    setId: "rodeur"
+  },
+  {
+    id: "sandales-de-pelerin",
+    slot: "bottes",
+    ability: "CON",
+    name: "Sandales de p\xE8lerin",
+    glyph: "\u{1FA74}",
+    blurb: "Elles ont parcouru toutes les routes saintes.",
+    classId: "clerc",
+    setId: "clerc"
+  },
+  {
+    id: "bottes-de-danse",
+    slot: "bottes",
+    ability: "DEX",
+    name: "Bottes de danse",
+    glyph: "\u{1F45E}",
+    blurb: "Impossible de les porter sans avoir envie de danser.",
+    classId: "barde",
+    setId: "barde"
+  },
+  {
+    id: "souliers-de-velours",
+    slot: "bottes",
+    ability: "DEX",
+    name: "Souliers de velours",
+    glyph: "\u{1F97F}",
+    blurb: "On n\u2019entend que le silence quand ils passent.",
+    classId: "roublard",
+    setId: "roublard"
+  },
+  {
+    id: "bottes-de-levitation",
+    slot: "bottes",
+    ability: "CON",
+    name: "Bottes de l\xE9vitation",
+    glyph: "\u{1FABD}",
+    blurb: "Le sol n\u2019est qu\u2019une suggestion.",
+    classId: "magicien",
+    setId: "magicien"
+  },
+  {
+    id: "pantoufles-d-erudit",
+    slot: "bottes",
+    ability: "INT",
+    name: "Pantoufles d\u2019\xE9rudit",
+    glyph: "\u{1F9E6}",
+    blurb: "Pour les longues veill\xE9es avec un bon grimoire.",
+    classId: null,
+    setId: null
+  },
+  {
+    id: "bottes-d-apparat",
+    slot: "bottes",
+    ability: "CHA",
+    name: "Bottes d\u2019apparat",
+    glyph: "\u{1F460}",
+    blurb: "Cir\xE9es, brillantes : elles annoncent votre arriv\xE9e.",
+    classId: null,
+    setId: null
+  },
+  {
+    id: "amulette-de-sante",
+    slot: "amulette",
+    ability: "CON",
+    name: "Amulette de sant\xE9",
+    glyph: "\u2764\uFE0F",
+    blurb: "Elle bat au rythme de ton endurance.",
+    classId: "guerrier",
+    setId: "guerrier"
+  },
+  {
+    id: "reliquaire",
+    slot: "amulette",
+    ability: "CHA",
+    name: "Reliquaire",
+    glyph: "\u{1F3FA}",
+    blurb: "Il renferme un souvenir sacr\xE9 qui inspire ceux qui suivent le paladin.",
+    classId: "paladin",
+    setId: "paladin"
+  },
+  {
+    id: "medaillon-de-pensees",
+    slot: "amulette",
+    ability: "SAG",
+    name: "M\xE9daillon de pens\xE9es",
+    glyph: "\u{1F4FF}",
+    blurb: "Il murmure ce que la nature essaie de dire.",
+    classId: "rodeur",
+    setId: "rodeur"
+  },
+  {
+    id: "symbole-sacre",
+    slot: "amulette",
+    ability: "SAG",
+    name: "Symbole sacr\xE9",
+    glyph: "\u271D\uFE0F",
+    blurb: "Focaliseur de foi : il brille quand on prie avec sinc\xE9rit\xE9.",
+    classId: "clerc",
+    setId: "clerc"
+  },
+  {
+    id: "luth",
+    slot: "amulette",
+    ability: "CHA",
+    name: "Luth",
+    glyph: "\u{1FA95}",
+    blurb: "Un instrument port\xE9 en bandouli\xE8re, pr\xEAt pour la prochaine ballade.",
+    classId: "barde",
+    setId: "barde"
+  },
+  {
+    id: "amulette-de-protection-contre-la-detection",
+    slot: "amulette",
+    ability: "INT",
+    name: "Amulette de protection contre la d\xE9tection",
+    glyph: "\u{1F9FF}",
+    blurb: "Ni sort ni regard ne peut vous suivre.",
+    classId: "roublard",
+    setId: "roublard"
+  },
+  {
+    id: "grimoire",
+    slot: "amulette",
+    ability: "INT",
+    name: "Grimoire",
+    glyph: "\u{1F4D6}",
+    blurb: "Chaque page est un sort ; chaque sort, une promesse.",
+    classId: "magicien",
+    setId: "magicien"
+  },
+  {
+    id: "talisman-de-force",
+    slot: "amulette",
+    ability: "FOR",
+    name: "Talisman de force",
+    glyph: "\u{1F4AA}",
+    blurb: "Il chauffe quand l\u2019effort se fait sentir.",
+    classId: null,
+    setId: null
+  },
+  {
+    id: "pierre-de-chance",
+    slot: "amulette",
+    ability: "DEX",
+    name: "Pierre de chance",
+    glyph: "\u{1F340}",
+    blurb: "Un galet poli qui fait tourner le hasard en votre faveur.",
+    classId: null,
+    setId: null
+  }
+];
+
+// packages/content/data/sets.fr.json
+var sets_fr_default = [
+  {
+    id: "guerrier",
+    name: "Panoplie du Guerrier",
+    glyph: "\u2694\uFE0F",
+    ability: "FOR",
+    blurb: "L\u2019\xE9quipement complet du combattant de premi\xE8re ligne.",
+    pieces: {
+      arme: "espadon",
+      tete: "heaume",
+      torse: "harnois",
+      mains: "gantelets-de-puissance-d-ogre",
+      bottes: "bottes-de-marche-et-de-saut",
+      amulette: "amulette-de-sante"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  },
+  {
+    id: "paladin",
+    name: "Panoplie du Paladin",
+    glyph: "\u{1F528}",
+    ability: "FOR",
+    blurb: "Acier b\xE9ni et serment grav\xE9 : l\u2019armure d\u2019une cause sacr\xE9e.",
+    pieces: {
+      arme: "marteau-de-guerre",
+      tete: "heaume-de-brillance",
+      torse: "cotte-de-mailles-paladin",
+      mains: "gantelets-de-serment",
+      bottes: "sabatons-benis",
+      amulette: "reliquaire"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  },
+  {
+    id: "rodeur",
+    name: "Panoplie du R\xF4deur",
+    glyph: "\u{1F3F9}",
+    ability: "DEX",
+    blurb: "Cuir, plumes et silence : la tenue de ceux qui connaissent les sentiers.",
+    pieces: {
+      arme: "arc-long",
+      tete: "capuchon-de-pisteur",
+      torse: "armure-de-cuir-cloute",
+      mains: "gants-de-nage-et-d-escalade",
+      bottes: "bottes-elfiques",
+      amulette: "medaillon-de-pensees"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  },
+  {
+    id: "clerc",
+    name: "Panoplie du Clerc",
+    glyph: "\u{1F33F}",
+    ability: "SAG",
+    blurb: "Foi, laine consacr\xE9e et masse b\xE9nie : le costume du soigneur divin.",
+    pieces: {
+      arme: "masse-d-armes",
+      tete: "mitre",
+      torse: "robe-consacree",
+      mains: "mitaines-de-benediction",
+      bottes: "sandales-de-pelerin",
+      amulette: "symbole-sacre"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  },
+  {
+    id: "barde",
+    name: "Panoplie du Barde",
+    glyph: "\u{1F3B5}",
+    ability: "CHA",
+    blurb: "Velours, plumes et ballades : tout pour faire lever la salle.",
+    pieces: {
+      arme: "rapiere",
+      tete: "chapeau-de-deguisement",
+      torse: "pourpoint-de-velours",
+      mains: "gants-de-menestrel",
+      bottes: "bottes-de-danse",
+      amulette: "luth"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  },
+  {
+    id: "roublard",
+    name: "Panoplie du Roublard",
+    glyph: "\u{1F5E1}\uFE0F",
+    ability: "DEX",
+    blurb: "Cuir noir, lames fines et outils discrets : le mat\xE9riel du cambrioleur.",
+    pieces: {
+      arme: "dagues-jumelles",
+      tete: "capuche-de-voleur",
+      torse: "armure-de-cuir",
+      mains: "outils-de-voleur",
+      bottes: "souliers-de-velours",
+      amulette: "amulette-de-protection-contre-la-detection"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  },
+  {
+    id: "magicien",
+    name: "Panoplie du Magicien",
+    glyph: "\u{1F52E}",
+    ability: "INT",
+    blurb: "Robes brod\xE9es de runes, b\xE2ton et grimoire : l\u2019attirail de l\u2019\xE9rudit des arcanes.",
+    pieces: {
+      arme: "baton-du-mage",
+      tete: "chapeau-de-sorcier",
+      torse: "robe-d-archimage",
+      mains: "bracelets-de-defense",
+      bottes: "bottes-de-levitation",
+      amulette: "grimoire"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  }
+];
+
+// packages/content/data/spells.fr.json
+var spells_fr_default = [
+  {
+    id: "second-souffle",
+    classId: "guerrier",
+    rarity: "commun",
+    family: "dungeon",
+    ability: "CON",
+    name: "Second souffle",
+    glyph: "\u{1F4A8}",
+    blurb: "Une grande inspiration, et la fatigue recule d\u2019un pas."
+  },
+  {
+    id: "style-de-combat",
+    classId: "guerrier",
+    rarity: "commun",
+    family: "stat",
+    ability: "FOR",
+    name: "Style de combat",
+    glyph: "\u{1F94B}",
+    blurb: "Une fa\xE7on de se battre travaill\xE9e mille fois, jusqu\u2019au r\xE9flexe."
+  },
+  {
+    id: "critique-ameliore",
+    classId: "guerrier",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "FOR",
+    name: "Critique am\xE9lior\xE9",
+    glyph: "\u{1F3AF}",
+    blurb: "Tes meilleurs efforts comptent double quand tu vises juste."
+  },
+  {
+    id: "athlete-accompli",
+    classId: "guerrier",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "FOR",
+    name: "Athl\xE8te accompli",
+    glyph: "\u{1F3C3}",
+    blurb: "Courir, grimper, sauter : tout devient entra\xEEnement."
+  },
+  {
+    id: "fougue",
+    classId: "guerrier",
+    rarity: "rare",
+    family: "raid",
+    ability: "FOR",
+    name: "Fougue",
+    glyph: "\u26A1",
+    blurb: "Un sursaut d\u2019\xE9nergie pour frapper deux fois plus fort quand il le faut."
+  },
+  {
+    id: "attaque-supplementaire",
+    classId: "guerrier",
+    rarity: "rare",
+    family: "stat",
+    ability: "FOR",
+    name: "Attaque suppl\xE9mentaire",
+    glyph: "\u{1F5E1}\uFE0F",
+    blurb: "Un geste de plus \xE0 chaque assaut : la force devient m\xE9thode."
+  },
+  {
+    id: "inflexible",
+    classId: "guerrier",
+    rarity: "epique",
+    family: "xp",
+    ability: "FOR",
+    name: "Inflexible",
+    glyph: "\u{1F9F1}",
+    blurb: "Un \xE9chec ne compte jamais deux fois : tu te rel\xE8ves et tu recommences."
+  },
+  {
+    id: "triple-attaque-supplementaire",
+    classId: "guerrier",
+    rarity: "legendaire",
+    family: "raid",
+    ability: "FOR",
+    name: "Triple attaque suppl\xE9mentaire",
+    glyph: "\u{1F32A}\uFE0F",
+    blurb: "Trois coups pour le prix d\u2019un : les boss sentent le vent tourner."
+  },
+  {
+    id: "imposition-des-mains",
+    classId: "paladin",
+    rarity: "commun",
+    family: "dungeon",
+    ability: "CON",
+    name: "Imposition des mains",
+    glyph: "\u{1F932}",
+    blurb: "Un contact chaleureux referme les plaies et redonne du courage."
+  },
+  {
+    id: "sens-divin",
+    classId: "paladin",
+    rarity: "commun",
+    family: "stat",
+    ability: "CHA",
+    name: "Sens divin",
+    glyph: "\u{1F441}\uFE0F",
+    blurb: "Tu per\xE7ois ce qui est juste, et les autres le sentent en ta pr\xE9sence."
+  },
+  {
+    id: "benediction",
+    classId: "paladin",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "CHA",
+    name: "B\xE9n\xE9diction",
+    glyph: "\u{1F54A}\uFE0F",
+    blurb: "Une pri\xE8re br\xE8ve, et chaque effort compte un peu plus."
+  },
+  {
+    id: "protection-contre-le-mal-et-le-bien",
+    classId: "paladin",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "CHA",
+    name: "Protection contre le mal et le bien",
+    glyph: "\u{1F6E1}\uFE0F",
+    blurb: "Un cercle de lumi\xE8re tient les mauvaises influences \xE0 distance."
+  },
+  {
+    id: "chatiment-divin",
+    classId: "paladin",
+    rarity: "rare",
+    family: "raid",
+    ability: "FOR",
+    name: "Ch\xE2timent divin",
+    glyph: "\u2600\uFE0F",
+    blurb: "Chaque coup du paladin s\u2019illumine d\u2019une \xE9nergie radieuse."
+  },
+  {
+    id: "aura-de-protection",
+    classId: "paladin",
+    rarity: "rare",
+    family: "dungeon",
+    ability: "CON",
+    name: "Aura de protection",
+    glyph: "\u{1F4A0}",
+    blurb: "Une lueur prot\xE8ge le paladin et tous ceux qui marchent \xE0 ses c\xF4t\xE9s."
+  },
+  {
+    id: "frappes-radiantes",
+    classId: "paladin",
+    rarity: "epique",
+    family: "xp",
+    ability: "CHA",
+    name: "Frappes radiantes",
+    glyph: "\u2728",
+    blurb: "Tes engagements brillent de l\u2019int\xE9rieur et se voient de loin."
+  },
+  {
+    id: "nimbe-sacre",
+    classId: "paladin",
+    rarity: "legendaire",
+    family: "raid",
+    ability: "FOR",
+    name: "Nimbe sacr\xE9",
+    glyph: "\u{1F607}",
+    blurb: "Un halo de lumi\xE8re solaire consume les t\xE9n\xE8bres autour de toi."
+  },
+  {
+    id: "marque-du-chasseur",
+    classId: "rodeur",
+    rarity: "commun",
+    family: "raid",
+    ability: "DEX",
+    name: "Marque du chasseur",
+    glyph: "\u{1F3AF}",
+    blurb: "Une proie d\xE9sign\xE9e, et chaque fl\xE8che sait o\xF9 aller."
+  },
+  {
+    id: "ennemi-jure",
+    classId: "rodeur",
+    rarity: "commun",
+    family: "stat",
+    ability: "DEX",
+    name: "Ennemi jur\xE9",
+    glyph: "\u{1F43A}",
+    blurb: "\xC0 force d\u2019\xE9tudier tes adversaires, tu les devances."
+  },
+  {
+    id: "fin-explorateur",
+    classId: "rodeur",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "SAG",
+    name: "Fin explorateur",
+    glyph: "\u{1F9ED}",
+    blurb: "Les terrains inconnus ne te perdent plus : tu y trouves des le\xE7ons."
+  },
+  {
+    id: "passage-sans-trace",
+    classId: "rodeur",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "SAG",
+    name: "Passage sans trace",
+    glyph: "\u{1F342}",
+    blurb: "Tu avances en silence et tu observes mieux que personne."
+  },
+  {
+    id: "proie-du-chasseur",
+    classId: "rodeur",
+    rarity: "rare",
+    family: "chest",
+    ability: "SAG",
+    name: "Proie du chasseur",
+    glyph: "\u{1F98C}",
+    blurb: "Un bon chasseur rentre toujours avec un beau butin."
+  },
+  {
+    id: "tactiques-defensives",
+    classId: "rodeur",
+    rarity: "rare",
+    family: "dungeon",
+    ability: "CON",
+    name: "Tactiques d\xE9fensives",
+    glyph: "\u{1FAB5}",
+    blurb: "Tu sais te replier, te couvrir et revenir plus fort."
+  },
+  {
+    id: "voile-de-la-nature",
+    classId: "rodeur",
+    rarity: "epique",
+    family: "xp",
+    ability: "SAG",
+    name: "Voile de la nature",
+    glyph: "\u{1F33F}",
+    blurb: "La for\xEAt te couvre, et ta patience porte ses fruits."
+  },
+  {
+    id: "tueur-implacable",
+    classId: "rodeur",
+    rarity: "legendaire",
+    family: "gold",
+    ability: "DEX",
+    name: "Tueur implacable",
+    glyph: "\u{1F3D4}\uFE0F",
+    blurb: "Rien n\u2019\xE9chappe \xE0 ta traque, et chaque exp\xE9dition ram\xE8ne un tr\xE9sor."
+  },
+  {
+    id: "flamme-sacree",
+    classId: "clerc",
+    rarity: "commun",
+    family: "stat",
+    ability: "SAG",
+    name: "Flamme sacr\xE9e",
+    glyph: "\u{1F525}",
+    blurb: "Une flamme venue du ciel \xE9claire ton esprit et affine ton discernement."
+  },
+  {
+    id: "soins",
+    classId: "clerc",
+    rarity: "commun",
+    family: "dungeon",
+    ability: "CON",
+    name: "Soins",
+    glyph: "\u{1F49A}",
+    blurb: "Un toucher, un mot, et les blessures se referment."
+  },
+  {
+    id: "arme-spirituelle",
+    classId: "clerc",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "SAG",
+    name: "Arme spirituelle",
+    glyph: "\u{1F531}",
+    blurb: "Une lame de lumi\xE8re combat pour toi pendant que tu m\xE9dites."
+  },
+  {
+    id: "mot-de-guerison",
+    classId: "clerc",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "SAG",
+    name: "Mot de gu\xE9rison",
+    glyph: "\u{1F5E3}\uFE0F",
+    blurb: "Un mot doux suffit parfois \xE0 remettre quelqu\u2019un debout."
+  },
+  {
+    id: "esprits-gardiens",
+    classId: "clerc",
+    rarity: "rare",
+    family: "dungeon",
+    ability: "CON",
+    name: "Esprits gardiens",
+    glyph: "\u{1F47C}",
+    blurb: "Des esprits veillent sur toi et tiennent les monstres \xE0 distance."
+  },
+  {
+    id: "frappes-benies",
+    classId: "clerc",
+    rarity: "rare",
+    family: "raid",
+    ability: "SAG",
+    name: "Frappes b\xE9nies",
+    glyph: "\u{1F31F}",
+    blurb: "Chaque coup porte la force de ta foi."
+  },
+  {
+    id: "resurrection",
+    classId: "clerc",
+    rarity: "epique",
+    family: "xp",
+    ability: "SAG",
+    name: "R\xE9surrection",
+    glyph: "\u{1F305}",
+    blurb: "Rien n\u2019est perdu : chaque matin ram\xE8ne un nouveau d\xE9part."
+  },
+  {
+    id: "intervention-divine",
+    classId: "clerc",
+    rarity: "legendaire",
+    family: "dungeon",
+    ability: "CON",
+    name: "Intervention divine",
+    glyph: "\u{1F64C}",
+    blurb: "Quand tout semble perdu, ton dieu r\xE9pond \xE0 l\u2019appel."
+  },
+  {
+    id: "moquerie-cruelle",
+    classId: "barde",
+    rarity: "commun",
+    family: "raid",
+    ability: "CHA",
+    name: "Moquerie cruelle",
+    glyph: "\u{1F608}",
+    blurb: "Une raillerie bien tourn\xE9e et le boss perd ses moyens."
+  },
+  {
+    id: "inspiration-bardique",
+    classId: "barde",
+    rarity: "commun",
+    family: "stat",
+    ability: "CHA",
+    name: "Inspiration bardique",
+    glyph: "\u{1F3B6}",
+    blurb: "Une m\xE9lodie qui donne envie de se d\xE9passer."
+  },
+  {
+    id: "fou-rire-de-tasha",
+    classId: "barde",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "CHA",
+    name: "Fou rire de Tasha",
+    glyph: "\u{1F923}",
+    blurb: "Le rire d\xE9tend, rassemble, et rend tout plus facile."
+  },
+  {
+    id: "contre-charme",
+    classId: "barde",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "CHA",
+    name: "Contre-charme",
+    glyph: "\u{1F3BC}",
+    blurb: "Une m\xE9lodie chasse la peur et remet les amis sur pied."
+  },
+  {
+    id: "suggestion",
+    classId: "barde",
+    rarity: "rare",
+    family: "gold",
+    ability: "CHA",
+    name: "Suggestion",
+    glyph: "\u{1F4AC}",
+    blurb: "Un mot bien choisi, et le marchand baisse ses prix."
+  },
+  {
+    id: "motif-hypnotique",
+    classId: "barde",
+    rarity: "rare",
+    family: "chest",
+    ability: "CHA",
+    name: "Motif hypnotique",
+    glyph: "\u{1F300}",
+    blurb: "Un tourbillon de couleurs fascine, et le hasard te sourit."
+  },
+  {
+    id: "mot-de-pouvoir-etourdissant",
+    classId: "barde",
+    rarity: "epique",
+    family: "xp",
+    ability: "CHA",
+    name: "Mot de pouvoir \xE9tourdissant",
+    glyph: "\u{1F4A5}",
+    blurb: "Une parole si forte qu\u2019elle te fait avancer sans r\xE9fl\xE9chir."
+  },
+  {
+    id: "mot-de-pouvoir-mortel",
+    classId: "barde",
+    rarity: "legendaire",
+    family: "raid",
+    ability: "CHA",
+    name: "Mot de pouvoir mortel",
+    glyph: "\u2620\uFE0F",
+    blurb: "Un seul mot, murmur\xE9 au bon moment, ach\xE8ve le boss."
+  },
+  {
+    id: "attaque-sournoise",
+    classId: "roublard",
+    rarity: "commun",
+    family: "raid",
+    ability: "DEX",
+    name: "Attaque sournoise",
+    glyph: "\u{1F5E1}\uFE0F",
+    blurb: "Frapper l\xE0 o\xF9 \xE7a fait mal, quand personne ne regarde."
+  },
+  {
+    id: "expertise",
+    classId: "roublard",
+    rarity: "commun",
+    family: "stat",
+    ability: "INT",
+    name: "Expertise",
+    glyph: "\u{1F50D}",
+    blurb: "Un talent travaill\xE9 jusqu\u2019\xE0 la ma\xEEtrise."
+  },
+  {
+    id: "ruse",
+    classId: "roublard",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "INT",
+    name: "Ruse",
+    glyph: "\u{1F98A}",
+    blurb: "Un d\xE9tour malin vaut mieux qu\u2019un effort brut."
+  },
+  {
+    id: "esquive-instinctive",
+    classId: "roublard",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "INT",
+    name: "Esquive instinctive",
+    glyph: "\u{1F300}",
+    blurb: "Tu sens le coup venir et tu apprends de chaque esquive."
+  },
+  {
+    id: "savoir-faire",
+    classId: "roublard",
+    rarity: "rare",
+    family: "gold",
+    ability: "INT",
+    name: "Savoir-faire",
+    glyph: "\u{1FA99}",
+    blurb: "Tu sais toujours o\xF9 se cache la meilleure affaire."
+  },
+  {
+    id: "esquive-totale",
+    classId: "roublard",
+    rarity: "rare",
+    family: "dungeon",
+    ability: "CON",
+    name: "Esquive totale",
+    glyph: "\u{1F4A8}",
+    blurb: "Les pi\xE8ges ne t\u2019effleurent m\xEAme plus."
+  },
+  {
+    id: "assassinat",
+    classId: "roublard",
+    rarity: "epique",
+    family: "xp",
+    ability: "INT",
+    name: "Assassinat",
+    glyph: "\u{1F977}",
+    blurb: "Une pr\xE9paration minutieuse rend chaque effort d\xE9cisif."
+  },
+  {
+    id: "coup-de-chance",
+    classId: "roublard",
+    rarity: "legendaire",
+    family: "chest",
+    ability: "DEX",
+    name: "Coup de chance",
+    glyph: "\u{1F3B2}",
+    blurb: "Quand tout d\xE9rape, le d\xE9 tombe toujours de ton c\xF4t\xE9."
+  },
+  {
+    id: "projectile-magique",
+    classId: "magicien",
+    rarity: "commun",
+    family: "raid",
+    ability: "INT",
+    name: "Projectile magique",
+    glyph: "\u{1F320}",
+    blurb: "Trois traits de force pure qui ne ratent jamais leur cible."
+  },
+  {
+    id: "lumiere",
+    classId: "magicien",
+    rarity: "commun",
+    family: "stat",
+    ability: "INT",
+    name: "Lumi\xE8re",
+    glyph: "\u{1F4A1}",
+    blurb: "Une petite lueur pour y voir plus clair, au propre comme au figur\xE9."
+  },
+  {
+    id: "mains-brulantes",
+    classId: "magicien",
+    rarity: "peu_commun",
+    family: "xp",
+    ability: "INT",
+    name: "Mains br\xFBlantes",
+    glyph: "\u{1F932}",
+    blurb: "La curiosit\xE9 te br\xFBle les doigts et nourrit ton apprentissage."
+  },
+  {
+    id: "bouclier",
+    classId: "magicien",
+    rarity: "peu_commun",
+    family: "dungeon",
+    ability: "CON",
+    name: "Bouclier",
+    glyph: "\u{1F52E}",
+    blurb: "Une barri\xE8re d\u2019\xE9nergie arcanique d\xE9vie les coups avant qu\u2019ils ne t\u2019atteignent."
+  },
+  {
+    id: "boule-de-feu",
+    classId: "magicien",
+    rarity: "rare",
+    family: "raid",
+    ability: "INT",
+    name: "Boule de feu",
+    glyph: "\u{1F525}",
+    blurb: "Une explosion qui fait trembler le plus grand des boss."
+  },
+  {
+    id: "eclair",
+    classId: "magicien",
+    rarity: "rare",
+    family: "xp",
+    ability: "INT",
+    name: "\xC9clair",
+    glyph: "\u26A1",
+    blurb: "Une id\xE9e soudaine qui illumine toute une le\xE7on."
+  },
+  {
+    id: "mur-de-force",
+    classId: "magicien",
+    rarity: "epique",
+    family: "dungeon",
+    ability: "CON",
+    name: "Mur de force",
+    glyph: "\u{1F9CA}",
+    blurb: "Une paroi invisible que rien ne traverse."
+  },
+  {
+    id: "souhait",
+    classId: "magicien",
+    rarity: "legendaire",
+    family: "xp",
+    ability: "all",
+    name: "Souhait",
+    glyph: "\u{1F30C}",
+    blurb: "Le plus puissant des sorts : il nourrit toutes tes ma\xEEtrises."
+  }
+];
+
+// packages/engine/src/server/hero-stats.ts
+var SETS = sets_fr_default;
+var ITEM_DEFS = items_fr_default;
+var SPELL_DEFS = spells_fr_default;
+var SPELL_BY_ID = new Map(SPELL_DEFS.map((s) => [s.id, s]));
+var CLASSES = classes_fr_default;
+var CLASS_OF_ITEM = new Map(ITEM_DEFS.map((i) => [i.id, i.classId ?? null]));
+function withItemClass(items) {
+  return items.map((i) => ({ ...i, classId: CLASS_OF_ITEM.get(i.templateId) ?? null }));
+}
+function buildSnapshot(character, rawItems, spells = []) {
+  const masteries = masteriesOf(CLASSES, character.classId);
+  const items = withItemClass(rawItems);
+  const equipped = items.filter((i) => i.equipped);
+  const setBonus = setBonusTotals(SETS, items);
+  const spellBonus = spellBonuses(spells, SPELL_BY_ID, character.classId, masteries);
+  return {
+    items,
+    equipped,
+    setBonus,
+    spellBonus,
+    spells,
+    scores: adventureScores(abilityScores(character), equipped, character.classId, setBonus, spellBonus),
+    power: heroPowerBreakdown(character, items, character.classId, setBonus, spellBonus)
+  };
+}
+async function heroSnapshot(store, userId, character, known, knownSpells) {
+  const [items, spells] = await Promise.all([known ?? store.listItems(userId), knownSpells ?? store.listSpells(userId)]);
+  return buildSnapshot(character, items, spells);
+}
+async function heroCombatStats(store, userId, character) {
+  const snap = await heroSnapshot(store, userId, character);
+  return { power: snap.power.total, scores: snap.scores, raidBonus: snap.spellBonus.raid };
+}
+async function heroXpBonus(store, userId, character) {
+  const spells = await store.listSpells(userId);
+  if (!spells.some((s) => s.equippedSlot !== null)) return {};
+  return spellBonuses(spells, SPELL_BY_ID, character.classId, masteriesOf(CLASSES, character.classId)).xp;
+}
 
 // packages/content/data/dungeons.fr.json
 var dungeons_fr_default = [
@@ -3526,661 +5295,6 @@ var dungeons_fr_default = [
   }
 ];
 
-// packages/content/data/items.fr.json
-var items_fr_default = [
-  {
-    id: "epee-du-sentier",
-    slot: "arme",
-    ability: "FOR",
-    name: "\xC9p\xE9e du sentier",
-    glyph: "\u2694\uFE0F",
-    blurb: "Une lame honn\xEAte, forg\xE9e pour ceux qui avancent un pas apr\xE8s l\u2019autre.",
-    setId: "titan"
-  },
-  {
-    id: "dague-vive",
-    slot: "arme",
-    ability: "DEX",
-    name: "Dague vive",
-    glyph: "\u{1F5E1}\uFE0F",
-    blurb: "L\xE9g\xE8re et rapide, elle r\xE9compense les gestes pr\xE9cis.",
-    setId: "ombre"
-  },
-  {
-    id: "baton-des-sages",
-    slot: "arme",
-    ability: "INT",
-    name: "B\xE2ton des sages",
-    glyph: "\u{1FA84}",
-    blurb: "Il s\u2019\xE9claire quand on r\xE9fl\xE9chit avant d\u2019agir.",
-    setId: "erudit"
-  },
-  {
-    id: "arc-de-l-aube",
-    slot: "arme",
-    ability: "SAG",
-    name: "Arc de l\u2019aube",
-    glyph: "\u{1F3F9}",
-    blurb: "Il ne rate jamais ceux qui savent attendre le bon moment.",
-    setId: "aube"
-  },
-  {
-    id: "sceptre-d-eloquence",
-    slot: "arme",
-    ability: "CHA",
-    name: "Sceptre d\u2019\xE9loquence",
-    glyph: "\u{1F531}",
-    blurb: "Les foules se taisent quand on le brandit.",
-    setId: "troubadour"
-  },
-  {
-    id: "masse-du-rempart",
-    slot: "arme",
-    ability: "CON",
-    name: "Masse du rempart",
-    glyph: "\u{1F528}",
-    blurb: "Lourde \xE0 porter, plus lourde encore \xE0 encaisser.",
-    setId: "rempart"
-  },
-  {
-    id: "hache-du-forgeron",
-    slot: "arme",
-    ability: "FOR",
-    name: "Hache du forgeron",
-    glyph: "\u{1FA93}",
-    blurb: "Chaque coup raconte des heures d\u2019entra\xEEnement.",
-    setId: null
-  },
-  {
-    id: "fleuret-leger",
-    slot: "arme",
-    ability: "DEX",
-    name: "Fleuret l\xE9ger",
-    glyph: "\u{1F93A}",
-    blurb: "Une pointe fine pour des appuis parfaits.",
-    setId: null
-  },
-  {
-    id: "casque-de-fer",
-    slot: "tete",
-    ability: "CON",
-    name: "Casque de fer",
-    glyph: "\u26D1\uFE0F",
-    blurb: "Il en a vu d\u2019autres, et il tient toujours.",
-    setId: "rempart"
-  },
-  {
-    id: "chapeau-de-voyageur",
-    slot: "tete",
-    ability: "DEX",
-    name: "Chapeau de voyageur",
-    glyph: "\u{1F3A9}",
-    blurb: "Un chapeau qui aime le grand air et les chemins de traverse.",
-    setId: "ombre"
-  },
-  {
-    id: "couronne-de-lauriers",
-    slot: "tete",
-    ability: "CHA",
-    name: "Couronne de lauriers",
-    glyph: "\u{1F451}",
-    blurb: "Offerte \xE0 celui qui a su rassembler.",
-    setId: "troubadour"
-  },
-  {
-    id: "diademe-du-savant",
-    slot: "tete",
-    ability: "INT",
-    name: "Diad\xE8me du savant",
-    glyph: "\u{1F393}",
-    blurb: "Il scintille \xE0 chaque nouvelle id\xE9e.",
-    setId: "erudit"
-  },
-  {
-    id: "capuche-du-veilleur",
-    slot: "tete",
-    ability: "SAG",
-    name: "Capuche du veilleur",
-    glyph: "\u{1F977}",
-    blurb: "Sous sa capuche, on entend mieux ce qui compte.",
-    setId: "aube"
-  },
-  {
-    id: "bandeau-du-guerrier",
-    slot: "tete",
-    ability: "FOR",
-    name: "Bandeau du guerrier",
-    glyph: "\u{1F3F4}",
-    blurb: "Nou\xE9 serr\xE9, il retient la sueur et le doute.",
-    setId: "titan"
-  },
-  {
-    id: "heaume-du-gardien",
-    slot: "tete",
-    ability: "CON",
-    name: "Heaume du gardien",
-    glyph: "\u{1FA96}",
-    blurb: "Un heaume qui n\u2019a jamais c\xE9d\xE9.",
-    setId: null
-  },
-  {
-    id: "lunettes-d-erudit",
-    slot: "tete",
-    ability: "INT",
-    name: "Lunettes d\u2019\xE9rudit",
-    glyph: "\u{1F453}",
-    blurb: "Elles lisent entre les lignes.",
-    setId: null
-  },
-  {
-    id: "cotte-de-mailles",
-    slot: "torse",
-    ability: "CON",
-    name: "Cotte de mailles",
-    glyph: "\u{1F6E1}\uFE0F",
-    blurb: "Des milliers d\u2019anneaux, pour une seule certitude : tenir bon.",
-    setId: "rempart"
-  },
-  {
-    id: "tunique-du-voyageur",
-    slot: "torse",
-    ability: "DEX",
-    name: "Tunique du voyageur",
-    glyph: "\u{1F455}",
-    blurb: "Souple et l\xE9g\xE8re, elle suit tous les mouvements.",
-    setId: "ombre"
-  },
-  {
-    id: "armure-de-plates",
-    slot: "torse",
-    ability: "FOR",
-    name: "Armure de plates",
-    glyph: "\u{1F9BA}",
-    blurb: "Pour qui porte sa force avec fiert\xE9.",
-    setId: "titan"
-  },
-  {
-    id: "robe-de-sagesse",
-    slot: "torse",
-    ability: "SAG",
-    name: "Robe de sagesse",
-    glyph: "\u{1F458}",
-    blurb: "Elle apaise tout ce qui la touche.",
-    setId: "aube"
-  },
-  {
-    id: "manteau-d-orateur",
-    slot: "torse",
-    ability: "CHA",
-    name: "Manteau d\u2019orateur",
-    glyph: "\u{1F9E5}",
-    blurb: "Un manteau qui donne envie de prendre la parole.",
-    setId: "troubadour"
-  },
-  {
-    id: "veste-de-l-artisan",
-    slot: "torse",
-    ability: "INT",
-    name: "Veste de l\u2019artisan",
-    glyph: "\u{1F97C}",
-    blurb: "Pleine de poches, pleine de solutions.",
-    setId: "erudit"
-  },
-  {
-    id: "plastron-de-cuir",
-    slot: "torse",
-    ability: "CON",
-    name: "Plastron de cuir",
-    glyph: "\u{1F94B}",
-    blurb: "\xC9prouv\xE9 par mille entra\xEEnements.",
-    setId: null
-  },
-  {
-    id: "cape-du-conteur",
-    slot: "torse",
-    ability: "CHA",
-    name: "Cape du conteur",
-    glyph: "\u{1F9E3}",
-    blurb: "Elle claque au vent quand l\u2019histoire commence.",
-    setId: null
-  },
-  {
-    id: "gantelets-de-force",
-    slot: "mains",
-    ability: "FOR",
-    name: "Gantelets de force",
-    glyph: "\u{1F9E4}",
-    blurb: "Ils serrent plus fort qu\u2019on ne l\u2019imagine.",
-    setId: "titan"
-  },
-  {
-    id: "gants-d-artisan",
-    slot: "mains",
-    ability: "DEX",
-    name: "Gants d\u2019artisan",
-    glyph: "\u270B",
-    blurb: "Un tour de main h\xE9rit\xE9 de g\xE9n\xE9rations d\u2019ateliers.",
-    setId: "ombre"
-  },
-  {
-    id: "bracelets-de-calme",
-    slot: "mains",
-    ability: "SAG",
-    name: "Bracelets de calme",
-    glyph: "\u{1F4FF}",
-    blurb: "Un souffle, un grain, un instant de paix.",
-    setId: "aube"
-  },
-  {
-    id: "mitaines-d-ecriture",
-    slot: "mains",
-    ability: "INT",
-    name: "Mitaines d\u2019\xE9criture",
-    glyph: "\u270D\uFE0F",
-    blurb: "Elles laissent les doigts libres pour la plume.",
-    setId: "erudit"
-  },
-  {
-    id: "poignets-du-rempart",
-    slot: "mains",
-    ability: "CON",
-    name: "Poignets du rempart",
-    glyph: "\u{1F932}",
-    blurb: "Rien ne les fait plier.",
-    setId: "rempart"
-  },
-  {
-    id: "gants-de-velours",
-    slot: "mains",
-    ability: "CHA",
-    name: "Gants de velours",
-    glyph: "\u{1F91D}",
-    blurb: "Pour les poign\xE9es de main qui scellent les amiti\xE9s.",
-    setId: "troubadour"
-  },
-  {
-    id: "poings-d-acier",
-    slot: "mains",
-    ability: "FOR",
-    name: "Poings d\u2019acier",
-    glyph: "\u{1F94A}",
-    blurb: "Une garde solide, une volont\xE9 plus solide encore.",
-    setId: null
-  },
-  {
-    id: "anneau-de-vivacite",
-    slot: "mains",
-    ability: "DEX",
-    name: "Anneau de vivacit\xE9",
-    glyph: "\u{1F48D}",
-    blurb: "Il rend chaque geste plus vif.",
-    setId: null
-  },
-  {
-    id: "bottes-de-sept-lieues",
-    slot: "bottes",
-    ability: "DEX",
-    name: "Bottes de sept lieues",
-    glyph: "\u{1F97E}",
-    blurb: "Elles avalent les kilom\xE8tres sans fatigue.",
-    setId: "ombre"
-  },
-  {
-    id: "sandales-du-pelerin",
-    slot: "bottes",
-    ability: "SAG",
-    name: "Sandales du p\xE8lerin",
-    glyph: "\u{1FA74}",
-    blurb: "Elles connaissent le chemin, m\xEAme sans carte.",
-    setId: "aube"
-  },
-  {
-    id: "bottes-de-fer",
-    slot: "bottes",
-    ability: "CON",
-    name: "Bottes de fer",
-    glyph: "\u{1F462}",
-    blurb: "Elles ancrent leur porteur dans la terre.",
-    setId: "rempart"
-  },
-  {
-    id: "souliers-de-danse",
-    slot: "bottes",
-    ability: "CHA",
-    name: "Souliers de danse",
-    glyph: "\u{1F45E}",
-    blurb: "Impossible de les porter sans sourire.",
-    setId: "troubadour"
-  },
-  {
-    id: "chaussons-de-lecture",
-    slot: "bottes",
-    ability: "INT",
-    name: "Chaussons de lecture",
-    glyph: "\u{1F9E6}",
-    blurb: "Pour les longues soir\xE9es avec un bon livre.",
-    setId: "erudit"
-  },
-  {
-    id: "sabots-du-bucheron",
-    slot: "bottes",
-    ability: "FOR",
-    name: "Sabots du b\xFBcheron",
-    glyph: "\u{1FAB5}",
-    blurb: "Solides comme le ch\xEAne qu\u2019ils ont vu tomber.",
-    setId: "titan"
-  },
-  {
-    id: "bottines-de-sentier",
-    slot: "bottes",
-    ability: "CON",
-    name: "Bottines de sentier",
-    glyph: "\u{1F97F}",
-    blurb: "Elles tiennent la distance, saison apr\xE8s saison.",
-    setId: null
-  },
-  {
-    id: "baskets-du-coureur",
-    slot: "bottes",
-    ability: "DEX",
-    name: "Baskets du coureur",
-    glyph: "\u{1F45F}",
-    blurb: "L\xE9g\xE8res, fid\xE8les, toujours pr\xEAtes \xE0 partir.",
-    setId: null
-  },
-  {
-    id: "pendentif-du-sage",
-    slot: "amulette",
-    ability: "INT",
-    name: "Pendentif du sage",
-    glyph: "\u{1F52E}",
-    blurb: "Il murmure la r\xE9ponse \xE0 ceux qui cherchent.",
-    setId: "erudit"
-  },
-  {
-    id: "talisman-de-force",
-    slot: "amulette",
-    ability: "FOR",
-    name: "Talisman de force",
-    glyph: "\u{1F9FF}",
-    blurb: "Il chauffe quand l\u2019effort se fait sentir.",
-    setId: "titan"
-  },
-  {
-    id: "medaillon-de-l-aube",
-    slot: "amulette",
-    ability: "SAG",
-    name: "M\xE9daillon de l\u2019aube",
-    glyph: "\u{1F305}",
-    blurb: "Il brille chaque matin o\xF9 l\u2019on recommence.",
-    setId: "aube"
-  },
-  {
-    id: "collier-du-troubadour",
-    slot: "amulette",
-    ability: "CHA",
-    name: "Collier du troubadour",
-    glyph: "\u{1F4EF}",
-    blurb: "Les chansons y sont grav\xE9es.",
-    setId: "troubadour"
-  },
-  {
-    id: "amulette-de-vigueur",
-    slot: "amulette",
-    ability: "CON",
-    name: "Amulette de vigueur",
-    glyph: "\u2764\uFE0F",
-    blurb: "Elle bat au rythme de ton endurance.",
-    setId: "rempart"
-  },
-  {
-    id: "breloque-agile",
-    slot: "amulette",
-    ability: "DEX",
-    name: "Breloque agile",
-    glyph: "\u{1F340}",
-    blurb: "Un porte-bonheur pour les pieds l\xE9gers.",
-    setId: "ombre"
-  },
-  {
-    id: "sautoir-d-erudit",
-    slot: "amulette",
-    ability: "INT",
-    name: "Sautoir d\u2019\xE9rudit",
-    glyph: "\u{1F4DC}",
-    blurb: "Il porte la m\xE9moire de mille lectures.",
-    setId: null
-  },
-  {
-    id: "sceau-du-gardien",
-    slot: "amulette",
-    ability: "SAG",
-    name: "Sceau du gardien",
-    glyph: "\u{1FAAC}",
-    blurb: "Il veille sur ceux qui veillent sur les autres.",
-    setId: null
-  }
-];
-
-// packages/content/data/sets.fr.json
-var sets_fr_default = [
-  {
-    id: "titan",
-    name: "Panoplie du Titan",
-    glyph: "\u{1F9BE}",
-    ability: "FOR",
-    blurb: "Forg\xE9e pour ceux qui soul\xE8vent le monde un effort apr\xE8s l\u2019autre.",
-    pieces: {
-      arme: "epee-du-sentier",
-      tete: "bandeau-du-guerrier",
-      torse: "armure-de-plates",
-      mains: "gantelets-de-force",
-      bottes: "sabots-du-bucheron",
-      amulette: "talisman-de-force"
-    },
-    bonuses: [
-      {
-        pieces: 2,
-        pp: 5,
-        ability: 1
-      },
-      {
-        pieces: 4,
-        pp: 12,
-        ability: 3
-      },
-      {
-        pieces: 6,
-        pp: 25,
-        ability: 6
-      }
-    ]
-  },
-  {
-    id: "ombre",
-    name: "Panoplie de l\u2019Ombre",
-    glyph: "\u{1F312}",
-    ability: "DEX",
-    blurb: "L\xE9g\xE8re, silencieuse, toujours un pas devant.",
-    pieces: {
-      arme: "dague-vive",
-      tete: "chapeau-de-voyageur",
-      torse: "tunique-du-voyageur",
-      mains: "gants-d-artisan",
-      bottes: "bottes-de-sept-lieues",
-      amulette: "breloque-agile"
-    },
-    bonuses: [
-      {
-        pieces: 2,
-        pp: 5,
-        ability: 1
-      },
-      {
-        pieces: 4,
-        pp: 12,
-        ability: 3
-      },
-      {
-        pieces: 6,
-        pp: 25,
-        ability: 6
-      }
-    ]
-  },
-  {
-    id: "rempart",
-    name: "Panoplie du Rempart",
-    glyph: "\u{1F3F0}",
-    ability: "CON",
-    blurb: "Rien ne la fait plier, et rien ne la fait reculer.",
-    pieces: {
-      arme: "masse-du-rempart",
-      tete: "casque-de-fer",
-      torse: "cotte-de-mailles",
-      mains: "poignets-du-rempart",
-      bottes: "bottes-de-fer",
-      amulette: "amulette-de-vigueur"
-    },
-    bonuses: [
-      {
-        pieces: 2,
-        pp: 5,
-        ability: 1
-      },
-      {
-        pieces: 4,
-        pp: 12,
-        ability: 3
-      },
-      {
-        pieces: 6,
-        pp: 25,
-        ability: 6
-      }
-    ]
-  },
-  {
-    id: "erudit",
-    name: "Panoplie de l\u2019\xC9rudit",
-    glyph: "\u{1F4DA}",
-    ability: "INT",
-    blurb: "Chaque pi\xE8ce garde la trace d\u2019une id\xE9e qui a fait ses preuves.",
-    pieces: {
-      arme: "baton-des-sages",
-      tete: "diademe-du-savant",
-      torse: "veste-de-l-artisan",
-      mains: "mitaines-d-ecriture",
-      bottes: "chaussons-de-lecture",
-      amulette: "pendentif-du-sage"
-    },
-    bonuses: [
-      {
-        pieces: 2,
-        pp: 5,
-        ability: 1
-      },
-      {
-        pieces: 4,
-        pp: 12,
-        ability: 3
-      },
-      {
-        pieces: 6,
-        pp: 25,
-        ability: 6
-      }
-    ]
-  },
-  {
-    id: "aube",
-    name: "Panoplie de l\u2019Aube",
-    glyph: "\u{1F304}",
-    ability: "SAG",
-    blurb: "Elle brille pour ceux qui recommencent chaque matin.",
-    pieces: {
-      arme: "arc-de-l-aube",
-      tete: "capuche-du-veilleur",
-      torse: "robe-de-sagesse",
-      mains: "bracelets-de-calme",
-      bottes: "sandales-du-pelerin",
-      amulette: "medaillon-de-l-aube"
-    },
-    bonuses: [
-      {
-        pieces: 2,
-        pp: 5,
-        ability: 1
-      },
-      {
-        pieces: 4,
-        pp: 12,
-        ability: 3
-      },
-      {
-        pieces: 6,
-        pp: 25,
-        ability: 6
-      }
-    ]
-  },
-  {
-    id: "troubadour",
-    name: "Panoplie du Troubadour",
-    glyph: "\u{1F3AD}",
-    ability: "CHA",
-    blurb: "Faite pour rassembler : on la porte pour qu\u2019on vous suive.",
-    pieces: {
-      arme: "sceptre-d-eloquence",
-      tete: "couronne-de-lauriers",
-      torse: "manteau-d-orateur",
-      mains: "gants-de-velours",
-      bottes: "souliers-de-danse",
-      amulette: "collier-du-troubadour"
-    },
-    bonuses: [
-      {
-        pieces: 2,
-        pp: 5,
-        ability: 1
-      },
-      {
-        pieces: 4,
-        pp: 12,
-        ability: 3
-      },
-      {
-        pieces: 6,
-        pp: 25,
-        ability: 6
-      }
-    ]
-  }
-];
-
-// packages/engine/src/server/hero-stats.ts
-var SETS = sets_fr_default;
-var CLASSES = classes_fr_default;
-function buildSnapshot(character, items) {
-  const masteries = masteriesOf(CLASSES, character.classId);
-  const equipped = items.filter((i) => i.equipped);
-  const setBonus = setBonusTotals(SETS, items);
-  return {
-    items,
-    equipped,
-    setBonus,
-    scores: adventureScores(abilityScores(character), equipped, masteries, setBonus),
-    power: heroPowerBreakdown(character, items, masteries, setBonus)
-  };
-}
-async function heroSnapshot(store, userId, character, known) {
-  return buildSnapshot(character, known ?? await store.listItems(userId));
-}
-async function heroCombatStats(store, userId, character) {
-  const snap = await heroSnapshot(store, userId, character);
-  return { power: snap.power.total, scores: snap.scores };
-}
-
 // packages/engine/src/server/season-game.ts
 var fail = (error, message) => ({ ok: false, error, message });
 async function recordPower(ctx, userId, character, power, today) {
@@ -4299,16 +5413,20 @@ async function loadAdv(ctx, userId) {
     nowMs,
     nowIso: new Date(nowMs).toISOString(),
     today: gameDate(nowMs, settings.timezone, settings.resetHour),
-    masteries: masteriesOf(CLASSES2, character.classId)
+    masteries: masteriesOf(CLASSES2, character.classId),
+    classId: character.classId
   };
 }
 var SET_OF = new Map(ITEMS.filter((i) => i.setId).map((i) => [i.id, i.setId]));
-function viewOf(item, masteries) {
+function viewOf(raw, heroClassId) {
+  const [item] = withItemClass([raw]);
   return {
     ...item,
+    classId: item.classId ?? null,
+    affinity: hasAffinity(item, heroClassId),
     setId: SET_OF.get(item.templateId) ?? null,
-    power: itemPower(item, masteries),
-    abilityBonus: itemAbilityBonus(item, masteries),
+    power: itemPower(item, heroClassId),
+    abilityBonus: itemAbilityBonus(item, heroClassId),
     upgradeCost: upgradeCost(item.level),
     dismantleValue: dismantleValue(item.rarity)
   };
@@ -4319,15 +5437,47 @@ function expeditionStart(env) {
   return Number.isNaN(ms) ? env.nowMs : Math.min(ms, env.nowMs);
 }
 async function snapshot(env, knownItems) {
-  return buildSnapshot(env.character, knownItems ?? await env.ctx.store.listItems(env.userId));
+  const [items, spells] = await Promise.all([knownItems ?? env.ctx.store.listItems(env.userId), env.ctx.store.listSpells(env.userId)]);
+  return buildSnapshot(env.character, items, spells);
 }
 async function syncGear(env, character = env.character) {
   const snap = await snapshot({ ...env, character });
   return recordPower(env.ctx, env.userId, character, snap.power.total, env.today);
 }
+function spellViewOf(k, heroClassId) {
+  const def = SPELL_BY_ID.get(k.spellId);
+  if (!def) return null;
+  const ownClass = def.classId === heroClassId;
+  const points = spellEffectPoints(def.rarity, k.level, ownClass);
+  return {
+    id: def.id,
+    classId: def.classId,
+    rarity: def.rarity,
+    family: def.family,
+    ability: def.ability,
+    level: k.level,
+    maxLevel: SPELL_MAX_LEVEL,
+    equippedSlot: k.equippedSlot,
+    ownClass,
+    points,
+    effect: spellEffectLabel(def, points)
+  };
+}
+function grimoireOf(snap, heroClassId) {
+  const spells = snap.spells.map((k) => spellViewOf(k, heroClassId)).filter((x) => !!x);
+  const equipped = Array.from({ length: SPELL_SLOTS }, (_, i) => spells.find((x) => x.equippedSlot === i + 1)?.id ?? null);
+  const { pp, xp, stats, raid, gold, chest, dungeon } = snap.spellBonus;
+  return { slots: SPELL_SLOTS, equipped, spells, bonus: { pp, xp, stats, raid, gold, chest, dungeon } };
+}
 function expeditionOf(env, snap) {
   const startMs = expeditionStart(env);
-  const y = expeditionYield({ pp: snap.power.total, scores: snap.scores, streak: env.character.streakCurrent, elapsedMs: env.nowMs - startMs });
+  const y = expeditionYield({
+    pp: snap.power.total,
+    scores: snap.scores,
+    streak: env.character.streakCurrent,
+    elapsedMs: env.nowMs - startMs,
+    goldBonusPct: snap.spellBonus.gold
+  });
   return {
     ...y,
     startedAt: new Date(startMs).toISOString(),
@@ -4346,7 +5496,7 @@ async function stateOf(env) {
   return {
     today: env.today,
     power: snap.power.total,
-    powerBreakdown: { level: snap.power.level, scores: snap.power.scores, items: snap.power.items, sets: snap.power.sets },
+    powerBreakdown: { level: snap.power.level, scores: snap.power.scores, items: snap.power.items, sets: snap.power.sets, spells: snap.power.spells },
     scores: snap.scores,
     gold: env.character.gold,
     fragments: env.character.fragments,
@@ -4357,10 +5507,12 @@ async function stateOf(env) {
     chestCounts: counts,
     opens: { today: used, max: CHEST_OPENS_PER_DAY, remaining: Math.max(0, CHEST_OPENS_PER_DAY - used) },
     pity: env.character.chestPity,
-    items: snap.items.map((i) => viewOf(i, env.masteries)),
+    items: snap.items.map((i) => viewOf(i, env.classId)),
     equipped,
     sets: setsProgress(SETS, snap.items),
     setBonus: { pp: snap.setBonus.pp, abilities: snap.setBonus.abilities },
+    grimoire: grimoireOf(snap, env.classId),
+    heroClass: env.classId,
     seasonEvaluated: []
   };
 }
@@ -4421,40 +5573,58 @@ async function openChest(ctx, userId, input) {
     pity: env.character.chestPity,
     // Graine : profil + compteur d'ouvertures (déterministe pour les tests).
     seed: `${userId}|chest|${chests.filter((c) => c.openedAt).length}`,
-    templates: ITEMS
+    templates: ITEMS,
+    spells: SPELL_DEFS,
+    classId: env.classId,
+    chestShift: snap.spellBonus.chest
   });
   if (!await ctx.store.markChestOpened(userId, chest.id, env.nowIso)) return fail2("not-found", "Ce coffre est d\xE9j\xE0 ouvert.");
-  const item = {
-    id: ctx.uuid(),
-    templateId: draw.template.id,
-    rarity: draw.rarity,
-    slot: draw.template.slot,
-    ability: draw.template.ability,
-    level: 0,
-    equipped: false,
-    createdAt: env.nowIso
-  };
-  await ctx.store.insertItems(userId, [item]);
+  let item = null;
+  let spell = null;
+  let extraFragments = 0;
+  if (draw.template) {
+    item = {
+      id: ctx.uuid(),
+      templateId: draw.template.id,
+      rarity: draw.rarity,
+      slot: draw.template.slot,
+      ability: draw.template.ability,
+      level: 0,
+      equipped: false,
+      createdAt: env.nowIso
+    };
+    await ctx.store.insertItems(userId, [item]);
+  } else if (draw.spell) {
+    const known = snap.spells.find((k) => k.spellId === draw.spell.id);
+    const before = known?.level ?? 0;
+    const next = known ? nextSpellLevel(known.level) : 1;
+    if (next === null) extraFragments = spellMaxFragments(draw.spell.rarity);
+    const after = { spellId: draw.spell.id, level: next ?? SPELL_MAX_LEVEL, equippedSlot: known?.equippedSlot ?? null };
+    if (next !== null) await ctx.store.saveSpell(userId, after);
+    spell = { spell: spellViewOf(after, env.classId), isNew: !known, levelBefore: before, fragments: extraFragments };
+  }
   const character = {
     ...env.character,
     gold: env.character.gold + draw.gold,
-    fragments: env.character.fragments + draw.fragments,
+    fragments: env.character.fragments + draw.fragments + extraFragments,
     chestPity: draw.pity,
     chestOpensDate: env.today,
     chestOpensToday: used + 1
   };
   await ctx.store.saveCharacter(userId, character);
+  const synced = spell && spell.spell.equippedSlot !== null ? await syncGear(env, character) : character;
   return {
     ok: true,
     opening: {
       chest: { ...chest, openedAt: env.nowIso },
-      item: viewOf(item, env.masteries),
+      item: item ? viewOf(item, env.classId) : null,
+      spell,
       gold: draw.gold,
-      fragments: draw.fragments,
+      fragments: draw.fragments + extraFragments,
       guaranteed: draw.guaranteed,
       opensToday: used + 1
     },
-    character
+    character: synced
   };
 }
 async function mergeChests(ctx, userId, input) {
@@ -4512,12 +5682,12 @@ async function equipItem(ctx, userId, input) {
   const items = await ctx.store.listItems(userId);
   const item = items.find((i) => i.id === input.itemId);
   if (!item) return itemNotFound();
-  if (item.equipped) return { ok: true, item: viewOf(item, env.masteries), replaced: null };
+  if (item.equipped) return { ok: true, item: viewOf(item, env.classId), replaced: null };
   const current = items.find((i) => i.slot === item.slot && i.equipped);
   if (current) await ctx.store.updateItem(userId, current.id, { equipped: false });
   await ctx.store.updateItem(userId, item.id, { equipped: true });
   await syncGear(env);
-  return { ok: true, item: viewOf({ ...item, equipped: true }, env.masteries), replaced: current?.id ?? null };
+  return { ok: true, item: viewOf({ ...item, equipped: true }, env.classId), replaced: current?.id ?? null };
 }
 async function unequipSlot(ctx, userId, input) {
   const env = await loadAdv(ctx, userId);
@@ -4527,7 +5697,7 @@ async function unequipSlot(ctx, userId, input) {
   if (!current) return fail2("not-found", "Aucun objet \xE9quip\xE9 \xE0 cet emplacement.");
   await ctx.store.updateItem(userId, current.id, { equipped: false });
   await syncGear(env);
-  return { ok: true, item: viewOf({ ...current, equipped: false }, env.masteries) };
+  return { ok: true, item: viewOf({ ...current, equipped: false }, env.classId) };
 }
 async function upgradeItem(ctx, userId, input) {
   const env = await loadAdv(ctx, userId);
@@ -4543,7 +5713,7 @@ async function upgradeItem(ctx, userId, input) {
   await ctx.store.saveCharacter(userId, character);
   await ctx.store.updateItem(userId, item.id, { level: item.level + 1 });
   const synced = item.equipped ? await syncGear(env, character) : character;
-  return { ok: true, item: viewOf({ ...item, level: item.level + 1 }, env.masteries), character: synced };
+  return { ok: true, item: viewOf({ ...item, level: item.level + 1 }, env.classId), character: synced };
 }
 async function mergeItems(ctx, userId, input) {
   const env = await loadAdv(ctx, userId);
@@ -4559,7 +5729,7 @@ async function mergeItems(ctx, userId, input) {
   if (picked.some((i) => i.rarity !== rarity)) return fail2("invalid", "Les 3 objets doivent avoir la m\xEAme raret\xE9.");
   const next = nextItemRarity(rarity);
   if (!next) return fail2("invalid", "Un objet l\xE9gendaire ne peut pas \xEAtre fusionn\xE9.");
-  const template = pickTemplateForSlot(ITEMS, picked[0].slot, `${userId}|${ids.join(",")}`);
+  const template = pickTemplateForSlot(ITEMS, picked[0].slot, `${userId}|${ids.join(",")}`, env.classId);
   if (!template) return fail2("invalid", "Aucun mod\xE8le d\u2019objet pour cet emplacement.");
   await ctx.store.deleteItems(userId, ids);
   const item = {
@@ -4573,7 +5743,7 @@ async function mergeItems(ctx, userId, input) {
     createdAt: env.nowIso
   };
   await ctx.store.insertItems(userId, [item]);
-  return { ok: true, item: viewOf(item, env.masteries) };
+  return { ok: true, item: viewOf(item, env.classId) };
 }
 async function dismantleItem(ctx, userId, input) {
   const env = await loadAdv(ctx, userId);
@@ -4621,7 +5791,8 @@ async function runDungeon(ctx, userId, input) {
     pp: snap.power.total,
     scores: snap.scores,
     firstBossVictory: before.bossDefeatedTier < dungeon.tier,
-    seed: `${userId}|${dungeon.id}|${env.today}|${env.character.keys}`
+    seed: `${userId}|${dungeon.id}|${env.today}|${env.character.keys}`,
+    conBonusPct: snap.spellBonus.dungeon
   });
   let chest = null;
   if (result.chest) {
@@ -4643,6 +5814,37 @@ async function runDungeon(ctx, userId, input) {
   };
   await ctx.store.saveCharacter(userId, character);
   return { ok: true, result: { ...result, chest: chest ? chest.rarity : null }, progress, chest, character };
+}
+var spellNotFound = () => fail2("not-found", "Capacit\xE9 inconnue ou pas encore obtenue.");
+async function grimoireNow(env) {
+  return grimoireOf(await snapshot(env), env.classId);
+}
+async function equipSpell(ctx, userId, input) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  const known = await ctx.store.listSpells(userId);
+  const spell = known.find((k) => k.spellId === input.spellId);
+  if (!spell || !SPELL_BY_ID.has(spell.spellId)) return spellNotFound();
+  if (input.slot === void 0 && spell.equippedSlot !== null) return { ok: true, grimoire: await grimoireNow(env), character: env.character };
+  const slot = input.slot ?? freeSpellSlot(known) ?? SPELL_SLOTS;
+  if (!Number.isInteger(slot) || slot < 1 || slot > SPELL_SLOTS) return fail2("invalid", `Le Grimoire compte ${SPELL_SLOTS} emplacements.`);
+  if (spell.equippedSlot !== slot) {
+    const current = known.find((k) => k.equippedSlot === slot);
+    if (current) await ctx.store.saveSpell(userId, { ...current, equippedSlot: null });
+    await ctx.store.saveSpell(userId, { ...spell, equippedSlot: slot });
+  }
+  const character = await syncGear(env);
+  return { ok: true, grimoire: await grimoireNow({ ...env, character }), character };
+}
+async function unequipSpell(ctx, userId, input) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  const known = await ctx.store.listSpells(userId);
+  const current = known.find((k) => k.equippedSlot !== null && (input.spellId ? k.spellId === input.spellId : k.equippedSlot === input.slot));
+  if (!current) return fail2("not-found", "Aucune capacit\xE9 \xE9quip\xE9e \xE0 cet emplacement.");
+  await ctx.store.saveSpell(userId, { ...current, equippedSlot: null });
+  const character = await syncGear(env);
+  return { ok: true, grimoire: await grimoireNow({ ...env, character }), character };
 }
 
 // packages/engine/src/server/raid-game.ts
@@ -4721,9 +5923,9 @@ async function loadRoster(ctx, members, me) {
   return Promise.all(
     members.map(async (record) => {
       const character = me && record.profileId === me.id ? me.character : await ctx.store.getCharacter(record.profileId);
-      if (!character) return { record, character: null, power: 0, cha: 0, forScore: 0 };
+      if (!character) return { record, character: null, power: 0, cha: 0, forScore: 0, raidBonus: 0 };
       const s = await heroCombatStats(ctx.store, record.profileId, character);
-      return { record, character, power: s.power, cha: s.scores.CHA, forScore: s.scores.FOR };
+      return { record, character, power: s.power, cha: s.scores.CHA, forScore: s.scores.FOR, raidBonus: s.raidBonus };
     })
   );
 }
@@ -4733,7 +5935,7 @@ async function applyHit(env, team, roster, damage) {
   if (!mine) return null;
   if (damage.some((d) => d.profileId === env.userId && d.gameDate === env.today)) return null;
   const chaBonus = raidChaBonus(roster.filter((r) => r.record.status === "joined" && r.character).map((r) => r.cha));
-  const baseDamage = raidBaseDamage({ pp: mine.power, forScore: mine.forScore, chaBonus });
+  const baseDamage = raidBaseDamage({ pp: mine.power, forScore: mine.forScore, chaBonus, spellBonusPct: mine.raidBonus });
   const received = (await env.ctx.store.listRaidEncouragements(team.id, env.today)).filter((e) => e.toId === env.userId).length;
   const record = { teamId: team.id, profileId: env.userId, gameDate: env.today, baseDamage, encouragements: received, damage: raidDamage(baseDamage, received) };
   if (!await env.ctx.store.insertRaidDamage(record)) return null;
@@ -5542,7 +6744,8 @@ async function completeQuestAction(ctx, userId, req) {
     repeat,
     progress: req.progress,
     stepsDone: req.stepsDone,
-    journalText: req.journalText
+    journalText: req.journalText,
+    abilityXpBonus: await heroXpBonus(store, userId, env.character)
   });
   if (!check.ok) return fail4(check.error);
   const res = check.result;
@@ -5792,6 +6995,24 @@ async function choosePath(ctx, userId, pathId) {
   await ctx.store.saveCharacter(userId, character);
   return { ok: true, character };
 }
+async function changeClass(ctx, userId, classId) {
+  const env = await loadEnv(ctx, userId);
+  if (!env) return fail4("no-character");
+  const c = env.character;
+  if (!c.classNotice || c.classChanged) return fail4("forbidden", "La reclassification gratuite n\u2019est plus disponible.");
+  const next = CLASSES3.find((x) => x.id === classId);
+  if (!next) return fail4("invalid", "Classe inconnue.");
+  const same = classId === c.classId;
+  const character = {
+    ...c,
+    classId,
+    pathId: same || !c.pathId ? c.pathId ?? null : next.paths[0].id,
+    classNotice: false,
+    classChanged: !same
+  };
+  await ctx.store.saveCharacter(userId, character);
+  return { ok: true, character };
+}
 async function chooseImprovement(ctx, userId, choice) {
   const env = await loadEnv(ctx, userId);
   if (!env) return fail4("no-character");
@@ -5859,6 +7080,7 @@ var emptyUserData = () => ({
   items: [],
   chests: [],
   dungeons: [],
+  spells: [],
   seasonScores: [],
   seasonResults: []
 });
@@ -5888,9 +7110,10 @@ var MemoryStore = class {
       this.users.set(userId, d);
     }
     d.tracks ??= [];
-    d.items ??= [];
+    d.items = migrateLegacyItems(d.items ?? []);
     d.chests ??= [];
     d.dungeons ??= [];
+    d.spells ??= [];
     d.seasonScores ??= [];
     d.seasonResults ??= [];
     return d;
@@ -6061,6 +7284,19 @@ var MemoryStore = class {
     const i = list.findIndex((x) => x.dungeonId === p.dungeonId);
     if (i >= 0) list[i] = structuredClone(p);
     else list.push(structuredClone(p));
+    this.touch();
+  }
+  async listSpells(userId) {
+    return structuredClone(this.data(userId).spells);
+  }
+  async saveSpell(userId, spell) {
+    const list = this.data(userId).spells;
+    if (spell.equippedSlot !== null && list.some((x) => x.spellId !== spell.spellId && x.equippedSlot === spell.equippedSlot)) {
+      throw new Error("spells.save: emplacement d\xE9j\xE0 occup\xE9");
+    }
+    const i = list.findIndex((x) => x.spellId === spell.spellId);
+    if (i >= 0) list[i] = structuredClone(spell);
+    else list.push(structuredClone(spell));
     this.touch();
   }
   // ───── Raids d'amis
@@ -6303,6 +7539,8 @@ var SupabaseStore = class {
       motto: data.motto,
       oath: s?.oath ?? "",
       titleEquipped: data.title_equipped,
+      classNotice: data.class_notice ?? false,
+      classChanged: data.class_changed ?? false,
       baseScores: data.base_scores,
       improvements: data.improvements,
       improvementsChosen: data.improvements_chosen,
@@ -6338,6 +7576,8 @@ var SupabaseStore = class {
         frame_color: c.frameColor,
         motto: c.motto,
         title_equipped: c.titleEquipped ?? null,
+        class_notice: c.classNotice ?? false,
+        class_changed: c.classChanged ?? false,
         base_scores: c.baseScores,
         improvements: c.improvements,
         improvements_chosen: c.improvementsChosen,
@@ -6689,6 +7929,18 @@ var SupabaseStore = class {
     );
     fail5(error, "dungeon_progress.upsert");
   }
+  async listSpells(userId) {
+    const { data, error } = await this.db.from("spells_known").select("*").eq("profile_id", userId).order("spell_id", { ascending: true });
+    fail5(error, "spells_known.select");
+    return (data ?? []).map((r) => ({ spellId: r.spell_id, level: r.level, equippedSlot: r.equipped_slot ?? null }));
+  }
+  async saveSpell(userId, spell) {
+    const { error } = await this.db.from("spells_known").upsert(
+      { profile_id: userId, spell_id: spell.spellId, level: spell.level, equipped_slot: spell.equippedSlot ?? null },
+      { onConflict: "profile_id,spell_id" }
+    );
+    fail5(error, "spells_known.upsert");
+  }
   // ───── Raids d'amis
   async areFriends(a, b) {
     if (a === b) return false;
@@ -6993,11 +8245,19 @@ export {
   ITEM_ABILITY_BONUS_DIV,
   ITEM_AFFINITY_BONUS,
   ITEM_BASE_POWER,
+  ITEM_DEFS,
   ITEM_LEVEL_STEP,
   ITEM_MAX_LEVEL,
   ITEM_RARITIES,
   JOURNAL_MIN_CHARS,
+  LEGACY_CLASS_MAP,
+  LEGACY_ITEM_MAP,
+  LEGACY_PATH_ABILITY,
+  LEGACY_PATH_MAP,
+  LEGACY_TITLE_MAP,
   LEVEL_XP,
+  LOOT_CLASS_SHARE,
+  LOOT_UNIVERSAL_SHARE,
   MAX_ACTIVE_TRACKS,
   MAX_FREE_QUESTS_PER_DAY,
   MAX_INSPIRATION,
@@ -7011,6 +8271,7 @@ export {
   MIN_SCORE,
   MemoryStore,
   NO_SET_BONUS,
+  NO_SPELL_BONUS,
   OFFLINE_MAX_DELAY_MS,
   PATH_LEVEL,
   PERIODS,
@@ -7054,6 +8315,22 @@ export {
   SEASON_WEEKS,
   SETS,
   SOFT_CAP_SCORE,
+  SPELL_BY_ID,
+  SPELL_CHANCE,
+  SPELL_CHEST_DIV,
+  SPELL_CLASS_BONUS,
+  SPELL_CLASS_SHARE,
+  SPELL_DEFS,
+  SPELL_DUNGEON_DIV,
+  SPELL_FAMILIES,
+  SPELL_LEVEL_STEP,
+  SPELL_MAX_FRAGMENTS,
+  SPELL_MAX_LEVEL,
+  SPELL_OTHER_CAP,
+  SPELL_POINTS,
+  SPELL_SLOTS,
+  SPELL_STAT_DIV,
+  SPELL_XP_CAP,
   STREAK_MILESTONE_CHESTS,
   SupabaseStore,
   TIER3_MIN_SCORE,
@@ -7082,6 +8359,7 @@ export {
   adventureScores,
   applyBalance,
   applyMisses,
+  applySpellXp,
   applyXp,
   applyXpParts,
   autoRaidHit,
@@ -7096,9 +8374,11 @@ export {
   canDeclareRest,
   canForge,
   canUndo,
+  changeClass,
   chooseImprovement,
   choosePath,
   claimExpedition,
+  classEnvelope,
   completeQuest,
   completeQuestAction,
   computeBestStreak,
@@ -7134,6 +8414,7 @@ export {
   endOfQuarter,
   ensureQuests,
   equipItem,
+  equipSpell,
   equipTitle,
   equippedBySlot,
   evaluateAchievements,
@@ -7142,24 +8423,28 @@ export {
   expeditionYield,
   expiredPartialXp,
   frameStyleOf,
+  freeSpellSlot,
   gameDate,
   getAdventureState,
   getRaidState,
   getSeasonState,
   grantQuestChests,
   hardcorePenalty,
+  hasAffinity,
   hasLegacyBaseScores,
   hashString,
   heroCombatStats,
   heroPower,
   heroPowerBreakdown,
   heroSnapshot,
+  heroXpBonus,
   inspirationAfterStreak,
   interestKey,
   interestWeight,
   interpolate,
   inviteToRaid,
   isDateInRange,
+  isLegacyClassId,
   isReadyToComplete,
   isValidPointBuy,
   isoWeek,
@@ -7180,12 +8465,15 @@ export {
   masteriesOf,
   mergeChests,
   mergeItems,
+  migrateLegacyClass,
+  migrateLegacyItems,
   missedDays,
   msUntilReset,
   newlyUnlocked,
   nextChestRarity,
   nextItemRarity,
   nextSetTier,
+  nextSpellLevel,
   nextTune,
   offlineCompletionAllowed,
   openChest,
@@ -7249,6 +8537,11 @@ export {
   setsProgress,
   shuffle,
   slugify,
+  spellBonuses,
+  spellEffectLabel,
+  spellEffectPoints,
+  spellMaxFragments,
+  spellRawTotals,
   splitXp,
   startOfIsoWeek,
   startOfMonth,
@@ -7274,6 +8567,7 @@ export {
   tunedTarget,
   undoQuest,
   unequipSlot,
+  unequipSpell,
   unlocksAt,
   updateProgress,
   upgradeCost,
@@ -7281,6 +8575,7 @@ export {
   validationTarget,
   weekStartOf,
   weightedPick,
+  withItemClass,
   withTarget,
   xpBalanceFactor,
   xpBonusForMastery,

@@ -162,7 +162,7 @@ describe('classes', () => {
     {
       id: 'magicien', name: 'Magicien', icon: '', masteries: ['INT', 'SAG'], profile: '', description: '', favoredQuests: [],
       paths: [
-        { id: 'erudit', name: 'Érudit', ability: 'INT', title: '', description: '' },
+        { id: 'evocation', name: 'Évocation', ability: 'INT', title: '', description: '' },
         { id: 'ermite', name: 'Ermite', ability: 'SAG', title: '', description: '' },
       ],
     },

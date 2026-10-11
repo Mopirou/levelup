@@ -9,7 +9,7 @@ import { ITEM_LABEL, itemInfo } from '../features/adventure/adventure.model';
   template: `
     <span class="g" aria-hidden="true">{{ info().glyph }}</span>
     <span class="t">
-      <strong>{{ info().name }}</strong>
+      <strong>{{ info().name }}@if (item().affinity) { <span class="aff" title="Objet de ta classe : +20 % de PP">★<span class="sr-only"> objet de ta classe, +20 % de PP</span></span> }</strong>
       <span class="xs">{{ label[item().rarity] }} · niv. {{ item().level }}</span>
     </span>
     <span class="p">{{ item().power }} PP</span>
@@ -20,6 +20,8 @@ import { ITEM_LABEL, itemInfo } from '../features/adventure/adventure.model';
     .t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     .t strong { font-size: 14px; }
     .xs { font-size: 12px; color: var(--lu-text-2); }
+    .aff { color: var(--lu-gold); margin-left: 4px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
     .p { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   `,
 })

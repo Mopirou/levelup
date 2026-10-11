@@ -36,7 +36,7 @@ type Scores = Record<AbilityId, number>;
 
 const heroInput = {
   name: 'Aldric',
-  classId: 'eclaireur',
+  classId: 'guerrier',
   scores: { FOR: 5, DEX: 2, CON: 5, INT: 2, SAG: 2, CHA: 2 },
   portraitId: 'p1',
   frameColor: '#2f5a47',

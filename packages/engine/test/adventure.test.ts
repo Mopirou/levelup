@@ -63,12 +63,15 @@ const item = (rarity: ItemRarity, level = 0, ability: InventoryItem['ability'] =
 });
 
 describe('puissance', () => {
-  it('PP d’un objet : base × (1 + 0,1 × niveau), +10 % d’affinité', () => {
+  it('PP d’un objet : base × (1 + 0,1 × niveau), +20 % d’affinité de classe', () => {
     expect(itemPower(item('commun'))).toBe(5);
     expect(itemPower(item('legendaire'))).toBe(130);
     expect(itemPower(item('rare', 5))).toBe(42);
-    expect(itemPower(item('rare', 5, 'FOR'), ['FOR', 'CON'])).toBe(46);
-    expect(itemPower(item('rare', 5, 'INT'), ['FOR', 'CON'])).toBe(42);
+    // affinité : l'objet est de la classe du héros (28 × 1,5 × 1,2 = 50) ; un objet d'une autre classe ou universel n'a rien
+    expect(itemPower({ ...item('rare', 5), classId: 'guerrier' }, 'guerrier')).toBe(50);
+    expect(itemPower({ ...item('rare', 5), classId: 'clerc' }, 'guerrier')).toBe(42);
+    expect(itemPower({ ...item('rare', 5), classId: null }, 'guerrier')).toBe(42);
+    expect(itemPower({ ...item('rare', 5), classId: 'guerrier' })).toBe(42);
     // niveau borné à 0..10
     expect(itemPower(item('epique', 99))).toBe(120);
     expect(itemPower(item('epique', -3))).toBe(60);
@@ -79,7 +82,7 @@ describe('puissance', () => {
     expect(itemAbilityBonus(item('rare'))).toBe(2);
     expect(itemAbilityBonus(item('legendaire', 10))).toBe(21);
     const base = abilityScores(hero);
-    const adv = adventureScores(base, [item('rare', 0, 'DEX'), item('epique', 0, 'DEX')], []);
+    const adv = adventureScores(base, [item('rare', 0, 'DEX'), item('epique', 0, 'DEX')]);
     expect(adv.DEX).toBe(base.DEX + 2 + 5);
     expect(adv.FOR).toBe(base.FOR);
     // les scores d'origine ne sont pas modifiés
@@ -92,9 +95,10 @@ describe('puissance', () => {
     expect(heroPower(hero, [])).toBe(50 + sum);
     const items = [item('rare'), item('epique', 0, 'CON'), item('legendaire', 0, 'INT', false)];
     const b = heroPowerBreakdown(hero, items);
-    expect(b).toEqual({ total: 50 + sum + 28 + 60, level: 50, scores: sum, items: 88, sets: 0 });
+    expect(b).toEqual({ total: 50 + sum + 28 + 60, level: 50, scores: sum, items: 88, sets: 0, spells: 0 });
     expect(heroPower(hero, items)).toBe(b.total);
-    expect(heroPower(hero, items, ['CON'])).toBe(50 + sum + 28 + 66);
+    const clerc = items.map((i) => (i.ability === 'CON' ? { ...i, classId: 'clerc' } : i));
+    expect(heroPower(hero, clerc, 'clerc')).toBe(50 + sum + 28 + 72);
   });
 });
 
@@ -189,14 +193,14 @@ describe('coffres : tirage', () => {
 
   it('est déterministe pour une graine, et change avec elle', () => {
     expect(draw('argent', 'p|1')).toEqual(draw('argent', 'p|1'));
-    const seeds = new Set(Array.from({ length: 30 }, (_, i) => draw('argent', `p|${i}`).template.id));
+    const seeds = new Set(Array.from({ length: 30 }, (_, i) => draw('argent', `p|${i}`).template!.id));
     expect(seeds.size).toBeGreaterThan(5);
   });
 
   it('donne toujours un objet existant, des fragments et de l’or du tableau', () => {
     for (const r of CHEST_RARITIES) {
       const d = draw(r, `x-${r}`);
-      expect(ITEMS.some((t) => t.id === d.template.id)).toBe(true);
+      expect(ITEMS.some((t) => t.id === d.template!.id)).toBe(true);
       expect(d.fragments).toBe(CHEST_TABLE[r].fragments);
       expect(d.gold).toBe(CHEST_TABLE[r].gold);
     }

@@ -224,6 +224,8 @@ export interface ItemDef {
   blurb: string;
   /** Panoplie dont l'objet est une pièce (`null` : hors set) */
   setId?: string | null;
+  /** Classe D&D pour laquelle l'objet est fait (affinité +20 % de PP) ; `null` : objet universel */
+  classId?: string | null;
 }
 
 /** Palier de bonus d'une panoplie : atteint dès `pieces` pièces équipées (le palier atteint remplace le précédent). */
@@ -259,6 +261,37 @@ export interface InventoryItem {
   level: number;
   equipped: boolean;
   createdAt: string;
+  /** Classe du modèle (calculée à la lecture depuis le contenu, jamais stockée) ; null : universel */
+  classId?: string | null;
+}
+
+// ───────────────────────── Sorts et capacités de classe (V4, docs/CLASSES.md) ─────────────────────────
+
+/** Famille d'effet d'une capacité : chaque capacité convertit ses points d'effet dans une seule famille. */
+export type SpellFamily = 'xp' | 'stat' | 'raid' | 'gold' | 'chest' | 'dungeon';
+export const SPELL_FAMILIES: readonly SpellFamily[] = ['xp', 'stat', 'raid', 'gold', 'chest', 'dungeon'] as const;
+
+/** Capacité de classe (contenu statique spells.fr.json) : un glyphe, un nom, aucune image. */
+export interface SpellDef {
+  id: string;
+  classId: string;
+  rarity: ItemRarity;
+  family: SpellFamily;
+  /** Caractéristique visée (XP, score) ou thème ; all : toutes les maîtrises de la classe (XP partagée) */
+  ability: AbilityId | 'all';
+  name: string;
+  glyph: string;
+  blurb: string;
+}
+
+/** Capacité connue d'un joueur : niveau 1 à 5 (un doublon monte le niveau) et emplacement du Grimoire (1 à 3) s'il est équipé. */
+export const SPELL_SLOTS = 3;
+export const SPELL_MAX_LEVEL = 5;
+
+export interface SpellKnown {
+  spellId: string;
+  level: number;
+  equippedSlot: number | null;
 }
 
 /** D'où vient un coffre : quête du jour, promotion d'échelon, jalon de série, boss de donjon, fusion, raid (V2). */

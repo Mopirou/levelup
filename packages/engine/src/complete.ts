@@ -1,5 +1,6 @@
 import { isoWeek, startOfIsoWeek, addDays } from './dates';
 import { tuneXpScale } from './interests';
+import { applySpellXp } from './spells';
 import {
   AbilityId,
   CharacterCore,
@@ -40,6 +41,8 @@ export interface CompletionInput {
   progress?: number;
   stepsDone?: boolean[];
   journalText?: string;
+  /** Capacités équipées : XP bonus en % par caractéristique (plafonné à +25 %), appliqué après l'équilibrage */
+  abilityXpBonus?: Partial<Record<AbilityId, number>>;
 }
 
 export type CompletionError =
@@ -166,6 +169,8 @@ export interface CompletionResult extends XpApplication {
   parts: XpPart[];
   /** Parts modifiées par l'équilibrage (rattrapage / spécialisation) ; vide si aucun effet. */
   balance: BalanceDetail[];
+  /** XP ajoutée par les capacités équipées (0 si aucune) */
+  spellXp: number;
   breakdown: QuestXpBreakdown;
   inspirationSpent: boolean;
 }
@@ -199,7 +204,8 @@ export function completeQuest(input: CompletionInput): { ok: true; result: Compl
   // Équilibrage : les scores pris en compte sont ceux d'AVANT l'attribution, identiques pour toutes les parts.
   const scores = abilityScores(character);
   const baseParts = splitXp(breakdown.total, instance.snapshot.ability, instance.snapshot.secondary);
-  const parts = applyBalance(baseParts, scores);
+  const balanced = applyBalance(baseParts, scores);
+  const parts = applySpellXp(balanced, input.abilityXpBonus);
   const balance = balanceDetails(baseParts, scores);
   const applied = applyXpParts(base, parts);
   return {
@@ -209,6 +215,7 @@ export function completeQuest(input: CompletionInput): { ok: true; result: Compl
       xpAwarded: parts.reduce((n, p) => n + p.amount, 0),
       parts,
       balance,
+      spellXp: parts.reduce((n, p) => n + p.amount, 0) - balanced.reduce((n, p) => n + p.amount, 0),
       breakdown,
       inspirationSpent: input.useInspiration,
     },

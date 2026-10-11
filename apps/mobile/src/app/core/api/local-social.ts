@@ -140,7 +140,7 @@ export async function createLocalSocial(deps: {
       username: deps.getAccount()?.username ?? 'moi',
       name: c?.name ?? 'Moi',
       level: c?.level ?? 1,
-      classId: c?.classId ?? 'explorateur',
+      classId: c?.classId ?? 'guerrier',
       portraitId: c?.portraitId ?? 'p01',
       frameColor: c?.frameColor ?? '#2f5a47',
     };

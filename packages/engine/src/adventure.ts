@@ -1,5 +1,6 @@
 import { createRng } from './random';
 import { NO_SET_BONUS, type SetBonusTotals } from './sets';
+import { NO_SPELL_BONUS, SPELL_MAX_FRAGMENTS, type SpellBonuses } from './spells';
 import { MAX_LEVEL, abilityScores } from './xp';
 import {
   ABILITIES,
@@ -15,6 +16,7 @@ import {
   InventoryItem,
   ItemDef,
   ItemRarity,
+  SpellDef,
 } from './types';
 
 // ───────────────────────── Aventure : logique pure ─────────────────────────
@@ -77,8 +79,8 @@ export const ITEM_BASE_POWER: Record<ItemRarity, number> = { commun: 5, peu_comm
 /** `PP = base × (1 + 0,1 × niveau)` */
 export const ITEM_LEVEL_STEP = 0.1;
 export const ITEM_MAX_LEVEL = 10;
-/** +10 % de PP quand la caractéristique de l'objet est une maîtrise de la classe */
-export const ITEM_AFFINITY_BONUS = 0.1;
+/** +20 % de PP pour un objet de sa propre classe (affinité de classe) */
+export const ITEM_AFFINITY_BONUS = 0.2;
 /** Bonus de score d'aventure = `floor(PP_objet / 12)` */
 export const ITEM_ABILITY_BONUS_DIV = 12;
 /** Fragments rendus par le démontage, par rareté */
@@ -121,28 +123,34 @@ const rarityIndex = <T extends string>(list: readonly T[], r: T): number => list
 
 // ───────────────────────── Puissance ─────────────────────────
 
-/** PP d'un objet : `base[rareté] × (1 + 0,1 × niveau)`, +10 % si la caractéristique de l'objet est une maîtrise de la classe. */
-export function itemPower(item: Pick<InventoryItem, 'rarity' | 'level' | 'ability'>, masteries: readonly AbilityId[] = []): number {
+/** Un objet porte-t-il l'affinité de la classe du héros ? (objets universels : jamais) */
+export function hasAffinity(item: Pick<InventoryItem, 'classId'>, heroClassId?: string | null): boolean {
+  return !!heroClassId && !!item.classId && item.classId === heroClassId;
+}
+
+/** PP d'un objet : `base[rareté] × (1 + 0,1 × niveau)`, +20 % si l'objet est de la classe du héros. */
+export function itemPower(item: Pick<InventoryItem, 'rarity' | 'level' | 'classId'>, heroClassId?: string | null): number {
   const level = Math.min(Math.max(Math.trunc(item.level) || 0, 0), ITEM_MAX_LEVEL);
-  const affinity = masteries.includes(item.ability) ? 1 + ITEM_AFFINITY_BONUS : 1;
+  const affinity = hasAffinity(item, heroClassId) ? 1 + ITEM_AFFINITY_BONUS : 1;
   return Math.round(ITEM_BASE_POWER[item.rarity] * (1 + ITEM_LEVEL_STEP * level) * affinity);
 }
 
 /** Bonus de score d'aventure qu'apporte un objet à sa caractéristique : `floor(PP / 12)`. */
-export function itemAbilityBonus(item: Pick<InventoryItem, 'rarity' | 'level' | 'ability'>, masteries: readonly AbilityId[] = []): number {
-  return Math.floor(itemPower(item, masteries) / ITEM_ABILITY_BONUS_DIV);
+export function itemAbilityBonus(item: Pick<InventoryItem, 'rarity' | 'level' | 'ability' | 'classId'>, heroClassId?: string | null): number {
+  return Math.floor(itemPower(item, heroClassId) / ITEM_ABILITY_BONUS_DIV);
 }
 
-/** Scores effectifs en jeu d'aventure : scores du personnage + bonus des objets équipés et des panoplies (jamais pour l'XP). */
+/** Scores effectifs en jeu d'aventure : scores du personnage + bonus des objets équipés, des panoplies et des capacités (jamais pour l'XP). */
 export function adventureScores(
   scores: Record<AbilityId, number>,
-  equipped: readonly Pick<InventoryItem, 'rarity' | 'level' | 'ability'>[],
-  masteries: readonly AbilityId[] = [],
+  equipped: readonly Pick<InventoryItem, 'rarity' | 'level' | 'ability' | 'classId'>[],
+  heroClassId?: string | null,
   sets: Pick<SetBonusTotals, 'abilities'> = NO_SET_BONUS,
+  spells: Pick<SpellBonuses, 'stats'> = NO_SPELL_BONUS,
 ): Record<AbilityId, number> {
   const out = { ...scores };
-  for (const it of equipped) out[it.ability] += itemAbilityBonus(it, masteries);
-  for (const a of ABILITIES) out[a] += sets.abilities[a] ?? 0;
+  for (const it of equipped) out[it.ability] += itemAbilityBonus(it, heroClassId);
+  for (const a of ABILITIES) out[a] += (sets.abilities[a] ?? 0) + (spells.stats[a] ?? 0);
   return out;
 }
 
@@ -157,30 +165,34 @@ export interface HeroPowerBreakdown {
   items: number;
   /** PP des bonus de panoplies */
   sets: number;
+  /** PP des capacités équipées */
+  spells: number;
 }
 
-/** `PP = niveau × 10 + Σ(scores) + Σ(PP des objets équipés) + PP des bonus de panoplies`. Seuls les objets marqués équipés comptent. */
+/** `PP = niveau × 10 + Σ(scores) + Σ(PP des objets équipés) + PP des panoplies + PP des capacités`. Seuls les objets marqués équipés comptent. */
 export function heroPowerBreakdown(
   character: Pick<CharacterCore, 'level' | 'baseScores' | 'improvements' | 'abilityXp'>,
-  equipped: readonly Pick<InventoryItem, 'rarity' | 'level' | 'ability' | 'equipped'>[],
-  masteries: readonly AbilityId[] = [],
+  equipped: readonly Pick<InventoryItem, 'rarity' | 'level' | 'equipped' | 'classId'>[],
+  heroClassId?: string | null,
   sets: Pick<SetBonusTotals, 'pp'> = NO_SET_BONUS,
+  spells: Pick<SpellBonuses, 'pp'> = NO_SPELL_BONUS,
 ): HeroPowerBreakdown {
   const scores = abilityScores(character);
   const level = character.level * 10;
   const sum = ABILITIES.reduce((n, a) => n + scores[a], 0);
-  const items = equipped.filter((i) => i.equipped).reduce((n, i) => n + itemPower(i, masteries), 0);
-  return { total: level + sum + items + sets.pp, level, scores: sum, items, sets: sets.pp };
+  const items = equipped.filter((i) => i.equipped).reduce((n, i) => n + itemPower(i, heroClassId), 0);
+  return { total: level + sum + items + sets.pp + spells.pp, level, scores: sum, items, sets: sets.pp, spells: spells.pp };
 }
 
 /** Puissance (PP) du héros. */
 export function heroPower(
   character: Pick<CharacterCore, 'level' | 'baseScores' | 'improvements' | 'abilityXp'>,
-  equipped: readonly Pick<InventoryItem, 'rarity' | 'level' | 'ability' | 'equipped'>[],
-  masteries: readonly AbilityId[] = [],
+  equipped: readonly Pick<InventoryItem, 'rarity' | 'level' | 'equipped' | 'classId'>[],
+  heroClassId?: string | null,
   sets: Pick<SetBonusTotals, 'pp'> = NO_SET_BONUS,
+  spells: Pick<SpellBonuses, 'pp'> = NO_SPELL_BONUS,
 ): number {
-  return heroPowerBreakdown(character, equipped, masteries, sets).total;
+  return heroPowerBreakdown(character, equipped, heroClassId, sets, spells).total;
 }
 
 // ───────────────────────── Expédition ─────────────────────────
@@ -196,10 +208,10 @@ export interface ExpeditionRates {
 }
 
 /** Rendements horaires : `or = 20 × (1 + PP/200) × (1 + INT/40)`, `fragments = 1 + PP/400`, tous deux × DEX et série. */
-export function expeditionRates(pp: number, scores: Pick<Record<AbilityId, number>, 'INT' | 'DEX'>, streak: number): ExpeditionRates {
+export function expeditionRates(pp: number, scores: Pick<Record<AbilityId, number>, 'INT' | 'DEX'>, streak: number, goldBonusPct = 0): ExpeditionRates {
   const speed = (1 + Math.max(0, scores.DEX) / EXPEDITION_DEX_DIV) * streakMultiplier(streak);
   return {
-    goldPerHour: EXPEDITION_GOLD_PER_HOUR * (1 + pp / EXPEDITION_GOLD_PP_DIV) * (1 + Math.max(0, scores.INT) / EXPEDITION_INT_DIV) * speed,
+    goldPerHour: EXPEDITION_GOLD_PER_HOUR * (1 + pp / EXPEDITION_GOLD_PP_DIV) * (1 + Math.max(0, scores.INT) / EXPEDITION_INT_DIV) * speed * (1 + Math.max(0, goldBonusPct) / 100),
     fragmentsPerHour: (1 + pp / EXPEDITION_FRAGMENT_PP_DIV) * speed,
   };
 }
@@ -221,10 +233,12 @@ export function expeditionYield(input: {
   scores: Pick<Record<AbilityId, number>, 'INT' | 'DEX'>;
   streak: number;
   elapsedMs: number;
+  /** Capacités : +% d'or (famille « gold ») */
+  goldBonusPct?: number;
 }): ExpeditionYield {
   const rawHours = Math.max(0, input.elapsedMs) / 3_600_000;
   const hours = Math.min(rawHours, EXPEDITION_CAP_HOURS);
-  const rates = expeditionRates(input.pp, input.scores, input.streak);
+  const rates = expeditionRates(input.pp, input.scores, input.streak, input.goldBonusPct ?? 0);
   return {
     ...rates,
     hours,
@@ -273,18 +287,27 @@ export function nextItemRarity(r: ItemRarity): ItemRarity | null {
 /**
  * Probabilités (en %) de rareté d'objet d'un coffre après décalage SAG : chaque palier de 10 points de SAG déplace 2 points
  * de la rareté la plus basse du tableau vers la plus haute, sans jamais dépasser la masse de la plus basse. La somme reste 100.
+ * `extraShift` : décalage supplémentaire en points de probabilité (capacités de chance de coffre).
  */
-export function adjustedOdds(chest: ChestRarity, sag: number): number[] {
+export function adjustedOdds(chest: ChestRarity, sag: number, extraShift = 0): number[] {
   const odds = [...CHEST_TABLE[chest].odds];
   const low = odds.findIndex((p) => p > 0);
   let high = odds.length - 1;
   while (high > 0 && odds[high] === 0) high--;
   if (low < 0 || low >= high) return odds;
-  const shift = Math.min(Math.floor(Math.max(0, sag) / SAG_SHIFT_STEP) * SAG_SHIFT_PCT, odds[low]);
+  const shift = Math.min(Math.floor(Math.max(0, sag) / SAG_SHIFT_STEP) * SAG_SHIFT_PCT + Math.max(0, extraShift), odds[low]);
   odds[low] -= shift;
   odds[high] += shift;
   return odds;
 }
+
+/** Part (en %) des coffres qui donnent une capacité plutôt qu'un objet, par rareté de coffre. Le coffre de bois n'en donne jamais. */
+export const SPELL_CHANCE: Record<ChestRarity, number> = { bois: 0, bronze: 15, argent: 22, or: 30, mythique: 40 };
+/** Contenu d'un objet : 70 % de la classe du joueur, 20 % universel, 10 % d'une autre classe. */
+export const LOOT_CLASS_SHARE = 70;
+export const LOOT_UNIVERSAL_SHARE = 20;
+/** Contenu d'une capacité (il n'y a pas de capacité universelle) : 80 % de la classe du joueur, 20 % d'une autre classe. */
+export const SPELL_CLASS_SHARE = 80;
 
 export interface ChestDrawInput {
   chest: ChestRarity;
@@ -294,11 +317,20 @@ export interface ChestDrawInput {
   /** Graine : profil + compteur d'ouvertures */
   seed: string;
   templates: readonly ItemDef[];
+  /** Capacités possibles (aucune : le coffre ne donne que des objets) */
+  spells?: readonly SpellDef[];
+  /** Classe du joueur (sans classe : tirage uniforme) */
+  classId?: string | null;
+  /** Capacités équipées : décalage de rareté supplémentaire, en points de probabilité */
+  chestShift?: number;
 }
 
 export interface ChestDraw {
   rarity: ItemRarity;
-  template: ItemDef;
+  /** Objet tiré (`null` quand le coffre donne une capacité) */
+  template: ItemDef | null;
+  /** Capacité tirée (`null` quand le coffre donne un objet) */
+  spell: SpellDef | null;
   fragments: number;
   gold: number;
   /** Compteurs de pitié après ce tirage */
@@ -307,12 +339,29 @@ export interface ChestDraw {
   guaranteed: 'epique' | 'legendaire' | null;
 }
 
-/** Ouvre un coffre : 1 objet (rareté tirée avec décalage SAG et pitié), des fragments, de l'or. Déterministe pour une graine. */
+/** Choisit dans `pool` un élément de la classe (`classShare` %), puis universel (`universalShare` %), sinon d'une autre classe. */
+function pickByClass<T extends { classId?: string | null }>(pool: readonly T[], rng: () => number, classId: string | null | undefined, classShare: number, universalShare: number): T | null {
+  if (!pool.length) return null;
+  if (!classId) return pool[Math.min(Math.floor(rng() * pool.length), pool.length - 1)];
+  const own = classId ? pool.filter((t) => t.classId === classId) : [];
+  const universal = pool.filter((t) => !t.classId);
+  const other = pool.filter((t) => !!t.classId && t.classId !== classId);
+  const roll = rng() * 100;
+  const order = roll < classShare ? [own, universal, other] : roll < classShare + universalShare ? [universal, other, own] : [other, universal, own];
+  const list = order.find((l) => l.length) ?? pool;
+  return list[Math.min(Math.floor(rng() * list.length), list.length - 1)];
+}
+
+/**
+ * Ouvre un coffre en deux temps : (1) la rareté (décalage SAG et capacités, pitié) ; (2) le type, objet d'équipement ou capacité
+ * (`SPELL_CHANCE` selon le coffre) ; (3) le contenu, 70 % de la classe / 20 % universel / 10 % d'une autre classe pour un objet,
+ * 80 % / 20 % pour une capacité. Déterministe pour une graine.
+ */
 export function drawChest(input: ChestDrawInput): ChestDraw {
   const { chest } = input;
   if (!input.templates.length) throw new Error('Aucun modèle d’objet');
   const rng = createRng(input.seed);
-  const odds = adjustedOdds(chest, input.sag);
+  const odds = adjustedOdds(chest, input.sag, input.chestShift ?? 0);
   let roll = rng() * 100;
   let idx = odds.length - 1;
   for (let i = 0; i < odds.length; i++) {
@@ -339,16 +388,29 @@ export function drawChest(input: ChestDrawInput): ChestDraw {
   }
   if (epicPity) pity[epicKey] = idx >= epicIdx ? 0 : (pity[epicKey] ?? 0) + 1;
   if (legPity) pity[legKey] = idx === legIdx ? 0 : (pity[legKey] ?? 0) + 1;
-  const template = input.templates[Math.min(Math.floor(rng() * input.templates.length), input.templates.length - 1)];
+  const rarity = ITEM_RARITIES[idx];
   const { fragments, gold } = CHEST_TABLE[chest];
-  return { rarity: ITEM_RARITIES[idx], template, fragments, gold, pity, guaranteed };
+  // Type : équipement ou capacité.
+  const typeRoll = rng() * 100;
+  const spellPool = (input.spells ?? []).filter((x) => x.rarity === rarity);
+  if (spellPool.length && typeRoll < SPELL_CHANCE[chest]) {
+    const spell = pickByClass(spellPool, rng, input.classId, SPELL_CLASS_SHARE, 0);
+    if (spell) return { rarity, template: null, spell, fragments, gold, pity, guaranteed };
+  }
+  const template = pickByClass(input.templates, rng, input.classId, LOOT_CLASS_SHARE, LOOT_UNIVERSAL_SHARE) ?? input.templates[0];
+  return { rarity, template, spell: null, fragments, gold, pity, guaranteed };
 }
 
-/** Tire le modèle d'un objet de fusion : un modèle de l'emplacement donné (déterministe pour une graine). */
-export function pickTemplateForSlot(templates: readonly ItemDef[], slot: EquipSlot, seed: string): ItemDef | null {
+/** Tire le modèle d'un objet de fusion : un modèle de l'emplacement donné, de préférence de la classe du joueur (déterministe pour une graine). */
+export function pickTemplateForSlot(templates: readonly ItemDef[], slot: EquipSlot, seed: string, classId?: string | null): ItemDef | null {
   const pool = templates.filter((t) => t.slot === slot);
   if (!pool.length) return null;
-  return pool[Math.min(Math.floor(createRng(`${seed}|forge`)() * pool.length), pool.length - 1)];
+  return pickByClass(pool, createRng(`${seed}|forge`), classId, LOOT_CLASS_SHARE, LOOT_UNIVERSAL_SHARE);
+}
+
+/** Fragments rendus par un doublon de capacité déjà au niveau maximal. */
+export function spellMaxFragments(rarity: ItemRarity): number {
+  return SPELL_MAX_FRAGMENTS[rarity];
 }
 
 // ───────────────────────── Équipement ─────────────────────────
@@ -408,6 +470,8 @@ export interface DungeonRunInput {
   /** Le boss n'a encore jamais été vaincu à ce palier : sa victoire donne un coffre */
   firstBossVictory: boolean;
   seed: string;
+  /** Capacités : +% de CON effective (famille « dungeon ») */
+  conBonusPct?: number;
 }
 
 export interface DungeonRunResult {
@@ -437,7 +501,8 @@ export function resolveDungeon(input: DungeonRunInput): DungeonRunResult {
   const { dungeon, pp, scores } = input;
   const tier = dungeon.tier;
   const rng = createRng(input.seed);
-  const survive = pp * (1 + Math.max(0, scores.CON) / DUNGEON_CON_DIV);
+  const con = Math.max(0, scores.CON) * (1 + Math.max(0, input.conBonusPct ?? 0) / 100);
+  const survive = pp * (1 + con / DUNGEON_CON_DIV);
   const damage = pp * (1 + Math.max(0, scores.FOR) / DUNGEON_FOR_DIV);
   const roomPowers = Array.from({ length: DUNGEON_ROOMS }, (_, i) => dungeonRoomPower(tier, i));
   const bossPower = dungeonBossPower(tier);
@@ -451,7 +516,7 @@ export function resolveDungeon(input: DungeonRunInput): DungeonRunResult {
       cleared++;
       log.push(`Salle ${i + 1} : tu ${pick(WIN_VERBS)} ${monster}.`);
     } else {
-      missing = Math.max(1, Math.ceil(roomPowers[i] / (1 + Math.max(0, scores.CON) / DUNGEON_CON_DIV) - pp));
+      missing = Math.max(1, Math.ceil(roomPowers[i] / (1 + con / DUNGEON_CON_DIV) - pp));
       log.push(`Salle ${i + 1} : ${monster} ${pick(LOSE_VERBS)}. Il te manque ${missing} PP.`);
       break;
     }

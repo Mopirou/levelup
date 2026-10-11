@@ -32,7 +32,7 @@ const U = 'user-1';
 let counter = 0;
 const hero = {
   name: 'Aldric',
-  classId: 'eclaireur',
+  classId: 'guerrier',
   scores: { FOR: 3, DEX: 3, CON: 3, INT: 3, SAG: 3, CHA: 3 },
   portraitId: 'p1',
   frameColor: '#2f5a47',

@@ -13,6 +13,7 @@ import type {
   QuestStatus,
   QuestTemplate,
   SettingsCore,
+  SpellKnown,
   TrackState,
 } from '../types';
 
@@ -26,6 +27,10 @@ export interface CharacterRecord extends CharacterCore, AdventureFields {
   motto: string;
   oath: string;
   titleEquipped: string | null;
+  /** « Ta classe a évolué » : à montrer une fois aux personnages migrés des anciennes classes */
+  classNotice?: boolean;
+  /** La reclassification gratuite a été utilisée */
+  classChanged?: boolean;
   /** Relances gratuites : date de jeu et nombre utilisé ce jour-là */
   rerollsDate: string | null;
   rerollsUsed: number;
@@ -170,6 +175,10 @@ export interface GameStore {
   deleteChests(userId: string, ids: string[]): Promise<void>;
   listDungeonProgress(userId: string): Promise<DungeonProgress[]>;
   saveDungeonProgress(userId: string, p: DungeonProgress): Promise<void>;
+  /** Capacités connues du joueur (V4, docs/CLASSES.md) : niveau 1 à 5 et emplacement du Grimoire (1 à 3, un seul sort par emplacement) */
+  listSpells(userId: string): Promise<SpellKnown[]>;
+  /** Crée ou met à jour une capacité connue (clé : joueur + capacité). */
+  saveSpell(userId: string, spell: SpellKnown): Promise<void>;
 
   // ───── Raids d'amis (V2). Données partagées entre joueurs : les méthodes prennent des identifiants explicites.
   /** Amis acceptés et non bloqués (même règle que `can_view_owner`) */

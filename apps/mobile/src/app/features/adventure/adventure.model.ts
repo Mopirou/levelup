@@ -4,6 +4,8 @@
  */
 import items from '@levelup/content/items.fr.json';
 import sets from '@levelup/content/sets.fr.json';
+import spells from '@levelup/content/spells.fr.json';
+import classes from '@levelup/content/classes.fr.json';
 import type { PortraitGear } from '../../shared/ui';
 import type { ChestRarity, EquipSlot, ItemView } from '../../core/api/types';
 
@@ -53,3 +55,40 @@ export function gearOf(items: readonly { slot: EquipSlot; templateId: string; ra
     return { slot: it.slot, glyph: info.glyph, rarity: it.rarity, label: `${SLOT_LABEL[it.slot]} : ${info.name}, ${ITEM_LABEL[it.rarity].toLowerCase()}` };
   });
 }
+
+// ───────────────────────── Grimoire et classes (V4, docs/CLASSES.md) ─────────────────────────
+
+interface SpellTemplate { id: string; name: string; glyph: string; blurb: string; classId: string; rarity: ItemRarity; family: string; ability: string }
+const SPELL_TEMPLATES = new Map<string, SpellTemplate>((spells as SpellTemplate[]).map((t) => [t.id, t]));
+
+/** Nom, glyphe et description d'une capacité (contenu statique `spells.fr.json`). */
+export function spellInfo(id: string): SpellTemplate {
+  return SPELL_TEMPLATES.get(id) ?? { id, name: 'Capacité mystérieuse', glyph: '📖', blurb: '', classId: '', rarity: 'commun', family: 'xp', ability: 'FOR' };
+}
+
+/** Toutes les capacités d'une classe (8), de la plus commune à la plus rare. */
+export function classSpells(classId: string): SpellTemplate[] {
+  return (spells as SpellTemplate[]).filter((s) => s.classId === classId);
+}
+
+interface ClassTemplate { id: string; name: string; icon: string }
+const CLASS_TEMPLATES = new Map<string, ClassTemplate>((classes as ClassTemplate[]).map((c) => [c.id, c]));
+
+/** Nom et icône d'une classe D&D (contenu statique `classes.fr.json`). */
+export function classInfo(id: string | null | undefined): ClassTemplate {
+  return (id ? CLASS_TEMPLATES.get(id) : undefined) ?? { id: id ?? '', name: 'Universel', icon: '🎒' };
+}
+
+export const FAMILY_LABEL: Record<string, string> = { xp: 'XP', stat: 'Score', raid: 'Raid', gold: 'Or', chest: 'Butin', dungeon: 'Donjon' };
+export const FAMILY_GLYPH: Record<string, string> = { xp: '📈', stat: '💪', raid: '🐉', gold: '🪙', chest: '🎁', dungeon: '🏰' };
+
+/** Rareté à partir de laquelle une capacité obtenue dans un coffre est annoncée en grand. */
+const ANNOUNCED: readonly ItemRarity[] = ['rare', 'epique', 'legendaire'];
+export const isBigSpell = (r: ItemRarity): boolean => ANNOUNCED.includes(r);
+
+/** Phrase d'ambiance d'une capacité obtenue (rare ou mieux). */
+export const SPELL_FLAVOR: Partial<Record<ItemRarity, string>> = {
+  rare: 'Un nouveau sort rejoint ton grimoire.',
+  epique: 'Une magie puissante répond à ton appel.',
+  legendaire: 'Les légendes parlent de ce pouvoir : il est à toi.',
+};
