@@ -17,7 +17,7 @@ export const routes: Routes = [
   { path: 'onboarding', canActivate: [onboardingGuard], loadComponent: () => import('./features/onboarding/onboarding.page').then((m) => m.OnboardingPage) },
   { path: 'i/:code', loadComponent: () => import('./features/invite/invite.page').then((m) => m.InvitePage) },
 
-  // Onglets : Taverne, Quêtes, Village, Héros, Chronique
+  // Onglets : Taverne, Quêtes, Village, Héros (profil + progression)
   {
     path: 'tabs',
     canActivate: [characterGuard],
@@ -29,7 +29,7 @@ export const routes: Routes = [
       { path: 'village', loadComponent: () => import('./features/village/village.page').then((m) => m.VillagePage) },
       { path: 'adventure', loadComponent: () => import('./features/adventure/adventure.page').then((m) => m.AdventurePage) },
       { path: 'hero', loadComponent: () => import('./features/hero/hero.page').then((m) => m.HeroPage) },
-      { path: 'chronicle', loadComponent: () => import('./features/chronicle/chronicle.page').then((m) => m.ChroniclePage) },
+      { path: 'chronicle', pathMatch: 'full', redirectTo: 'hero' },
     ],
   },
 

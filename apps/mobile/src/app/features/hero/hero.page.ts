@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { IonContent } from '@ionic/angular';
+import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular';
 import {
   ABILITIES,
   ABILITY_LABEL,
@@ -26,16 +26,19 @@ import { ModalComponent } from '../../shared/modal.component';
 import { fmt } from '../../shared/format';
 import { trackDef } from '../../shared/tracks';
 import { AdventureStore } from '../adventure/adventure.store';
+import { ChroniclePage } from '../chronicle/chronicle.page';
+import { StatsService } from '../../core/stats.service';
 import { renderSheetPng } from './sheet-image';
 
 const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
 @Component({
   selector: 'app-hero',
-  imports: [IonContent, PageHeaderComponent, PortraitComponent, BarComponent, RadarComponent, AbilityBadgeComponent, IconComponent, ModalComponent],
+  imports: [IonContent, IonRefresher, IonRefresherContent, ChroniclePage, PageHeaderComponent, PortraitComponent, BarComponent, RadarComponent, AbilityBadgeComponent, IconComponent, ModalComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content>
+      <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
       <lu-page-header eyebrow="Profil" icon="user-round" title="Ta progression">
         <div actions>
           <button type="button" class="lu-icon-btn" aria-label="Partager ma fiche" (click)="shareSheet()"><lu-icon name="share" [size]="17" /></button>
@@ -45,6 +48,14 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
       @if (c(); as ch) {
         <div class="lu-page">
+          <nav class="seg" role="tablist" aria-label="Profil">
+            <button type="button" role="tab" data-testid="seg-profile" [class.on]="view() === 'profile'" [attr.aria-selected]="view() === 'profile'" (click)="view.set('profile')">Fiche</button>
+            <button type="button" role="tab" data-testid="seg-history" [class.on]="view() === 'history'" [attr.aria-selected]="view() === 'history'" (click)="view.set('history')">Progression</button>
+          </nav>
+
+          @if (view() === 'history') {
+            <app-chronicle-view />
+          } @else {
           <!-- Identité -->
           <section class="lu-card ident" [class.legend]="game.level() >= 20">
             <div class="top">
@@ -208,6 +219,7 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
             </section>
           }
           <button type="button" class="lu-btn ghost" (click)="shareSheet()"><lu-icon name="download" [size]="17" /> Partager ma fiche (image)</button>
+          }
         </div>
       }
 
@@ -233,6 +245,9 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
     </ion-content>
   `,
   styles: `
+    .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 100px; background: var(--lu-surface-2); border: 1px solid var(--lu-border); }
+    .seg button { height: 36px; border: 0; border-radius: 100px; background: transparent; color: var(--lu-text-2); font: 600 13px var(--lu-font-body); cursor: pointer; }
+    .seg button.on { background: var(--lu-accent); color: var(--lu-accent-ink); font-weight: 700; }
     .ident { gap: 12px; }
     .ident.legend { border-color: var(--lu-gold-strong); box-shadow: 0 0 0 1px var(--lu-gold-strong), var(--lu-shadow); }
     .top { display: flex; gap: 16px; align-items: center; }
@@ -308,6 +323,8 @@ export class HeroPage {
   protected auth = inject(AuthService);
   protected adventure = inject(AdventureStore);
   private be = inject(BackendService);
+  private stats = inject(StatsService);
+  readonly view = signal<'profile' | 'history'>('profile');
   readonly fmt = fmt;
   readonly c = this.game.character;
   readonly order: AbilityId[] = ['CON', 'SAG', 'INT', 'CHA', 'DEX', 'FOR'];
@@ -412,6 +429,11 @@ export class HeroPage {
     } catch {
       /* hors ligne */
     }
+  }
+
+  async refresh(ev: CustomEvent): Promise<void> {
+    await Promise.all([this.stats.load(true), this.loadHistory()]);
+    (ev.target as HTMLIonRefresherElement).complete();
   }
 
   openAbility(a: AbilityId): void {

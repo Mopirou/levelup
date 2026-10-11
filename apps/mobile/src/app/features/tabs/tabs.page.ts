@@ -38,7 +38,6 @@ export class TabsPage implements OnInit {
     { tab: 'village', label: 'Amis', icon: 'users' },
     { tab: 'adventure', label: 'Aventure', icon: 'swords' },
     { tab: 'hero', label: 'Profil', icon: 'user-round' },
-    { tab: 'chronicle', label: 'Progression', icon: 'book-open' },
   ];
 
   ngOnInit(): void {

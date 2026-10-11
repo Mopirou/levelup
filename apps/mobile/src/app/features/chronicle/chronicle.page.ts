@@ -1,12 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { IonContent, IonRefresher, IonRefresherContent } from '@ionic/angular';
 import type { ChartConfiguration } from 'chart.js';
 import { ABILITIES, ABILITY_COLOR, ABILITY_LABEL, endOfIsoWeek, startOfIsoWeek, startOfMonth, type AbilityId } from '@levelup/engine';
 import { BackendService } from '../../core/backend.service';
 import { GameService } from '../../core/game.service';
 import { StatsService, type DayEntry } from '../../core/stats.service';
 import { UiService } from '../../core/ui.service';
-import { PageHeaderComponent, BarComponent, EmptyComponent } from '../../shared/ui';
+import { BarComponent, EmptyComponent } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
 import { ChartComponent, cssVar } from '../../shared/chart.component';
 import { RecapComponent } from '../../shared/recap.component';
@@ -17,15 +16,11 @@ const WEEK_LETTERS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 const IDLE_LINES = ['Aucune quête ce jour-là.', 'Journée sans activité.', 'Jour de pause.'];
 
 @Component({
-  selector: 'app-chronicle',
-  imports: [IonContent, IonRefresher, IonRefresherContent, PageHeaderComponent, BarComponent, EmptyComponent, IconComponent, ChartComponent, RecapComponent],
+  selector: 'app-chronicle-view',
+  imports: [BarComponent, EmptyComponent, IconComponent, ChartComponent, RecapComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <ion-content>
-      <ion-refresher slot="fixed" (ionRefresh)="refresh($event)"><ion-refresher-content /></ion-refresher>
-      <lu-page-header eyebrow="Historique" icon="book-open" title="Ta progression" />
-
-      <div class="lu-page">
+    <div class="chr">
         <nav class="summary" role="tablist" aria-label="Chapitres">
           <button type="button" role="tab" [class.on]="tab() === 'story'" [attr.aria-selected]="tab() === 'story'" (click)="tab.set('story')">Récit</button>
           <button type="button" role="tab" [class.on]="tab() === 'stats'" [attr.aria-selected]="tab() === 'stats'" (click)="tab.set('stats')">Statistiques</button>
@@ -167,14 +162,14 @@ const IDLE_LINES = ['Aucune quête ce jour-là.', 'Journée sans activité.', 'J
             </section>
           }
         }
-      </div>
+    </div>
 
-      @if (recap(); as r) {
-        <lu-recap [kind]="r.kind" [start]="r.start" [title]="r.title" [recap]="r.recap" (close)="recap.set(null)" />
-      }
-    </ion-content>
+    @if (recap(); as r) {
+      <lu-recap [kind]="r.kind" [start]="r.start" [title]="r.title" [recap]="r.recap" (close)="recap.set(null)" />
+    }
   `,
   styles: `
+    .chr { display: flex; flex-direction: column; gap: 24px; }
     .summary { display: flex; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--lu-border); }
     .summary button { height: 31px; padding: 0 14px; border-radius: 100px; border: 1px solid var(--lu-border); background: var(--lu-surface); color: var(--lu-text-2); font: 600 12px var(--lu-font-body); cursor: pointer; }
     .summary button.on { background: var(--lu-gold-strong); border-color: var(--lu-gold-strong); color: #1a1608; font-weight: 700; }
@@ -336,9 +331,5 @@ export class ChroniclePage {
   openRecap(kind: 'week' | 'month', start: string): void {
     const title = kind === 'week' ? this.stats.weekTitle(start) : new Date(`${start}T12:00:00`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
     this.recap.set({ kind, start, title, recap: this.stats.recap(kind, start) });
-  }
-  async refresh(ev: CustomEvent): Promise<void> {
-    await this.stats.load(true);
-    (ev.target as HTMLIonRefresherElement).complete();
   }
 }

@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { createHero } from './helpers';
 
-const PAGES = ['/tabs/tavern', '/tabs/quests', '/tracks', '/tabs/village', '/tabs/hero', '/tabs/chronicle', '/grimoire', '/trophies', '/settings', '/companions', '/messenger'];
+const PAGES = ['/tabs/tavern', '/tabs/quests', '/tracks', '/tabs/village', '/tabs/hero', '/grimoire', '/trophies', '/settings', '/companions', '/messenger'];
 
 async function audit(page: Page): Promise<string[]> {
   const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).disableRules(['region']).analyze();

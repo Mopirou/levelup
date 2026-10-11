@@ -7,7 +7,7 @@ test.skip(!process.env['CAPTURES'], 'captures sur demande');
 
 const OUT = process.env['CAPTURES_DIR'] ?? 'captures';
 const PAGES: [string, string][] = [
-  ['tavern', '/tabs/tavern'], ['quests', '/tabs/quests'], ['tracks', '/tracks'], ['village', '/tabs/village'], ['hero', '/tabs/hero'], ['chronicle', '/tabs/chronicle'],
+  ['tavern', '/tabs/tavern'], ['quests', '/tabs/quests'], ['tracks', '/tracks'], ['village', '/tabs/village'], ['hero', '/tabs/hero'],
   ['grimoire', '/grimoire'], ['forge', '/forge'], ['trophies', '/trophies'], ['settings', '/settings'], ['companions', '/companions'], ['messenger', '/messenger'], ['publish', '/publish'],
 ];
 
