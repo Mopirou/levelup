@@ -8,6 +8,7 @@ import { UiService } from '../../core/ui.service';
 import type { CompanionSheet, FeedPost } from '../../core/api/types';
 import { PageHeaderComponent, PortraitComponent, RadarComponent, AvatarComponent, AbilityBadgeComponent } from '../../shared/ui';
 import { IconComponent } from '../../shared/icon.component';
+import { gearOf } from '../adventure/adventure.model';
 import { PostCardComponent } from '../../shared/post-card.component';
 
 /** La Fiche d'un ami : lecture seule. L’engagement et le journal ne sont jamais visibles. */
@@ -26,7 +27,8 @@ import { PostCardComponent } from '../../shared/post-card.component';
         <div class="lu-page">
           @if (s.character; as ch) {
             <section class="lu-card ident">
-              <lu-portrait [id]="ch.portraitId" [size]="92" [frame]="ch.frameColor" />
+              <lu-portrait [id]="ch.portraitId" [size]="92" [frame]="ch.frameColor" [gear]="gear()" [frameStyle]="s.gear?.frameStyle" />
+              @if (s.gear; as g) { <span class="lu-chip" data-testid="companion-pp">⚡ {{ g.power }} PP</span> }
               <h2>{{ ch.name }}</h2>
               <p class="small muted">{{ className() }}{{ pathName() ? ' · ' + pathName() : '' }} · Niv. {{ ch.level }}</p>
               @if (ch.titleEquipped) { <span class="lu-chip gold">{{ ch.titleEquipped }}</span> }
@@ -92,6 +94,8 @@ export class CompanionProfilePage {
     const ch = this.sheet()?.character;
     return ch ? abilityScores({ baseScores: ch.baseScores, improvements: ch.improvements, abilityXp: ch.abilityXp }) : emptyAbilityRecord(MIN_SCORE);
   });
+  /** Équipement du compagnon sur l'anneau du portrait (visible pour un ami seulement) */
+  readonly gear = computed(() => gearOf((this.sheet()?.gear?.items ?? []).map((i) => ({ slot: i.slot, templateId: i.templateId, rarity: i.rarity }))));
   readonly className = computed(() => CLASSES.find((c) => c.id === this.sheet()?.character?.classId)?.name ?? '');
   readonly pathName = computed(() => CLASSES.flatMap((c) => c.paths).find((p) => p.id === this.sheet()?.character?.pathId)?.name ?? '');
   readonly trophies = computed(() => (this.sheet()?.trophies ?? []).map((id) => ACHIEVEMENTS.find((a) => a.id === id)).filter((a): a is NonNullable<typeof a> => !!a).slice(0, 12));

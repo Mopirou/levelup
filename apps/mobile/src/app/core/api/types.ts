@@ -1,6 +1,28 @@
 import type {
   AbilityId,
+  AdventureState,
   CharacterRecord,
+  Chest,
+  ChestOpening,
+  ChestRarity,
+  DungeonEntry,
+  DungeonRunResult,
+  DungeonProgress,
+  EquipSlot,
+  ExpeditionClaim,
+  ItemView,
+  RaidHit,
+  RaidInvitationView,
+  RaidMemberView,
+  RaidResult,
+  RaidRules,
+  RaidState,
+  RaidStatus,
+  RaidTeamView,
+  ItemRarity,
+  SeasonResultView,
+  SeasonState,
+  SetProgress,
   CompleteRequest,
   CompleteResponse,
   CreateCharacterInput,
@@ -21,6 +43,9 @@ import type {
 } from '@levelup/engine';
 
 export type { CompleteRequest, CompleteResponse, CreateCharacterInput, GameError, ImprovementChoice };
+export type { AdventureState, Chest, ChestOpening, ChestRarity, DungeonEntry, DungeonProgress, DungeonRunResult, EquipSlot, ExpeditionClaim, ItemView };
+export type { SeasonResultView, SeasonState, SetProgress };
+export type { RaidHit, RaidInvitationView, RaidMemberView, RaidResult, RaidRules, RaidState, RaidStatus, RaidTeamView };
 
 export interface AuthUser {
   id: string;
@@ -95,6 +120,40 @@ export interface GameApi {
   trackPause(trackId: string, paused: boolean): Promise<CommandResult<{ track: TrackState }>>;
   trackStop(trackId: string): Promise<CommandResult<{ trackId: string }>>;
   achievementProgress(): Promise<AchievementProgress[]>;
+
+  // Aventure : puissance, expédition, coffres, équipement, donjons (voir docs/DONJONS.md)
+  /** État complet : PP, expédition, coffres fermés, inventaire, ressources, plafond d'ouverture */
+  adventureState(): Promise<CommandResult<{ state: AdventureState; character: CharacterRecord }>>;
+  /** Réclame or / fragments (et parfois une Clé) et relance l'expédition */
+  expeditionClaim(): Promise<CommandResult<{ claim: ExpeditionClaim; character: CharacterRecord }>>;
+  /** Ouvre un coffre (2 par jour de jeu au maximum) */
+  chestOpen(chestId: string): Promise<CommandResult<{ opening: ChestOpening; character: CharacterRecord }>>;
+  /** 3 coffres fermés de même rareté -> 1 coffre de rareté supérieure */
+  chestMerge(rarity: ChestRarity): Promise<CommandResult<{ chest: Chest }>>;
+  itemEquip(itemId: string): Promise<CommandResult<{ item: ItemView; replaced: string | null }>>;
+  itemUnequip(slot: EquipSlot): Promise<CommandResult<{ item: ItemView }>>;
+  itemUpgrade(itemId: string): Promise<CommandResult<{ item: ItemView; character: CharacterRecord }>>;
+  /** 3 objets non équipés de même rareté -> 1 objet de rareté supérieure */
+  itemMerge(itemIds: string[]): Promise<CommandResult<{ item: ItemView }>>;
+  itemDismantle(itemId: string): Promise<CommandResult<{ fragments: number; character: CharacterRecord }>>;
+  dungeonList(): Promise<CommandResult<{ dungeons: DungeonEntry[]; keys: number; maxKeys: number; power: number }>>;
+  /** Consomme 1 Clé et résout la run côté serveur */
+  dungeonRun(dungeonId: string): Promise<CommandResult<{ result: DungeonRunResult; progress: DungeonProgress; chest: Chest | null; character: CharacterRecord }>>;
+  // Raids d'amis (V2, voir docs/DONJONS.md §8). Chaque commande renvoie l'état frais ; le coup du jour est joué à la lecture.
+  /** Boss de la semaine, mon équipe, invitations reçues ; applique le coup du jour et clôt les raids dus */
+  raidState(): Promise<CommandResult<{ state: RaidState }>>;
+  /** Crée l'équipe de la semaine (le créateur en est le chef) */
+  raidCreate(): Promise<CommandResult<{ state: RaidState }>>;
+  /** Le chef invite un ami accepté (une notification par invitation) */
+  raidInvite(profileId: string): Promise<CommandResult<{ state: RaidState }>>;
+  /** Accepte une invitation de la semaine */
+  raidJoin(teamId: string): Promise<CommandResult<{ state: RaidState }>>;
+  /** Quitte l'équipe de la semaine, ou refuse l'invitation `teamId` */
+  raidLeave(teamId?: string): Promise<CommandResult<{ state: RaidState }>>;
+  /** +5 % de dégâts aujourd'hui pour un coéquipier (un encouragement par ami et par jour) */
+  raidEncourage(profileId: string): Promise<CommandResult<{ state: RaidState }>>;
+  /** Saison en cours : jours restants, mon rang, la récompense en jeu ; évalue les saisons terminées */
+  seasonState(): Promise<CommandResult<{ state: SeasonState; character: CharacterRecord }>>;
   resetAdventure(): Promise<void>;
 
   // Écritures directes (autorisées par RLS)
@@ -207,6 +266,27 @@ export interface NewPost {
   media: { blob: Blob; ext: 'jpg' | 'webp'; width: number; height: number; alt?: string }[];
 }
 
+/** Une ligne du classement de saison (puissance entre amis) */
+export interface SeasonRow {
+  profileId: string;
+  username: string;
+  name: string;
+  level: number;
+  classId: string;
+  portraitId: string;
+  frameColor: string;
+  /** Cadre cosmétique de fin de saison, `S1:or` */
+  frameStyle: string | null;
+  power: number;
+}
+
+/** Équipement visible sur la fiche d'un compagnon (soi-même ou ami non bloqué) */
+export interface ProfileGear {
+  power: number;
+  frameStyle: string | null;
+  items: { slot: EquipSlot; templateId: string; rarity: ItemRarity; level: number }[];
+}
+
 export interface LeaderRow {
   profileId: string;
   username: string;
@@ -244,6 +324,8 @@ export interface CompanionSheet {
     abilityXp: Record<AbilityId, number>;
   } | null;
   trophies: string[];
+  /** Équipement et puissance, quand le compagnon est un ami */
+  gear?: ProfileGear | null;
 }
 
 export interface SocialApi {
@@ -274,6 +356,10 @@ export interface SocialApi {
   deleteComment(commentId: string): Promise<void>;
   report(target: 'post' | 'comment' | 'profile', id: string, reason: string): Promise<void>;
   leaderboard(): Promise<LeaderRow[]>;
+  /** Classement de puissance de la saison `season` (`S1`…) entre moi et mes amis qui acceptent le classement */
+  seasonLeaderboard(season: string): Promise<SeasonRow[]>;
+  /** Les objets équipés et la puissance d'un compagnon (null si ce n'est pas un ami) */
+  profileGear(username: string): Promise<ProfileGear | null>;
   /** Abonnement temps réel : retourne une fonction de désinscription */
   subscribe(handlers: { onFeed?: () => void; onNotification?: () => void; onRequest?: () => void }): () => void;
 

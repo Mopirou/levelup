@@ -1,0 +1,444 @@
+[
+  {
+    "id": "dj-randonnee",
+    "theme": "randonnee",
+    "name": "Sentier des Brumes",
+    "glyph": "🥾",
+    "blurb": "Sentier des Brumes met à l’épreuve ta discipline en randonnée.",
+    "tier": 1,
+    "unlockLevel": 3,
+    "rooms": [
+      "un Corbeau moqueur",
+      "une Ronce vorace",
+      "un Sanglier boueux",
+      "un Loup des éboulis",
+      "un Esprit de la brume"
+    ],
+    "boss": "le Géant des Cimes"
+  },
+  {
+    "id": "dj-danse",
+    "theme": "danse",
+    "name": "Salle des Miroirs",
+    "glyph": "💃",
+    "blurb": "Salle des Miroirs met à l’épreuve ta discipline en danse.",
+    "tier": 1,
+    "unlockLevel": 3,
+    "rooms": [
+      "un Valet maladroit",
+      "une Marionnette folle",
+      "un Cavalier sans visage",
+      "une Danseuse fantôme",
+      "un Maître de ballet spectral"
+    ],
+    "boss": "la Reine du Bal Maudit"
+  },
+  {
+    "id": "dj-yoga",
+    "theme": "yoga",
+    "name": "Temple des Souffles",
+    "glyph": "🧘",
+    "blurb": "Temple des Souffles met à l’épreuve ta discipline en yoga.",
+    "tier": 1,
+    "unlockLevel": 3,
+    "rooms": [
+      "un Moineau agité",
+      "une Pensée parasite",
+      "un Singe bavard",
+      "un Gardien du seuil",
+      "un Serpent d’orage"
+    ],
+    "boss": "le Dragon du Lotus"
+  },
+  {
+    "id": "dj-cuisine",
+    "theme": "cuisine",
+    "name": "Cuisines Infernales",
+    "glyph": "🍳",
+    "blurb": "Cuisines Infernales met à l’épreuve ta discipline en cuisine.",
+    "tier": 1,
+    "unlockLevel": 3,
+    "rooms": [
+      "un Rat de cave",
+      "un Couteau volant",
+      "une Soupe vivante",
+      "un Marmiton rancunier",
+      "un Four hurlant"
+    ],
+    "boss": "le Chef des Casseroles"
+  },
+  {
+    "id": "dj-mobilite",
+    "theme": "mobilite",
+    "name": "Gorges des Raideurs",
+    "glyph": "🤸",
+    "blurb": "Gorges des Raideurs met à l’épreuve ta discipline en mobilité et stretching.",
+    "tier": 2,
+    "unlockLevel": 6,
+    "rooms": [
+      "une Poulie grinçante",
+      "un Nœud de muscles",
+      "un Golem de rouille",
+      "un Mur de courbatures",
+      "une Chimère contractée"
+    ],
+    "boss": "le Titan Rouillé"
+  },
+  {
+    "id": "dj-nutrition",
+    "theme": "nutrition",
+    "name": "Jardins Gloutons",
+    "glyph": "🥗",
+    "blurb": "Jardins Gloutons met à l’épreuve ta discipline en nutrition et santé.",
+    "tier": 2,
+    "unlockLevel": 6,
+    "rooms": [
+      "un Pigeon pillard",
+      "une Carotte mutante",
+      "un Gobelin sucré",
+      "une Grande Faim",
+      "un Spectre du grignotage"
+    ],
+    "boss": "l’Ogre du Buffet"
+  },
+  {
+    "id": "dj-sommeil",
+    "theme": "sommeil",
+    "name": "Royaume des Rêves",
+    "glyph": "🌙",
+    "blurb": "Royaume des Rêves met à l’épreuve ta discipline en sommeil et récupération.",
+    "tier": 2,
+    "unlockLevel": 6,
+    "rooms": [
+      "une Chauve-souris insomniaque",
+      "un Cauchemar tapi",
+      "un Lutin des soupirs",
+      "une Horloge affolée",
+      "un Spectre des écrans"
+    ],
+    "boss": "le Marchand d’Insomnies"
+  },
+  {
+    "id": "dj-botanique",
+    "theme": "botanique",
+    "name": "Forêt des Racines",
+    "glyph": "🌿",
+    "blurb": "Forêt des Racines met à l’épreuve ta discipline en botanique.",
+    "tier": 2,
+    "unlockLevel": 6,
+    "rooms": [
+      "un Pissenlit rebelle",
+      "une Liane étrangleuse",
+      "un Champignon hargneux",
+      "un Loup-garou des fougères",
+      "une Dryade furieuse"
+    ],
+    "boss": "l’Arbre-Monde"
+  },
+  {
+    "id": "dj-course",
+    "theme": "course",
+    "name": "Piste des Vents",
+    "glyph": "🏃",
+    "blurb": "Piste des Vents met à l’épreuve ta discipline en course à pied.",
+    "tier": 3,
+    "unlockLevel": 9,
+    "rooms": [
+      "un Lièvre arrogant",
+      "un Lévrier de brume",
+      "un Centaure essoufflé",
+      "une Harpie du dernier kilomètre",
+      "un Mur invisible"
+    ],
+    "boss": "le Cerbère du Marathon"
+  },
+  {
+    "id": "dj-dessin",
+    "theme": "dessin",
+    "name": "Atelier des Teintes",
+    "glyph": "🎨",
+    "blurb": "Atelier des Teintes met à l’épreuve ta discipline en dessin et peinture.",
+    "tier": 3,
+    "unlockLevel": 9,
+    "rooms": [
+      "une Tache rebelle",
+      "un Pinceau enragé",
+      "un Croquis vivant",
+      "un Golem de fusain",
+      "un Spectre de la toile blanche"
+    ],
+    "boss": "le Peintre Sans Visage"
+  },
+  {
+    "id": "dj-musique",
+    "theme": "musique",
+    "name": "Salle des Échos",
+    "glyph": "🎵",
+    "blurb": "Salle des Échos met à l’épreuve ta discipline en musique.",
+    "tier": 3,
+    "unlockLevel": 9,
+    "rooms": [
+      "un Diapason fou",
+      "une Corde vengeresse",
+      "un Tambour des profondeurs",
+      "une Sirène désaccordée",
+      "un Barde sans âme"
+    ],
+    "boss": "le Chef d’Orchestre Fantôme"
+  },
+  {
+    "id": "dj-lecture-ecriture",
+    "theme": "lecture-ecriture",
+    "name": "Bibliothèque Interdite",
+    "glyph": "📚",
+    "blurb": "Bibliothèque Interdite met à l’épreuve ta discipline en lecture et écriture.",
+    "tier": 3,
+    "unlockLevel": 9,
+    "rooms": [
+      "un Ver de papier",
+      "une Page blanche hantée",
+      "un Grimoire mordeur",
+      "un Scribe fantôme",
+      "un Gardien des index"
+    ],
+    "boss": "le Grand Censeur"
+  },
+  {
+    "id": "dj-pilates",
+    "theme": "pilates",
+    "name": "Studio des Équilibres",
+    "glyph": "⚖️",
+    "blurb": "Studio des Équilibres met à l’épreuve ta discipline en pilates.",
+    "tier": 4,
+    "unlockLevel": 12,
+    "rooms": [
+      "un Tapis glissant",
+      "un Ballon rebelle",
+      "un Ressort affolé",
+      "un Gardien du centre",
+      "un Spectre de la posture"
+    ],
+    "boss": "le Funambule Noir"
+  },
+  {
+    "id": "dj-natation",
+    "theme": "natation",
+    "name": "Grottes Immergées",
+    "glyph": "🏊",
+    "blurb": "Grottes Immergées met à l’épreuve ta discipline en natation.",
+    "tier": 4,
+    "unlockLevel": 12,
+    "rooms": [
+      "une Méduse nerveuse",
+      "un Crabe pinçant",
+      "une Murène sournoise",
+      "un Banc de piranhas",
+      "une Sirène des abysses"
+    ],
+    "boss": "le Kraken des Profondeurs"
+  },
+  {
+    "id": "dj-cyclisme",
+    "theme": "cyclisme",
+    "name": "Col des Géants",
+    "glyph": "🚴",
+    "blurb": "Col des Géants met à l’épreuve ta discipline en cyclisme.",
+    "tier": 4,
+    "unlockLevel": 12,
+    "rooms": [
+      "un Chien de ferme hargneux",
+      "un Virage traître",
+      "un Vent de face",
+      "un Cyclope des lacets",
+      "un Spectre du brouillard"
+    ],
+    "boss": "le Dragon du Col Maudit"
+  },
+  {
+    "id": "dj-langues",
+    "theme": "langues",
+    "name": "Tour de Babel",
+    "glyph": "🗣️",
+    "blurb": "Tour de Babel met à l’épreuve ta discipline en langues.",
+    "tier": 4,
+    "unlockLevel": 12,
+    "rooms": [
+      "un Perroquet malicieux",
+      "un Faux-ami sournois",
+      "un Verbe irrégulier",
+      "un Golem de grammaire",
+      "un Sphinx des conjugaisons"
+    ],
+    "boss": "le Seigneur des Idiomes"
+  },
+  {
+    "id": "dj-meditation",
+    "theme": "meditation",
+    "name": "Montagne du Silence",
+    "glyph": "🏔️",
+    "blurb": "Montagne du Silence met à l’épreuve ta discipline en méditation et respiration.",
+    "tier": 5,
+    "unlockLevel": 15,
+    "rooms": [
+      "un Souffle volage",
+      "une Pensée envahissante",
+      "un Moine bavard",
+      "un Écho tenace",
+      "un Fantôme d’inquiétude"
+    ],
+    "boss": "l’Ermite du Vide"
+  },
+  {
+    "id": "dj-bricolage",
+    "theme": "bricolage",
+    "name": "Forge Oubliée",
+    "glyph": "🔧",
+    "blurb": "Forge Oubliée met à l’épreuve ta discipline en bricolage et artisanat.",
+    "tier": 5,
+    "unlockLevel": 15,
+    "rooms": [
+      "un Clou rebelle",
+      "une Scie dentue",
+      "un Étau vorace",
+      "un Automate détraqué",
+      "un Marteau-pilon"
+    ],
+    "boss": "le Colosse de Rouille"
+  },
+  {
+    "id": "dj-entraide",
+    "theme": "entraide",
+    "name": "Village Assiégé",
+    "glyph": "🤝",
+    "blurb": "Village Assiégé met à l’épreuve ta discipline en entraide et bénévolat.",
+    "tier": 5,
+    "unlockLevel": 15,
+    "rooms": [
+      "un Brigand égoïste",
+      "une Tempête de misère",
+      "un Corbeau du doute",
+      "un Garde sourd",
+      "un Spectre de solitude"
+    ],
+    "boss": "le Seigneur de l’Indifférence"
+  },
+  {
+    "id": "dj-strategie",
+    "theme": "strategie",
+    "name": "Échiquier Géant",
+    "glyph": "♟️",
+    "blurb": "Échiquier Géant met à l’épreuve ta discipline en jeux de stratégie.",
+    "tier": 5,
+    "unlockLevel": 15,
+    "rooms": [
+      "un Pion hargneux",
+      "un Cavalier piégeux",
+      "un Fou retors",
+      "une Tour implacable",
+      "une Dame cruelle"
+    ],
+    "boss": "le Roi Noir"
+  },
+  {
+    "id": "dj-theatre",
+    "theme": "theatre",
+    "name": "Théâtre des Ombres",
+    "glyph": "🎭",
+    "blurb": "Théâtre des Ombres met à l’épreuve ta discipline en théâtre et prise de parole.",
+    "tier": 6,
+    "unlockLevel": 18,
+    "rooms": [
+      "un Trac dévorant",
+      "un Accessoire hanté",
+      "un Critique mordant",
+      "un Fantôme de l’opéra",
+      "une Voix du public"
+    ],
+    "boss": "le Souffleur Maudit"
+  },
+  {
+    "id": "dj-culture",
+    "theme": "culture",
+    "name": "Musée des Âges",
+    "glyph": "🏛️",
+    "blurb": "Musée des Âges met à l’épreuve ta discipline en culture générale.",
+    "tier": 6,
+    "unlockLevel": 18,
+    "rooms": [
+      "une Statue sceptique",
+      "une Momie érudite",
+      "un Vase maudit",
+      "un Gardien de fresques",
+      "un Chevalier d’armure vide"
+    ],
+    "boss": "le Conservateur Éternel"
+  },
+  {
+    "id": "dj-escalade",
+    "theme": "escalade",
+    "name": "Falaise du Vertige",
+    "glyph": "🧗",
+    "blurb": "Falaise du Vertige met à l’épreuve ta discipline en escalade.",
+    "tier": 6,
+    "unlockLevel": 18,
+    "rooms": [
+      "un Rocher branlant",
+      "une Chauve-souris des fissures",
+      "un Aigle jaloux",
+      "un Vertige rampant",
+      "un Éboulement vivant"
+    ],
+    "boss": "le Gardien du Sommet"
+  },
+  {
+    "id": "dj-programmation",
+    "theme": "programmation",
+    "name": "Labyrinthe du Code",
+    "glyph": "💻",
+    "blurb": "Labyrinthe du Code met à l’épreuve ta discipline en programmation.",
+    "tier": 6,
+    "unlockLevel": 18,
+    "rooms": [
+      "un Point-virgule manquant",
+      "une Boucle infinie",
+      "un Gobelin des dépendances",
+      "un Golem de spaghetti",
+      "un Démon de la production"
+    ],
+    "boss": "le Bug Originel"
+  },
+  {
+    "id": "dj-musculation",
+    "theme": "musculation",
+    "name": "Arène de Fonte",
+    "glyph": "🏋️",
+    "blurb": "Arène de Fonte met à l’épreuve ta discipline en musculation.",
+    "tier": 7,
+    "unlockLevel": 20,
+    "rooms": [
+      "un Haltère fou",
+      "un Sac de sable vivant",
+      "un Golem de plaques",
+      "un Minotaure du squat",
+      "un Titan de barres"
+    ],
+    "boss": "le Colosse de Fonte"
+  },
+  {
+    "id": "dj-arts-martiaux",
+    "theme": "arts-martiaux",
+    "name": "Dojo des Cent Combats",
+    "glyph": "🥋",
+    "blurb": "Dojo des Cent Combats met à l’épreuve ta discipline en arts martiaux.",
+    "tier": 7,
+    "unlockLevel": 20,
+    "rooms": [
+      "un Disciple fougueux",
+      "un Ninja des ombres",
+      "un Moine guerrier",
+      "un Samouraï fantôme",
+      "un Dragon de jade"
+    ],
+    "boss": "le Maître Sans Nom"
+  }
+]

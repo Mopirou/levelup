@@ -11,7 +11,26 @@ import {
   achievementProgress,
   acceptQuest,
   chooseImprovement,
+  claimExpedition,
+  createRaidTeam,
+  encourageRaid,
+  getRaidState,
+  inviteToRaid,
+  joinRaidTeam,
+  leaveRaidTeam,
+  raidMaxHp,
   completeQuestAction,
+  dismantleItem,
+  equipItem,
+  getAdventureState,
+  getSeasonState,
+  listDungeons,
+  mergeChests,
+  mergeItems,
+  openChest,
+  runDungeon,
+  unequipSlot,
+  upgradeItem,
   createCharacter,
   declareRest,
   ensureQuests,
@@ -100,7 +119,7 @@ const complete = (s: ReturnType<typeof setup>, q: QuestInstance, extra: Record<s
 beforeAll(async () => {
   pg = await PGlite.create({ extensions: { citext, pgcrypto } });
   await pg.exec(PLATFORM);
-  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql', '20261009000002_interests_and_tuning.sql', '20261009000003_rescale_base_scores.sql', '20261010000001_quest_runs.sql', '20261011000001_tracks.sql', '20261011000002_free_quest_default.sql']) await pg.exec(read(`migrations/${f}`));
+  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql', '20261009000002_interests_and_tuning.sql', '20261009000003_rescale_base_scores.sql', '20261010000001_quest_runs.sql', '20261011000001_tracks.sql', '20261011000002_free_quest_default.sql', '20261012000001_adventure.sql', '20261013000001_raids.sql', '20261014000001_seasons.sql']) await pg.exec(read(`migrations/${f}`));
   await pg.exec(read('seed.sql'));
   await pg.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'a@ex.fr', '{"username":"aldric","birth_year":1994}')`, [U]);
 }, 120_000);
@@ -449,5 +468,377 @@ describe('parcours de discipline sur le vrai schéma', () => {
     expect(await s.store.getInstance(U, theirs.id)).toBeNull();
     expect(await trackRows()).toEqual([]);
     expect(await stopTrack(s.ctx, U, { trackId: def.id })).toMatchObject({ ok: false, error: 'not-found' });
+  });
+});
+
+describe('aventure sur le vrai schéma (coffres, équipement, donjons, expédition)', () => {
+  const V = '00000000-0000-0000-0000-0000000000b2';
+  const at = (day: number, hour = 9) => `2026-10-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:00:00+02:00`;
+  const rows = async (sql: string, p: unknown[] = []) => (await pg.query(sql, p)).rows as any[];
+
+  const mk = () => {
+    let nowMs = Date.parse(at(12));
+    const store = new SupabaseStore(fakeSupabase(pg));
+    const ctx: ServerContext = { store: store as never, now: () => nowMs, uuid: () => crypto.randomUUID() };
+    return { store: store as any, ctx, setNow: (iso: string) => (nowMs = Date.parse(iso)) };
+  };
+  const chestOf = (rarity: string, key: string): any => ({ id: crypto.randomUUID(), rarity, source: 'quest', sourceKey: key, instanceId: null, createdAt: new Date().toISOString(), openedAt: null });
+  const itemOf = (slot: string, rarity = 'rare', over: object = {}): any => ({ id: crypto.randomUUID(), templateId: 'epee-du-sentier', rarity, slot, ability: 'FOR', level: 0, equipped: false, createdAt: new Date().toISOString(), ...over });
+
+  beforeAll(async () => {
+    await pg.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'v@ex.fr', '{"username":"vaillant","birth_year":1990}')`, [V]);
+  });
+
+  it('le personnage est créé avec l’expédition en cours et les ressources à zéro', async () => {
+    const s = mk();
+    expect((await createCharacter(s.ctx, V, input)).ok).toBe(true);
+    const [c] = await rows(`select gold, fragments, keys, chest_pity, chest_opens_today, expedition_started_at from characters where profile_id = $1`, [V]);
+    expect(c).toMatchObject({ gold: 0, fragments: 0, keys: 0, chest_pity: {}, chest_opens_today: 0 });
+    expect(new Date(c.expedition_started_at).toISOString()).toBe(new Date(Date.parse(at(12))).toISOString());
+    const back = (await s.store.getCharacter(V))!;
+    expect(back).toMatchObject({ gold: 0, keys: 0, chestPity: {}, chestOpensDate: null });
+    expect(back.expeditionStartedAt).toMatch(/^2026-10-12T0[57]:00:00/);
+  });
+
+  it('la quête du jour d’un parcours donne un coffre idempotent, annulable tant qu’il est fermé', async () => {
+    const s = mk();
+    expect((await startTrack(s.ctx, V, { trackId: def.id })).ok).toBe(true);
+    const q = (await s.store.listInstances(V, { period: 'daily' })).find((i: QuestInstance) => i.origin === 'track')!;
+    const v = q.snapshot.validation;
+    const done = await completeQuestAction(s.ctx, V, {
+      instanceId: q.id,
+      useInspiration: false,
+      progress: v.type === 'counter' ? v.target : v.type === 'timer' ? v.minutes : undefined,
+      stepsDone: v.type === 'steps' ? v.steps.map(() => true) : undefined,
+      journalText: v.type === 'journal' ? 'x'.repeat(60) : undefined,
+    });
+    expect(done.ok && done.data.chests).toHaveLength(1);
+    const [row] = await rows(`select rarity, source, source_key, instance_id, opened_at from chests where profile_id = $1`, [V]);
+    expect(row).toMatchObject({ rarity: 'bois', source: 'quest', source_key: '2026-10-12', instance_id: q.id, opened_at: null });
+    // idempotence : un second coffre pour la même source et la même clé est refusé sans erreur
+    expect(await s.store.insertChest(V, chestOf('or', '2026-10-12'))).toBe(false);
+    expect((await rows(`select count(*)::int n from chests where profile_id = $1`, [V]))[0].n).toBe(1);
+    // annulation : le coffre fermé disparaît
+    expect((await undoQuest(s.ctx, V, q.id)).ok).toBe(true);
+    expect((await rows(`select count(*)::int n from chests where profile_id = $1`, [V]))[0].n).toBe(0);
+  });
+
+  it('ouvre au plus 2 coffres par jour de jeu (plafond écrit en base), repart le lendemain', async () => {
+    const s = mk();
+    const cs = [chestOf('bois', 'a'), chestOf('bronze', 'b'), chestOf('argent', 'c')];
+    for (const c of cs) expect(await s.store.insertChest(V, c)).toBe(true);
+    expect((await openChest(s.ctx, V, { chestId: cs[0].id })).ok).toBe(true);
+    expect((await openChest(s.ctx, V, { chestId: cs[1].id })).ok).toBe(true);
+    expect(await openChest(s.ctx, V, { chestId: cs[2].id })).toMatchObject({ ok: false, error: 'daily-cap' });
+    const [c] = await rows(`select gold, fragments, chest_opens_today, chest_opens_date::text d, chest_pity from characters where profile_id = $1`, [V]);
+    expect(c).toMatchObject({ gold: 200, fragments: 20, chest_opens_today: 2, d: '2026-10-12' });
+    expect((await rows(`select count(*)::int n from inventory_items where profile_id = $1`, [V]))[0].n).toBe(2);
+    expect((await rows(`select count(*)::int n from chests where profile_id = $1 and opened_at is not null`, [V]))[0].n).toBe(2);
+    // un coffre ouvert ne se rouvre pas
+    expect(await s.store.markChestOpened(V, cs[0].id, new Date().toISOString())).toBe(false);
+    s.setNow(at(13));
+    expect((await openChest(s.ctx, V, { chestId: cs[2].id })).ok).toBe(true);
+    expect((await rows(`select chest_opens_today n from characters where profile_id = $1`, [V]))[0].n).toBe(1);
+    await pg.query(`delete from inventory_items where profile_id = $1`, [V]);
+  });
+
+  it('fusion de coffres : les 3 sont consommés (clé gardée), 1 coffre supérieur est créé', async () => {
+    const s = mk();
+    for (const k of ['m1', 'm2', 'm3']) await s.store.insertChest(V, chestOf('or', k));
+    const r = await mergeChests(s.ctx, V, { rarity: 'or' });
+    expect(r.ok && r.chest.rarity).toBe('mythique');
+    expect(await rows(`select count(*)::int n from chests where profile_id = $1 and rarity = 'or' and opened_at is not null`, [V])).toEqual([{ n: 3 }]);
+    expect(await rows(`select source, rarity, opened_at from chests where profile_id = $1 and source = 'merge'`, [V])).toEqual([{ source: 'merge', rarity: 'mythique', opened_at: null }]);
+  });
+
+  it('un seul objet équipé par emplacement : équiper remplace, sans heurter l’index d’unicité', async () => {
+    const s = mk();
+    const [a, b, t] = [itemOf('arme'), itemOf('arme', 'commun'), itemOf('tete')];
+    await s.store.insertItems(V, [a, b, t]);
+    expect((await equipItem(s.ctx, V, { itemId: a.id })).ok).toBe(true);
+    expect(await equipItem(s.ctx, V, { itemId: b.id })).toMatchObject({ ok: true, replaced: a.id });
+    expect((await equipItem(s.ctx, V, { itemId: t.id })).ok).toBe(true);
+    expect((await rows(`select id from inventory_items where profile_id = $1 and equipped order by slot`, [V])).map((r) => r.id).sort()).toEqual([b.id, t.id].sort());
+    const state = await getAdventureState(s.ctx, V);
+    expect(state.ok && state.state.equipped).toEqual({ arme: b.id, tete: t.id });
+    expect((await unequipSlot(s.ctx, V, { slot: 'tete' })).ok).toBe(true);
+    expect((await rows(`select count(*)::int n from inventory_items where profile_id = $1 and equipped`, [V]))[0].n).toBe(1);
+  });
+
+  it('améliorer, fusionner et démonter écrivent les bonnes colonnes', async () => {
+    const s = mk();
+    await pg.query(`delete from inventory_items where profile_id = $1`, [V]);
+    await pg.query(`update characters set gold = 1000, fragments = 100 where profile_id = $1`, [V]);
+    const [a, b, c, d] = [itemOf('mains'), itemOf('mains'), itemOf('mains'), itemOf('torse', 'commun')];
+    await s.store.insertItems(V, [a, b, c, d]);
+    const up = await upgradeItem(s.ctx, V, { itemId: a.id });
+    expect(up.ok && up.item.level).toBe(1);
+    expect((await rows(`select gold, fragments from characters where profile_id = $1`, [V]))[0]).toEqual({ gold: 900, fragments: 95 });
+    expect((await rows(`select level from inventory_items where id = $1`, [a.id]))[0].level).toBe(1);
+    const m = await mergeItems(s.ctx, V, { itemIds: [a.id, b.id, c.id] });
+    expect(m.ok && m.item).toMatchObject({ rarity: 'epique', slot: 'mains', level: 0 });
+    expect((await rows(`select count(*)::int n from inventory_items where profile_id = $1`, [V]))[0].n).toBe(2);
+    expect(await dismantleItem(s.ctx, V, { itemId: d.id })).toMatchObject({ ok: true, fragments: 2 });
+    expect((await rows(`select fragments from characters where profile_id = $1`, [V]))[0].fragments).toBe(97);
+  });
+
+  it('donjon : progression et coffre du boss (une seule fois) écrits en base', async () => {
+    const s = mk();
+    await pg.query(`delete from inventory_items where profile_id = $1`, [V]);
+    await pg.query(`update characters set level = 20, keys = 3 where profile_id = $1`, [V]);
+    const slots = ['arme', 'tete', 'torse', 'mains', 'bottes', 'amulette'];
+    await s.store.insertItems(V, slots.map((slot) => itemOf(slot, 'legendaire', { level: 10, equipped: true })));
+    const list = await listDungeons(s.ctx, V);
+    expect(list.ok && list.dungeons).toHaveLength(26);
+    const first = await runDungeon(s.ctx, V, { dungeonId: 'dj-randonnee' });
+    expect(first.ok && first.result).toMatchObject({ bossDefeated: true, chest: 'bronze' });
+    expect(await rows(`select best_room, boss_defeated_tier, last_run_date::text d from dungeon_progress where profile_id = $1 and dungeon_id = 'dj-randonnee'`, [V])).toEqual([{ best_room: 6, boss_defeated_tier: 1, d: '2026-10-12' }]);
+    expect((await rows(`select keys from characters where profile_id = $1`, [V]))[0].keys).toBe(2);
+    const second = await runDungeon(s.ctx, V, { dungeonId: 'dj-randonnee' });
+    expect(second.ok && second.chest).toBeNull();
+    expect((await rows(`select count(*)::int n from chests where profile_id = $1 and source = 'dungeon'`, [V]))[0].n).toBe(1);
+    expect((await rows(`select count(*)::int n from dungeon_progress where profile_id = $1`, [V]))[0].n).toBe(1);
+  });
+
+  it('expédition : or et fragments versés, compteur relancé, plafond de 24 h', async () => {
+    const s = mk();
+    await pg.query(`update characters set gold = 0, fragments = 0, keys = 0, expedition_started_at = $2 where profile_id = $1`, [V, new Date(Date.parse(at(12)) - 100 * 3_600_000).toISOString()]);
+    const r = await claimExpedition(s.ctx, V);
+    expect(r.ok && r.claim).toMatchObject({ hours: 24, capped: true });
+    const [c] = await rows(`select gold, fragments, expedition_started_at from characters where profile_id = $1`, [V]);
+    expect(c.gold).toBe(r.ok ? r.claim.gold : -1);
+    expect(c.gold).toBeGreaterThan(500);
+    expect(new Date(c.expedition_started_at).getTime()).toBe(Date.parse(at(12)));
+    expect(await claimExpedition(s.ctx, V)).toMatchObject({ ok: false, error: 'nothing-pending' });
+  });
+});
+
+describe('raids d’amis sur le vrai schéma (adaptateur SupabaseStore, triggers, notifications)', () => {
+  const P = Array.from({ length: 8 }, (_, i) => `00000000-0000-0000-0000-00001400000${i + 1}`);
+  const [LEA, BOB, CAT, DAN, EVE, FAY, GUS, STRANGER] = P;
+  const at = (day: number, hour = 9) => `2026-10-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:00:00+02:00`;
+  const rows = async (sql: string, p: unknown[] = []) => (await pg.query(sql, p)).rows as any[];
+  const mk = () => {
+    let nowMs = Date.parse(at(12));
+    const store = new SupabaseStore(fakeSupabase(pg));
+    const ctx: ServerContext = { store: store as never, now: () => nowMs, uuid: () => crypto.randomUUID() };
+    return { store: store as any, ctx, setNow: (iso: string) => (nowMs = Date.parse(iso)) };
+  };
+  const ok = <T extends { ok: boolean }>(r: T) => {
+    expect(r.ok).toBe(true);
+    return r as Extract<T, { ok: true }>;
+  };
+
+  beforeAll(async () => {
+    for (const [i, id] of P.entries()) {
+      await pg.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [id, `r${i}@ex.fr`, JSON.stringify({ username: `raideur${i}`, birth_year: 1992 })]);
+      expect((await createCharacter(mk().ctx, id, { ...input, name: `Raideur${i}` })).ok).toBe(true);
+    }
+    for (const id of [BOB, CAT, DAN, EVE, FAY, GUS]) {
+      await pg.query(`insert into friendships (requester_id, addressee_id, status, accepted_at) values ($1, $2, 'accepted', now())`, [LEA, id]);
+    }
+  });
+
+  it('équipe complète de bout en bout : création, invitations, arrivées, coups, encouragement, persistance', async () => {
+    const s = mk();
+    const created = ok(await createRaidTeam(s.ctx, LEA));
+    const teamId = created.state.team!.id;
+    expect((await rows(`select week_start::text w, leader_id from raid_teams where id = $1`, [teamId]))[0]).toEqual({ w: '2026-10-12', leader_id: LEA });
+    // Amis uniquement, vérifié par la base (can_view_owner)
+    expect(await inviteToRaid(s.ctx, LEA, { profileId: STRANGER })).toMatchObject({ ok: false, error: 'not-friends' });
+    for (const id of [BOB, CAT]) {
+      ok(await inviteToRaid(s.ctx, LEA, { profileId: id }));
+      const inv = ok(await getRaidState(s.ctx, id)).state.invitations;
+      expect(inv).toHaveLength(1);
+      expect(ok(await joinRaidTeam(s.ctx, id, { teamId })).state.team!.members).toHaveLength(id === BOB ? 2 : 3);
+    }
+    const [m] = await rows(`select count(*)::int n from raid_members where team_id = $1 and status = 'joined'`, [teamId]);
+    expect(m.n).toBe(3);
+    // Un coup par membre, enregistré une seule fois
+    const dmg = await rows(`select profile_id, game_date::text d, damage, base_damage, encouragements from raid_damage where team_id = $1 order by profile_id`, [teamId]);
+    expect(dmg.map((r) => r.profile_id)).toEqual([LEA, BOB, CAT]);
+    expect(dmg.every((r) => r.d === '2026-10-12' && r.damage > 0 && r.damage === r.base_damage)).toBe(true);
+    await getRaidState(s.ctx, LEA);
+    expect((await rows(`select count(*)::int n from raid_damage where team_id = $1`, [teamId]))[0].n).toBe(3);
+    // Encouragement : +5 % sur le coup déjà joué, une seule fois, avec une notification
+    ok(await encourageRaid(s.ctx, LEA, { profileId: BOB }));
+    expect(await encourageRaid(s.ctx, LEA, { profileId: BOB })).toMatchObject({ ok: false, error: 'already-done' });
+    const [bob] = await rows(`select damage, base_damage, encouragements from raid_damage where team_id = $1 and profile_id = $2`, [teamId, BOB]);
+    expect(bob).toMatchObject({ encouragements: 1, damage: Math.floor(bob.base_damage * 1.05) });
+    // Notifications : une invitation par invité, un encouragement
+    const notes = await rows(`select profile_id, type, payload from notifications where type like 'raid_%' order by created_at, type`);
+    expect(notes.filter((n) => n.type === 'raid_invite').map((n) => n.profile_id).sort()).toEqual([BOB, CAT]);
+    expect(notes.filter((n) => n.type === 'raid_encouraged')).toHaveLength(1);
+    expect(notes.find((n) => n.type === 'raid_encouraged')).toMatchObject({ profile_id: BOB, payload: { from: LEA, username: 'Raideur0', team: teamId } });
+  });
+
+  it('victoire : coffres de raid pour tous (idempotents en base), notifications une fois, issue figée', async () => {
+    const s = mk();
+    const [{ id: teamId }] = await rows(`select id from raid_teams where week_start = '2026-10-12'`);
+    await pg.query(`insert into raid_damage (team_id, profile_id, game_date, damage, base_damage) values ($1, $2, '2026-10-13', 50000, 50000)`, [teamId, LEA]);
+    s.setNow(at(14));
+    const st = ok(await getRaidState(s.ctx, CAT)).state;
+    expect(st.team).toMatchObject({ status: 'victory', reward: 'mythique', daysToKill: 2 });
+    const [t] = await rows(`select outcome, max_hp, total_damage, victory_day::text vd, resolved_at is not null r from raid_teams where id = $1`, [teamId]);
+    expect(t).toMatchObject({ outcome: 'victory', max_hp: 13000, vd: '2026-10-13', r: true });
+    for (const id of [LEA, BOB, CAT]) {
+      const c = await rows(`select rarity, source, source_key from chests where profile_id = $1 and source = 'raid'`, [id]);
+      expect(c).toEqual([{ rarity: 'mythique', source: 'raid', source_key: `2026-W42:${teamId}` }]);
+    }
+    await getRaidState(s.ctx, LEA);
+    await getRaidState(s.ctx, BOB);
+    expect((await rows(`select count(*)::int n from chests where source = 'raid'`))[0].n).toBe(3);
+    expect((await rows(`select count(*)::int n from notifications where type = 'raid_victory'`))[0].n).toBe(3);
+    // Le raid clos n'accepte plus ni départ ni invitation
+    expect(await leaveRaidTeam(s.ctx, LEA)).toMatchObject({ ok: false, error: 'raid-closed' });
+  });
+
+  it('semaine suivante : nouvelle équipe, plafond de 6 imposé par la base, départ qui emporte les dégâts', async () => {
+    const s = mk();
+    s.setNow(at(19));
+    const created = ok(await createRaidTeam(s.ctx, LEA));
+    const teamId = created.state.team!.id;
+    for (const id of [BOB, CAT, DAN, EVE, FAY]) {
+      ok(await inviteToRaid(s.ctx, LEA, { profileId: id }));
+      ok(await joinRaidTeam(s.ctx, id, { teamId }));
+    }
+    expect(ok(await getRaidState(s.ctx, LEA)).state.team!.members).toHaveLength(6);
+    expect(await inviteToRaid(s.ctx, LEA, { profileId: GUS })).toMatchObject({ ok: false, error: 'team-full' });
+    // Invitation posée directement : la base refuse la 7e arrivée (trigger raid_full)
+    expect(await s.store.insertRaidMember({ teamId, profileId: GUS, weekStart: '2026-10-19', status: 'invited', invitedBy: LEA, createdAt: at(19), joinedAt: null })).toBe('ok');
+    expect(await joinRaidTeam(s.ctx, GUS, { teamId })).toMatchObject({ ok: false, error: 'team-full' });
+    expect(await s.store.joinRaidMember(teamId, GUS, at(19))).toBe('full');
+    expect(await s.store.insertRaidMember({ teamId, profileId: STRANGER, weekStart: '2026-10-19', status: 'joined', invitedBy: LEA, createdAt: at(19), joinedAt: at(19) })).toBe('not-friend');
+    expect(await s.store.insertRaidMember({ teamId, profileId: BOB, weekStart: '2026-10-19', status: 'invited', invitedBy: LEA, createdAt: at(19), joinedAt: null })).toBe('duplicate');
+    // Un départ emporte les dégâts du joueur ; le chef qui part passe la main
+    const before = (await rows(`select count(*)::int n from raid_damage where team_id = $1`, [teamId]))[0].n;
+    ok(await leaveRaidTeam(s.ctx, FAY));
+    expect((await rows(`select count(*)::int n from raid_damage where team_id = $1`, [teamId]))[0].n).toBe(before - 1);
+    ok(await leaveRaidTeam(s.ctx, LEA));
+    expect((await rows(`select leader_id from raid_teams where id = $1`, [teamId]))[0].leader_id).toBe(BOB);
+    // Une seconde équipe la même semaine est refusée par l'index unique, sans laisser d'équipe orpheline
+    const rival = { id: crypto.randomUUID(), weekStart: '2026-10-19', leaderId: BOB, createdAt: at(19), resolvedAt: null, outcome: null, maxHp: null, totalDamage: null, victoryDay: null };
+    const teamsBefore = (await rows(`select count(*)::int n from raid_teams`))[0].n;
+    expect(await s.store.insertRaidTeam(rival, { teamId: rival.id, profileId: BOB, weekStart: '2026-10-19', status: 'joined', invitedBy: BOB, createdAt: at(19), joinedAt: at(19) })).toBe(false);
+    expect((await rows(`select count(*)::int n from raid_teams`))[0].n).toBe(teamsBefore);
+  });
+
+  it('défaite à la clôture : aucune récompense, issue enregistrée avec les PV figés', async () => {
+    const s = mk();
+    s.setNow(at(26));
+    const st = ok(await getRaidState(s.ctx, BOB)).state;
+    expect(st.team).toBeNull();
+    expect(st.lastResult).toMatchObject({ outcome: 'defeat', reward: null });
+    const [t] = await rows(`select outcome, max_hp from raid_teams where week_start = '2026-10-19'`);
+    expect(t).toMatchObject({ outcome: 'defeat', max_hp: raidMaxHp(4) }); // 4 membres restent après les deux départs
+  });
+});
+
+describe('saisons sur le vrai schéma (adaptateur SupabaseStore, classement, récompense idempotente)', () => {
+  const P = Array.from({ length: 3 }, (_, i) => `00000000-0000-0000-0000-00001500000${i + 1}`);
+  const [ANA, BEN, CLO] = P;
+  const day = (iso: string) => `${iso}T09:00:00+02:00`;
+  const rows = async (sql: string, p: unknown[] = []) => (await pg.query(sql, p)).rows as any[];
+  const mk = (iso = '2026-10-05') => {
+    let nowMs = Date.parse(day(iso));
+    const store = new SupabaseStore(fakeSupabase(pg));
+    const ctx: ServerContext = { store: store as never, now: () => nowMs, uuid: () => crypto.randomUUID() };
+    return { store: store as any, ctx, setNow: (d: string) => (nowMs = Date.parse(day(d))) };
+  };
+  const ok = <T extends { ok: boolean }>(r: T) => {
+    expect(r.ok).toBe(true);
+    return r as Extract<T, { ok: true }>;
+  };
+
+  beforeAll(async () => {
+    for (const [i, id] of P.entries()) {
+      await pg.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [id, `s${i}@ex.fr`, JSON.stringify({ username: `saison${i}`, birth_year: 1992 })]);
+      expect((await createCharacter(mk().ctx, id, { ...input, name: `Saison${i}` })).ok).toBe(true);
+    }
+    await pg.query(`insert into friendships (requester_id, addressee_id, status, accepted_at) values ($1, $2, 'accepted', now()), ($1, $3, 'accepted', now())`, [ANA, BEN, CLO]);
+    // Ben porte une panoplie de Titan de 4 pièces (épiques) : plus puissant
+    for (const [slot, tpl] of [['arme', 'epee-du-sentier'], ['tete', 'bandeau-du-guerrier'], ['torse', 'armure-de-plates'], ['mains', 'gantelets-de-force']]) {
+      await pg.query(`insert into inventory_items (profile_id, template_id, rarity, slot, ability, equipped) values ($1, $2, 'epique', $3, 'FOR', true)`, [BEN, tpl, slot]);
+    }
+  });
+
+  it('la puissance (panoplie comprise) est publiée sur le personnage et pour la saison', async () => {
+    const s = mk();
+    const ben = ok(await getAdventureState(s.ctx, BEN));
+    expect(ben.state.powerBreakdown.sets).toBe(12);
+    expect(ben.state.sets.find((x) => x.setId === 'titan')).toMatchObject({ equipped: 4, tier: { pieces: 4 } });
+    const [c] = await rows(`select power from characters where profile_id = $1`, [BEN]);
+    expect(c.power).toBe(ben.state.power);
+    const [sc] = await rows(`select season_key, power, first_day::text f, last_day::text l from season_scores where profile_id = $1`, [BEN]);
+    expect(sc).toEqual({ season_key: 'S1', power: ben.state.power, f: '2026-10-05', l: '2026-10-05' });
+    ok(await getAdventureState(s.ctx, ANA));
+    ok(await getAdventureState(s.ctx, CLO));
+  });
+
+  it('équiper et retirer un objet met la puissance à jour en base', async () => {
+    const s = mk('2026-10-08');
+    const [boots] = await rows(`insert into inventory_items (profile_id, template_id, rarity, slot, ability) values ($1, 'sabots-du-bucheron', 'epique', 'bottes', 'FOR') returning id`, [BEN]);
+    const before = (await rows(`select power from characters where profile_id = $1`, [BEN]))[0].power;
+    ok(await equipItem(s.ctx, BEN, { itemId: boots.id }));
+    const after = (await rows(`select power from characters where profile_id = $1`, [BEN]))[0].power;
+    expect(after).toBeGreaterThan(before);
+    ok(await unequipSlot(s.ctx, BEN, { slot: 'bottes' }));
+    expect((await rows(`select power from characters where profile_id = $1`, [BEN]))[0].power).toBe(before);
+    expect((await rows(`select last_day::text l from season_scores where profile_id = $1`, [BEN]))[0].l).toBe('2026-10-08');
+  });
+
+  it('le classement du serveur suit la RPC : amis classés par puissance', async () => {
+    const s = mk('2026-10-12');
+    for (const id of P) ok(await getAdventureState(s.ctx, id));
+    // Ana est amie de Ben et de Clo ; Ben et Clo ne se connaissent pas
+    const ranking = await s.store.seasonRanking(ANA, 'S1');
+    expect(ranking.map((r: any) => r.profileId)[0]).toBe(BEN);
+    expect(ranking.map((r: any) => r.profileId).sort()).toEqual([ANA, BEN, CLO].sort());
+    expect((await s.store.seasonRanking(BEN, 'S1')).map((r: any) => r.profileId).sort()).toEqual([ANA, BEN].sort());
+    const season = ok(await getSeasonState(s.ctx, ANA)).state;
+    expect(season).toMatchObject({ participants: 3, rank: 2, qualifies: true, daysPlayed: 8 });
+  });
+
+  it('récompense de fin de saison : cadre, coffre d’or et notification, une seule fois', async () => {
+    const s = mk('2026-11-24');
+    const first = ok(await getSeasonState(s.ctx, BEN));
+    expect(first.state.evaluated).toHaveLength(1);
+    expect(first.state.evaluated[0]).toMatchObject({ seasonKey: 'S1', rank: 1, participants: 2, frame: 'or' });
+    // rejouée, relue par l'aventure, et par un second appel concurrent : toujours un seul exemplaire
+    ok(await getAdventureState(s.ctx, BEN));
+    ok(await getSeasonState(s.ctx, BEN));
+    await Promise.all([getSeasonState(s.ctx, BEN), getAdventureState(s.ctx, BEN)]);
+    expect(await rows(`select rarity, source, source_key, opened_at from chests where profile_id = $1 and source = 'season'`, [BEN])).toEqual([
+      { rarity: 'or', source: 'season', source_key: 'S1', opened_at: null },
+    ]);
+    expect((await rows(`select frame_style from characters where profile_id = $1`, [BEN]))[0].frame_style).toBe('S1:or');
+    expect(await rows(`select rank, participants, frame from season_results where profile_id = $1`, [BEN])).toEqual([{ rank: 1, participants: 2, frame: 'or' }]);
+    const notes = await rows(`select type, payload from notifications where profile_id = $1 and type = 'season_end'`, [BEN]);
+    expect(notes).toHaveLength(1);
+    expect(notes[0].payload).toEqual({ season: 'S1', name: 'Saison 1', rank: 1, participants: 2, frame: 'or' });
+    // le coffre d'or s'ouvre comme les autres
+    const [chest] = await rows(`select id from chests where profile_id = $1 and source = 'season'`, [BEN]);
+    expect(ok(await openChest(s.ctx, BEN, { chestId: chest.id })).opening.chest.rarity).toBe('or');
+  });
+
+  it('chacun reçoit son propre rang : cadre d’argent pour la 2e place, d’or pour une égalité en tête', async () => {
+    const s = mk('2026-11-24');
+    const ana = ok(await getSeasonState(s.ctx, ANA));
+    expect(ana.state.evaluated[0]).toMatchObject({ rank: 2, participants: 3, frame: 'argent' });
+    expect((await rows(`select frame_style from characters where profile_id = $1`, [ANA]))[0].frame_style).toBe('S1:argent');
+    // Clo, amie d'Ana seulement, a exactement sa puissance : elles partagent le rang 1 de leur classement
+    const clo = ok(await getSeasonState(s.ctx, CLO));
+    expect(clo.state.evaluated[0]).toMatchObject({ rank: 1, participants: 2, frame: 'or' });
+  });
+
+  it('refuser le classement : récompense de participation sans rang', async () => {
+    const s = mk('2026-11-24');
+    await pg.query(`delete from season_results where profile_id = $1`, [CLO]);
+    await pg.query(`delete from chests where profile_id = $1 and source = 'season'`, [CLO]);
+    await pg.query(`update settings set leaderboard_opt_in = false where profile_id = $1`, [CLO]);
+    const clo = ok(await getSeasonState(s.ctx, CLO));
+    expect(clo.state.evaluated[0]).toMatchObject({ rank: null, participants: 0, frame: 'laurier' });
+    expect(clo.state.optedIn).toBe(false);
+    expect((await rows(`select count(*)::int n from chests where profile_id = $1 and source = 'season'`, [CLO]))[0].n).toBe(1);
   });
 });

@@ -15,6 +15,20 @@ var emptyAbilityRecord = (v) => ({
 var MAX_ACTIVE_TRACKS = 3;
 var TRACK_PROMOTE_HITS = 5;
 var TRACK_DEMOTE_MISSES = 4;
+var CHEST_RARITIES = ["bois", "bronze", "argent", "or", "mythique"];
+var ITEM_RARITIES = ["commun", "peu_commun", "rare", "epique", "legendaire"];
+var EQUIP_SLOTS = ["arme", "tete", "torse", "mains", "bottes", "amulette"];
+var emptyAdventureFields = () => ({
+  gold: 0,
+  fragments: 0,
+  keys: 0,
+  chestPity: {},
+  expeditionStartedAt: null,
+  chestOpensDate: null,
+  chestOpensToday: 0,
+  power: 0,
+  frameStyle: null
+});
 
 // packages/engine/src/xp.ts
 var LEVEL_XP = [
@@ -993,6 +1007,445 @@ function revertCompletion(state, day, previousDoneDate = null) {
   return { ...state, rung, hits, bestRung, lastDoneDate: state.lastDoneDate === day ? previousDoneDate : state.lastDoneDate };
 }
 
+// packages/engine/src/sets.ts
+var NO_SET_BONUS = { pp: 0, abilities: {}, active: [] };
+function setTier(bonuses, pieces) {
+  let best = null;
+  for (const b of bonuses) if (pieces >= b.pieces && (!best || b.pieces > best.pieces)) best = b;
+  return best;
+}
+function nextSetTier(bonuses, pieces) {
+  let next = null;
+  for (const b of bonuses) if (b.pieces > pieces && (!next || b.pieces < next.pieces)) next = b;
+  return next;
+}
+function setBonusTotals(sets, items) {
+  const worn = items.filter((i) => i.equipped);
+  const out = { pp: 0, abilities: {}, active: [] };
+  for (const set of sets) {
+    const pieces = EQUIP_SLOTS.filter((slot) => worn.some((i) => i.slot === slot && i.templateId === set.pieces[slot])).length;
+    const tier = setTier(set.bonuses, pieces);
+    if (!tier) continue;
+    out.pp += tier.pp;
+    if (tier.ability) out.abilities[set.ability] = (out.abilities[set.ability] ?? 0) + tier.ability;
+    out.active.push({ setId: set.id, pieces, tier });
+  }
+  return out;
+}
+function setsProgress(sets, items) {
+  return sets.map((set) => {
+    const pieces = EQUIP_SLOTS.map((slot) => {
+      const templateId = set.pieces[slot];
+      const mine = items.filter((i) => i.templateId === templateId && i.slot === slot);
+      return { slot, templateId, owned: mine.length > 0, equipped: mine.some((i) => i.equipped) };
+    });
+    const equipped = pieces.filter((p) => p.equipped).length;
+    return {
+      setId: set.id,
+      equipped,
+      owned: pieces.filter((p) => p.owned).length,
+      pieces,
+      tier: setTier(set.bonuses, equipped),
+      next: nextSetTier(set.bonuses, equipped)
+    };
+  });
+}
+
+// packages/engine/src/adventure.ts
+var CHEST_OPENS_PER_DAY = 2;
+var MAX_KEYS = 3;
+var MERGE_COUNT = 3;
+var EXPEDITION_CAP_HOURS = 24;
+var EXPEDITION_GOLD_PER_HOUR = 20;
+var EXPEDITION_GOLD_PP_DIV = 200;
+var EXPEDITION_INT_DIV = 40;
+var EXPEDITION_FRAGMENT_PP_DIV = 400;
+var EXPEDITION_DEX_DIV = 50;
+var EXPEDITION_STREAK_STEP = 0.02;
+var EXPEDITION_STREAK_MAX = 0.3;
+var EXPEDITION_KEY_CHANCE = 0.05;
+var EXPEDITION_MIN_CLAIM_MS = 6e4;
+var SAG_SHIFT_PCT = 2;
+var SAG_SHIFT_STEP = 10;
+var PITY_EPIC = 8;
+var PITY_LEGENDARY = 25;
+var PITY_EPIC_MIN_CHEST = "bronze";
+var PITY_LEGENDARY_MIN_CHEST = "or";
+var CHEST_TABLE = {
+  bois: { odds: [70, 25, 5, 0, 0], fragments: 5, gold: 50 },
+  bronze: { odds: [35, 40, 20, 5, 0], fragments: 15, gold: 150 },
+  argent: { odds: [5, 30, 45, 18, 2], fragments: 40, gold: 400 },
+  or: { odds: [0, 5, 35, 50, 10], fragments: 100, gold: 1e3 },
+  mythique: { odds: [0, 0, 10, 55, 35], fragments: 250, gold: 3e3 }
+};
+var ITEM_BASE_POWER = { commun: 5, peu_commun: 12, rare: 28, epique: 60, legendaire: 130 };
+var ITEM_LEVEL_STEP = 0.1;
+var ITEM_MAX_LEVEL = 10;
+var ITEM_AFFINITY_BONUS = 0.1;
+var ITEM_ABILITY_BONUS_DIV = 12;
+var DISMANTLE_FRAGMENTS = { commun: 2, peu_commun: 5, rare: 12, epique: 30, legendaire: 80 };
+var UPGRADE_FRAGMENTS_STEP = 5;
+var UPGRADE_GOLD_STEP = 100;
+var UPGRADE_GOLD_EXPONENT = 1.5;
+var DUNGEON_ROOMS = 5;
+var DUNGEON_ROOM_GROWTH = 1.35;
+var DUNGEON_BOSS_MULT = 1.5;
+var DUNGEON_CON_DIV = 60;
+var DUNGEON_FOR_DIV = 60;
+var DUNGEON_BASE_START = 40;
+var DUNGEON_TIER_GROWTH = 1.5;
+var DUNGEON_UNLOCK_PER_TIER = 3;
+var DUNGEON_ROOM_GOLD = 40;
+var DUNGEON_ROOM_FRAGMENTS = 4;
+var DUNGEON_BOSS_REWARD_ROOMS = 3;
+var DUNGEON_SILVER_TIER = 5;
+var DUNGEON_BOSS_ROOM = DUNGEON_ROOMS + 1;
+var STREAK_MILESTONE_CHESTS = { 7: "argent", 30: "or", 100: "mythique" };
+var rarityIndex = (list, r) => list.indexOf(r);
+function itemPower(item, masteries = []) {
+  const level = Math.min(Math.max(Math.trunc(item.level) || 0, 0), ITEM_MAX_LEVEL);
+  const affinity = masteries.includes(item.ability) ? 1 + ITEM_AFFINITY_BONUS : 1;
+  return Math.round(ITEM_BASE_POWER[item.rarity] * (1 + ITEM_LEVEL_STEP * level) * affinity);
+}
+function itemAbilityBonus(item, masteries = []) {
+  return Math.floor(itemPower(item, masteries) / ITEM_ABILITY_BONUS_DIV);
+}
+function adventureScores(scores, equipped, masteries = [], sets = NO_SET_BONUS) {
+  const out = { ...scores };
+  for (const it of equipped) out[it.ability] += itemAbilityBonus(it, masteries);
+  for (const a of ABILITIES) out[a] += sets.abilities[a] ?? 0;
+  return out;
+}
+function heroPowerBreakdown(character, equipped, masteries = [], sets = NO_SET_BONUS) {
+  const scores = abilityScores(character);
+  const level = character.level * 10;
+  const sum = ABILITIES.reduce((n, a) => n + scores[a], 0);
+  const items = equipped.filter((i) => i.equipped).reduce((n, i) => n + itemPower(i, masteries), 0);
+  return { total: level + sum + items + sets.pp, level, scores: sum, items, sets: sets.pp };
+}
+function heroPower(character, equipped, masteries = [], sets = NO_SET_BONUS) {
+  return heroPowerBreakdown(character, equipped, masteries, sets).total;
+}
+function streakMultiplier(streak) {
+  return 1 + Math.min(EXPEDITION_STREAK_MAX, EXPEDITION_STREAK_STEP * Math.max(0, streak));
+}
+function expeditionRates(pp, scores, streak) {
+  const speed = (1 + Math.max(0, scores.DEX) / EXPEDITION_DEX_DIV) * streakMultiplier(streak);
+  return {
+    goldPerHour: EXPEDITION_GOLD_PER_HOUR * (1 + pp / EXPEDITION_GOLD_PP_DIV) * (1 + Math.max(0, scores.INT) / EXPEDITION_INT_DIV) * speed,
+    fragmentsPerHour: (1 + pp / EXPEDITION_FRAGMENT_PP_DIV) * speed
+  };
+}
+function expeditionYield(input) {
+  const rawHours = Math.max(0, input.elapsedMs) / 36e5;
+  const hours = Math.min(rawHours, EXPEDITION_CAP_HOURS);
+  const rates = expeditionRates(input.pp, input.scores, input.streak);
+  return {
+    ...rates,
+    hours,
+    capped: rawHours >= EXPEDITION_CAP_HOURS,
+    gold: Math.floor(rates.goldPerHour * hours),
+    fragments: Math.floor(rates.fragmentsPerHour * hours),
+    keyChance: EXPEDITION_KEY_CHANCE * hours / EXPEDITION_CAP_HOURS
+  };
+}
+function rollExpeditionKey(seed, chance) {
+  return createRng(`${seed}|key`)() < chance;
+}
+function dailyChestRarity(streak) {
+  return streak >= 30 ? "argent" : streak >= 7 ? "bronze" : "bois";
+}
+function rungChestRarity(rung) {
+  return rung >= 10 ? "mythique" : rung >= 8 ? "or" : rung >= 5 ? "argent" : "bronze";
+}
+function streakMilestoneChest(streak) {
+  return STREAK_MILESTONE_CHESTS[streak] ?? null;
+}
+function nextChestRarity(r) {
+  return CHEST_RARITIES[rarityIndex(CHEST_RARITIES, r) + 1] ?? null;
+}
+function nextItemRarity(r) {
+  return ITEM_RARITIES[rarityIndex(ITEM_RARITIES, r) + 1] ?? null;
+}
+function adjustedOdds(chest, sag) {
+  const odds = [...CHEST_TABLE[chest].odds];
+  const low = odds.findIndex((p) => p > 0);
+  let high = odds.length - 1;
+  while (high > 0 && odds[high] === 0) high--;
+  if (low < 0 || low >= high) return odds;
+  const shift = Math.min(Math.floor(Math.max(0, sag) / SAG_SHIFT_STEP) * SAG_SHIFT_PCT, odds[low]);
+  odds[low] -= shift;
+  odds[high] += shift;
+  return odds;
+}
+function drawChest(input) {
+  const { chest } = input;
+  if (!input.templates.length) throw new Error("Aucun mod\xE8le d\u2019objet");
+  const rng = createRng(input.seed);
+  const odds = adjustedOdds(chest, input.sag);
+  let roll = rng() * 100;
+  let idx = odds.length - 1;
+  for (let i = 0; i < odds.length; i++) {
+    if (odds[i] <= 0) continue;
+    idx = i;
+    roll -= odds[i];
+    if (roll < 0) break;
+  }
+  const epicIdx = rarityIndex(ITEM_RARITIES, "epique");
+  const legIdx = rarityIndex(ITEM_RARITIES, "legendaire");
+  const chestIdx = rarityIndex(CHEST_RARITIES, chest);
+  const epicPity = chestIdx >= rarityIndex(CHEST_RARITIES, PITY_EPIC_MIN_CHEST);
+  const legPity = chestIdx >= rarityIndex(CHEST_RARITIES, PITY_LEGENDARY_MIN_CHEST);
+  const epicKey = chest;
+  const legKey = `${chest}:legendaire`;
+  const pity = { ...input.pity };
+  let guaranteed = null;
+  if (legPity && (pity[legKey] ?? 0) >= PITY_LEGENDARY) {
+    if (idx < legIdx) guaranteed = "legendaire";
+    idx = legIdx;
+  } else if (epicPity && (pity[epicKey] ?? 0) >= PITY_EPIC && idx < epicIdx) {
+    guaranteed = "epique";
+    idx = epicIdx;
+  }
+  if (epicPity) pity[epicKey] = idx >= epicIdx ? 0 : (pity[epicKey] ?? 0) + 1;
+  if (legPity) pity[legKey] = idx === legIdx ? 0 : (pity[legKey] ?? 0) + 1;
+  const template = input.templates[Math.min(Math.floor(rng() * input.templates.length), input.templates.length - 1)];
+  const { fragments, gold } = CHEST_TABLE[chest];
+  return { rarity: ITEM_RARITIES[idx], template, fragments, gold, pity, guaranteed };
+}
+function pickTemplateForSlot(templates, slot, seed) {
+  const pool = templates.filter((t) => t.slot === slot);
+  if (!pool.length) return null;
+  return pool[Math.min(Math.floor(createRng(`${seed}|forge`)() * pool.length), pool.length - 1)];
+}
+function upgradeCost(level) {
+  if (level >= ITEM_MAX_LEVEL) return null;
+  const n = Math.max(0, Math.trunc(level)) + 1;
+  return { fragments: UPGRADE_FRAGMENTS_STEP * n, gold: Math.round(UPGRADE_GOLD_STEP * Math.pow(n, UPGRADE_GOLD_EXPONENT)) };
+}
+function dismantleValue(rarity) {
+  return DISMANTLE_FRAGMENTS[rarity];
+}
+function equippedBySlot(items) {
+  const out = {};
+  for (const it of items) if (it.equipped && EQUIP_SLOTS.includes(it.slot)) out[it.slot] = it;
+  return out;
+}
+function dungeonBase(tier) {
+  return Math.round(DUNGEON_BASE_START * Math.pow(DUNGEON_TIER_GROWTH, Math.max(1, tier) - 1));
+}
+function dungeonUnlockLevel(tier) {
+  return Math.min(MAX_LEVEL, DUNGEON_UNLOCK_PER_TIER * Math.max(1, tier));
+}
+function dungeonRoomPower(tier, room) {
+  return Math.round(dungeonBase(tier) * Math.pow(DUNGEON_ROOM_GROWTH, room));
+}
+function dungeonBossPower(tier) {
+  return Math.round(dungeonBase(tier) * Math.pow(DUNGEON_ROOM_GROWTH, DUNGEON_ROOMS) * DUNGEON_BOSS_MULT);
+}
+function dungeonBossChest(tier) {
+  return tier >= DUNGEON_SILVER_TIER ? "argent" : "bronze";
+}
+var WIN_VERBS = ["terrasses", "\xE9crases", "repousses", "domptes", "surmontes", "mets en fuite"];
+var LOSE_VERBS = ["te repousse", "te submerge", "te barre la route", "est trop fort pour toi"];
+function resolveDungeon(input) {
+  const { dungeon, pp, scores } = input;
+  const tier = dungeon.tier;
+  const rng = createRng(input.seed);
+  const survive = pp * (1 + Math.max(0, scores.CON) / DUNGEON_CON_DIV);
+  const damage = pp * (1 + Math.max(0, scores.FOR) / DUNGEON_FOR_DIV);
+  const roomPowers = Array.from({ length: DUNGEON_ROOMS }, (_, i) => dungeonRoomPower(tier, i));
+  const bossPower = dungeonBossPower(tier);
+  const pick = (list) => list[Math.min(Math.floor(rng() * list.length), list.length - 1)];
+  const log = [];
+  let cleared = 0;
+  let missing = null;
+  for (let i = 0; i < DUNGEON_ROOMS; i++) {
+    const monster = dungeon.rooms[i] ?? "une ombre";
+    if (survive >= roomPowers[i]) {
+      cleared++;
+      log.push(`Salle ${i + 1} : tu ${pick(WIN_VERBS)} ${monster}.`);
+    } else {
+      missing = Math.max(1, Math.ceil(roomPowers[i] / (1 + Math.max(0, scores.CON) / DUNGEON_CON_DIV) - pp));
+      log.push(`Salle ${i + 1} : ${monster} ${pick(LOSE_VERBS)}. Il te manque ${missing} PP.`);
+      break;
+    }
+  }
+  let bossDefeated = false;
+  if (cleared === DUNGEON_ROOMS) {
+    if (damage >= bossPower) {
+      bossDefeated = true;
+      log.push(`Boss : tu terrasses ${dungeon.boss} !`);
+    } else {
+      missing = Math.max(1, Math.ceil(bossPower / (1 + Math.max(0, scores.FOR) / DUNGEON_FOR_DIV) - pp));
+      log.push(`Boss : ${dungeon.boss} r\xE9siste \xE0 tes coups. Il te manque ${missing} PP.`);
+    }
+  }
+  let gold = 0;
+  let fragments = 0;
+  for (let i = 0; i < cleared; i++) {
+    gold += DUNGEON_ROOM_GOLD * tier;
+    fragments += DUNGEON_ROOM_FRAGMENTS * tier;
+  }
+  if (bossDefeated) {
+    gold += DUNGEON_ROOM_GOLD * tier * DUNGEON_BOSS_REWARD_ROOMS;
+    fragments += DUNGEON_ROOM_FRAGMENTS * tier * DUNGEON_BOSS_REWARD_ROOMS;
+  }
+  return {
+    dungeonId: dungeon.id,
+    reachedRoom: cleared,
+    bossDefeated,
+    missingPower: bossDefeated ? null : missing,
+    log,
+    gold,
+    fragments,
+    chest: bossDefeated && input.firstBossVictory ? dungeonBossChest(tier) : null,
+    roomPowers,
+    bossPower,
+    heroPower: pp
+  };
+}
+
+// packages/engine/src/seasons.ts
+var SEASON_ANCHOR = "2026-09-28";
+var SEASON_WEEKS = 8;
+var SEASON_DAYS = SEASON_WEEKS * 7;
+var SEASON_MIN_SPAN_DAYS = 6;
+var SEASON_CHEST = "or";
+var SEASON_FRAMES = ["or", "argent", "bronze", "laurier"];
+var SEASON_FRAME_DEFS = {
+  or: { label: "Cadre d\u2019or", glyph: "\u{1F947}", color: "#d4af37" },
+  argent: { label: "Cadre d\u2019argent", glyph: "\u{1F948}", color: "#aab4bd" },
+  bronze: { label: "Cadre de bronze", glyph: "\u{1F949}", color: "#b0703a" },
+  laurier: { label: "Cadre de laurier", glyph: "\u{1F33F}", color: "#4fa072" }
+};
+var seasonKeyOf = (index) => `S${index}`;
+function seasonIndex(date) {
+  return Math.max(1, Math.floor(diffDays(date, SEASON_ANCHOR) / SEASON_DAYS) + 1);
+}
+function seasonIndexOfKey(key) {
+  const m = /^S(\d+)$/.exec(key);
+  const n = m ? Number(m[1]) : 0;
+  return n >= 1 ? n : null;
+}
+function seasonInfo(date) {
+  const index = seasonIndex(date);
+  const start = addDays(SEASON_ANCHOR, (index - 1) * SEASON_DAYS);
+  const end = addDays(start, SEASON_DAYS - 1);
+  const elapsed = Math.min(Math.max(diffDays(date, start), 0), SEASON_DAYS - 1);
+  return {
+    index,
+    key: seasonKeyOf(index),
+    name: `Saison ${index}`,
+    start,
+    end,
+    daysLeft: SEASON_DAYS - elapsed,
+    week: Math.floor(elapsed / 7) + 1,
+    progress: (elapsed + 1) / SEASON_DAYS
+  };
+}
+function seasonBounds(key) {
+  const index = seasonIndexOfKey(key);
+  if (!index) return null;
+  const start = addDays(SEASON_ANCHOR, (index - 1) * SEASON_DAYS);
+  return { start, end: addDays(start, SEASON_DAYS - 1) };
+}
+function rankSeason(rows) {
+  const sorted = [...rows].sort((a, b) => b.power - a.power || a.profileId.localeCompare(b.profileId));
+  const out = [];
+  for (const [i, r] of sorted.entries()) out.push({ ...r, rank: i > 0 && out[i - 1].power === r.power ? out[i - 1].rank : i + 1 });
+  return out;
+}
+function seasonQualifies(firstDay, lastDay) {
+  return diffDays(lastDay, firstDay) >= SEASON_MIN_SPAN_DAYS;
+}
+function seasonReward(rank, participants) {
+  const podium = ["or", "argent", "bronze"];
+  const frame = rank !== null && participants >= 2 && rank >= 1 && rank <= 3 ? podium[rank - 1] : "laurier";
+  return { frame, chest: SEASON_CHEST };
+}
+function parseFrameStyle(value) {
+  const m = /^(S\d+):(\w+)$/.exec(value ?? "");
+  return m && SEASON_FRAMES.includes(m[2]) ? { season: m[1], frame: m[2] } : null;
+}
+var frameStyleOf = (season, frame) => `${season}:${frame}`;
+
+// packages/engine/src/raid.ts
+var RAID_MIN_MEMBERS = 2;
+var RAID_MAX_MEMBERS = 6;
+var RAID_BASE_HP = 1e4;
+var RAID_HP_PER_MEMBER = 0.15;
+var RAID_CHA_STEP = 0.01;
+var RAID_CHA_CAP = 0.3;
+var RAID_ENCOURAGE_STEP = 0.05;
+var RAID_ENCOURAGE_CAP = 0.25;
+var RAID_FOR_DIV = 60;
+var RAID_FAST_DAYS = 4;
+var RAID_WIN_CHEST = "or";
+var RAID_FAST_CHEST = "mythique";
+var RAID_BOSSES = [
+  { id: "hydre-des-brumes", name: "L\u2019Hydre des brumes", glyph: "\u{1F409}", blurb: "Chaque t\xEAte abattue en r\xE9veille deux autres. Frappez ensemble, frappez chaque jour." },
+  { id: "colosse-de-cendre", name: "Le Colosse de cendre", glyph: "\u{1F5FF}", blurb: "Une montagne qui marche. Il ne tombera pas en un jour, mais il tombera." },
+  { id: "reine-des-ronces", name: "La Reine des ronces", glyph: "\u{1F940}", blurb: "Ses \xE9pines s\u2019enfoncent dans les plus distraits. Les assidus la font plier." },
+  { id: "veilleur-du-gouffre", name: "Le Veilleur du gouffre", glyph: "\u{1F441}\uFE0F", blurb: "Il voit chaque jour manqu\xE9. Il n\u2019a jamais vu une troupe unie lui r\xE9sister." },
+  { id: "wyrm-de-givre", name: "Le Wyrm de givre", glyph: "\u{1F432}", blurb: "Son souffle fige les volont\xE9s. Le feu de la routine le fait reculer." },
+  { id: "seigneur-des-os", name: "Le Seigneur des os", glyph: "\u{1F480}", blurb: "Il ramasse les promesses oubli\xE9es. Reprenez-les-lui une \xE0 une." },
+  { id: "kraken-des-marees", name: "Le Kraken des mar\xE9es", glyph: "\u{1F991}", blurb: "Il revient chaque semaine avec la mar\xE9e, plus affam\xE9. Tenez bon." },
+  { id: "chimere-ardente", name: "La Chim\xE8re ardente", glyph: "\u{1F525}", blurb: "Trois natures, une seule faiblesse : la constance de vos coups." }
+];
+function raidWeekKey(date) {
+  const { year, week } = isoWeek(date);
+  return `${year}-W${String(week).padStart(2, "0")}`;
+}
+var raidWeekStart = (date) => startOfIsoWeek(date);
+var raidWeekEnd = (date) => endOfIsoWeek(date);
+function raidBossFor(date) {
+  const { year, week } = isoWeek(date);
+  return RAID_BOSSES[(year * 53 + week) % RAID_BOSSES.length];
+}
+function raidMaxHp(members) {
+  const n = Math.min(Math.max(Math.trunc(members) || 1, 1), RAID_MAX_MEMBERS);
+  return Math.round(RAID_BASE_HP * (1 + RAID_HP_PER_MEMBER * (n - 1)));
+}
+function raidChaBonus(chaScores) {
+  if (!chaScores.length) return 0;
+  const avg = chaScores.reduce((n, c) => n + Math.max(0, c), 0) / chaScores.length;
+  return Math.min(RAID_CHA_CAP, avg * RAID_CHA_STEP);
+}
+function raidEncouragementBonus(count) {
+  return Math.min(RAID_ENCOURAGE_CAP, Math.max(0, Math.trunc(count) || 0) * RAID_ENCOURAGE_STEP);
+}
+function raidBaseDamage(i) {
+  return Math.floor(Math.max(0, i.pp) * (1 + Math.max(0, i.forScore) / RAID_FOR_DIV) * (1 + Math.min(RAID_CHA_CAP, Math.max(0, i.chaBonus))));
+}
+function raidDamage(base, encouragements) {
+  return Math.floor(Math.max(0, base) * (1 + raidEncouragementBonus(encouragements)));
+}
+function raidVictoryDay(daily, maxHp) {
+  const byDay = /* @__PURE__ */ new Map();
+  for (const d of daily) byDay.set(d.date, (byDay.get(d.date) ?? 0) + d.damage);
+  let total = 0;
+  for (const date of [...byDay.keys()].sort()) {
+    total += byDay.get(date);
+    if (total >= maxHp) return date;
+  }
+  return null;
+}
+function raidDaysToKill(weekStart, victoryDay) {
+  return diffDays(victoryDay, weekStart) + 1;
+}
+function raidRewardChest(daysToKill) {
+  return daysToKill < RAID_FAST_DAYS ? RAID_FAST_CHEST : RAID_WIN_CHEST;
+}
+function raidOutcome(input) {
+  if (input.joined >= RAID_MIN_MEMBERS && input.totalDamage >= input.maxHp) return "victory";
+  if (!input.weekOver) return null;
+  return input.joined < RAID_MIN_MEMBERS ? "void" : "defeat";
+}
+function raidWeekOver(weekStart, today) {
+  return today > addDays(weekStart, 6);
+}
+
 // packages/engine/src/achievements.ts
 function conditionProgress(c, s) {
   switch (c.kind) {
@@ -1280,7 +1733,7 @@ var defaultSettings = (timezone = "Europe/Paris") => ({
   autoShare: { level: true, achievement: true, streak: true },
   defaultVisibility: "friends",
   leaderboardOptIn: true,
-  notifPrefs: { daily: true, dailyTime: "09:00", weekEnd: true, friendRequests: true, reactions: true, comments: true },
+  notifPrefs: { daily: true, dailyTime: "09:00", weekEnd: true, friendRequests: true, reactions: true, comments: true, raid: true, season: true },
   friendRequestsFrom: "everyone",
   theme: "auto",
   sounds: true,
@@ -2626,12 +3079,1912 @@ var achievements_fr_default = [
   }
 ];
 
-// packages/engine/src/server/game.ts
+// packages/content/data/dungeons.fr.json
+var dungeons_fr_default = [
+  {
+    id: "dj-randonnee",
+    theme: "randonnee",
+    name: "Sentier des Brumes",
+    glyph: "\u{1F97E}",
+    blurb: "Sentier des Brumes met \xE0 l\u2019\xE9preuve ta discipline en randonn\xE9e.",
+    tier: 1,
+    unlockLevel: 3,
+    rooms: [
+      "un Corbeau moqueur",
+      "une Ronce vorace",
+      "un Sanglier boueux",
+      "un Loup des \xE9boulis",
+      "un Esprit de la brume"
+    ],
+    boss: "le G\xE9ant des Cimes"
+  },
+  {
+    id: "dj-danse",
+    theme: "danse",
+    name: "Salle des Miroirs",
+    glyph: "\u{1F483}",
+    blurb: "Salle des Miroirs met \xE0 l\u2019\xE9preuve ta discipline en danse.",
+    tier: 1,
+    unlockLevel: 3,
+    rooms: [
+      "un Valet maladroit",
+      "une Marionnette folle",
+      "un Cavalier sans visage",
+      "une Danseuse fant\xF4me",
+      "un Ma\xEEtre de ballet spectral"
+    ],
+    boss: "la Reine du Bal Maudit"
+  },
+  {
+    id: "dj-yoga",
+    theme: "yoga",
+    name: "Temple des Souffles",
+    glyph: "\u{1F9D8}",
+    blurb: "Temple des Souffles met \xE0 l\u2019\xE9preuve ta discipline en yoga.",
+    tier: 1,
+    unlockLevel: 3,
+    rooms: [
+      "un Moineau agit\xE9",
+      "une Pens\xE9e parasite",
+      "un Singe bavard",
+      "un Gardien du seuil",
+      "un Serpent d\u2019orage"
+    ],
+    boss: "le Dragon du Lotus"
+  },
+  {
+    id: "dj-cuisine",
+    theme: "cuisine",
+    name: "Cuisines Infernales",
+    glyph: "\u{1F373}",
+    blurb: "Cuisines Infernales met \xE0 l\u2019\xE9preuve ta discipline en cuisine.",
+    tier: 1,
+    unlockLevel: 3,
+    rooms: [
+      "un Rat de cave",
+      "un Couteau volant",
+      "une Soupe vivante",
+      "un Marmiton rancunier",
+      "un Four hurlant"
+    ],
+    boss: "le Chef des Casseroles"
+  },
+  {
+    id: "dj-mobilite",
+    theme: "mobilite",
+    name: "Gorges des Raideurs",
+    glyph: "\u{1F938}",
+    blurb: "Gorges des Raideurs met \xE0 l\u2019\xE9preuve ta discipline en mobilit\xE9 et stretching.",
+    tier: 2,
+    unlockLevel: 6,
+    rooms: [
+      "une Poulie grin\xE7ante",
+      "un N\u0153ud de muscles",
+      "un Golem de rouille",
+      "un Mur de courbatures",
+      "une Chim\xE8re contract\xE9e"
+    ],
+    boss: "le Titan Rouill\xE9"
+  },
+  {
+    id: "dj-nutrition",
+    theme: "nutrition",
+    name: "Jardins Gloutons",
+    glyph: "\u{1F957}",
+    blurb: "Jardins Gloutons met \xE0 l\u2019\xE9preuve ta discipline en nutrition et sant\xE9.",
+    tier: 2,
+    unlockLevel: 6,
+    rooms: [
+      "un Pigeon pillard",
+      "une Carotte mutante",
+      "un Gobelin sucr\xE9",
+      "une Grande Faim",
+      "un Spectre du grignotage"
+    ],
+    boss: "l\u2019Ogre du Buffet"
+  },
+  {
+    id: "dj-sommeil",
+    theme: "sommeil",
+    name: "Royaume des R\xEAves",
+    glyph: "\u{1F319}",
+    blurb: "Royaume des R\xEAves met \xE0 l\u2019\xE9preuve ta discipline en sommeil et r\xE9cup\xE9ration.",
+    tier: 2,
+    unlockLevel: 6,
+    rooms: [
+      "une Chauve-souris insomniaque",
+      "un Cauchemar tapi",
+      "un Lutin des soupirs",
+      "une Horloge affol\xE9e",
+      "un Spectre des \xE9crans"
+    ],
+    boss: "le Marchand d\u2019Insomnies"
+  },
+  {
+    id: "dj-botanique",
+    theme: "botanique",
+    name: "For\xEAt des Racines",
+    glyph: "\u{1F33F}",
+    blurb: "For\xEAt des Racines met \xE0 l\u2019\xE9preuve ta discipline en botanique.",
+    tier: 2,
+    unlockLevel: 6,
+    rooms: [
+      "un Pissenlit rebelle",
+      "une Liane \xE9trangleuse",
+      "un Champignon hargneux",
+      "un Loup-garou des foug\xE8res",
+      "une Dryade furieuse"
+    ],
+    boss: "l\u2019Arbre-Monde"
+  },
+  {
+    id: "dj-course",
+    theme: "course",
+    name: "Piste des Vents",
+    glyph: "\u{1F3C3}",
+    blurb: "Piste des Vents met \xE0 l\u2019\xE9preuve ta discipline en course \xE0 pied.",
+    tier: 3,
+    unlockLevel: 9,
+    rooms: [
+      "un Li\xE8vre arrogant",
+      "un L\xE9vrier de brume",
+      "un Centaure essouffl\xE9",
+      "une Harpie du dernier kilom\xE8tre",
+      "un Mur invisible"
+    ],
+    boss: "le Cerb\xE8re du Marathon"
+  },
+  {
+    id: "dj-dessin",
+    theme: "dessin",
+    name: "Atelier des Teintes",
+    glyph: "\u{1F3A8}",
+    blurb: "Atelier des Teintes met \xE0 l\u2019\xE9preuve ta discipline en dessin et peinture.",
+    tier: 3,
+    unlockLevel: 9,
+    rooms: [
+      "une Tache rebelle",
+      "un Pinceau enrag\xE9",
+      "un Croquis vivant",
+      "un Golem de fusain",
+      "un Spectre de la toile blanche"
+    ],
+    boss: "le Peintre Sans Visage"
+  },
+  {
+    id: "dj-musique",
+    theme: "musique",
+    name: "Salle des \xC9chos",
+    glyph: "\u{1F3B5}",
+    blurb: "Salle des \xC9chos met \xE0 l\u2019\xE9preuve ta discipline en musique.",
+    tier: 3,
+    unlockLevel: 9,
+    rooms: [
+      "un Diapason fou",
+      "une Corde vengeresse",
+      "un Tambour des profondeurs",
+      "une Sir\xE8ne d\xE9saccord\xE9e",
+      "un Barde sans \xE2me"
+    ],
+    boss: "le Chef d\u2019Orchestre Fant\xF4me"
+  },
+  {
+    id: "dj-lecture-ecriture",
+    theme: "lecture-ecriture",
+    name: "Biblioth\xE8que Interdite",
+    glyph: "\u{1F4DA}",
+    blurb: "Biblioth\xE8que Interdite met \xE0 l\u2019\xE9preuve ta discipline en lecture et \xE9criture.",
+    tier: 3,
+    unlockLevel: 9,
+    rooms: [
+      "un Ver de papier",
+      "une Page blanche hant\xE9e",
+      "un Grimoire mordeur",
+      "un Scribe fant\xF4me",
+      "un Gardien des index"
+    ],
+    boss: "le Grand Censeur"
+  },
+  {
+    id: "dj-pilates",
+    theme: "pilates",
+    name: "Studio des \xC9quilibres",
+    glyph: "\u2696\uFE0F",
+    blurb: "Studio des \xC9quilibres met \xE0 l\u2019\xE9preuve ta discipline en pilates.",
+    tier: 4,
+    unlockLevel: 12,
+    rooms: [
+      "un Tapis glissant",
+      "un Ballon rebelle",
+      "un Ressort affol\xE9",
+      "un Gardien du centre",
+      "un Spectre de la posture"
+    ],
+    boss: "le Funambule Noir"
+  },
+  {
+    id: "dj-natation",
+    theme: "natation",
+    name: "Grottes Immerg\xE9es",
+    glyph: "\u{1F3CA}",
+    blurb: "Grottes Immerg\xE9es met \xE0 l\u2019\xE9preuve ta discipline en natation.",
+    tier: 4,
+    unlockLevel: 12,
+    rooms: [
+      "une M\xE9duse nerveuse",
+      "un Crabe pin\xE7ant",
+      "une Mur\xE8ne sournoise",
+      "un Banc de piranhas",
+      "une Sir\xE8ne des abysses"
+    ],
+    boss: "le Kraken des Profondeurs"
+  },
+  {
+    id: "dj-cyclisme",
+    theme: "cyclisme",
+    name: "Col des G\xE9ants",
+    glyph: "\u{1F6B4}",
+    blurb: "Col des G\xE9ants met \xE0 l\u2019\xE9preuve ta discipline en cyclisme.",
+    tier: 4,
+    unlockLevel: 12,
+    rooms: [
+      "un Chien de ferme hargneux",
+      "un Virage tra\xEEtre",
+      "un Vent de face",
+      "un Cyclope des lacets",
+      "un Spectre du brouillard"
+    ],
+    boss: "le Dragon du Col Maudit"
+  },
+  {
+    id: "dj-langues",
+    theme: "langues",
+    name: "Tour de Babel",
+    glyph: "\u{1F5E3}\uFE0F",
+    blurb: "Tour de Babel met \xE0 l\u2019\xE9preuve ta discipline en langues.",
+    tier: 4,
+    unlockLevel: 12,
+    rooms: [
+      "un Perroquet malicieux",
+      "un Faux-ami sournois",
+      "un Verbe irr\xE9gulier",
+      "un Golem de grammaire",
+      "un Sphinx des conjugaisons"
+    ],
+    boss: "le Seigneur des Idiomes"
+  },
+  {
+    id: "dj-meditation",
+    theme: "meditation",
+    name: "Montagne du Silence",
+    glyph: "\u{1F3D4}\uFE0F",
+    blurb: "Montagne du Silence met \xE0 l\u2019\xE9preuve ta discipline en m\xE9ditation et respiration.",
+    tier: 5,
+    unlockLevel: 15,
+    rooms: [
+      "un Souffle volage",
+      "une Pens\xE9e envahissante",
+      "un Moine bavard",
+      "un \xC9cho tenace",
+      "un Fant\xF4me d\u2019inqui\xE9tude"
+    ],
+    boss: "l\u2019Ermite du Vide"
+  },
+  {
+    id: "dj-bricolage",
+    theme: "bricolage",
+    name: "Forge Oubli\xE9e",
+    glyph: "\u{1F527}",
+    blurb: "Forge Oubli\xE9e met \xE0 l\u2019\xE9preuve ta discipline en bricolage et artisanat.",
+    tier: 5,
+    unlockLevel: 15,
+    rooms: [
+      "un Clou rebelle",
+      "une Scie dentue",
+      "un \xC9tau vorace",
+      "un Automate d\xE9traqu\xE9",
+      "un Marteau-pilon"
+    ],
+    boss: "le Colosse de Rouille"
+  },
+  {
+    id: "dj-entraide",
+    theme: "entraide",
+    name: "Village Assi\xE9g\xE9",
+    glyph: "\u{1F91D}",
+    blurb: "Village Assi\xE9g\xE9 met \xE0 l\u2019\xE9preuve ta discipline en entraide et b\xE9n\xE9volat.",
+    tier: 5,
+    unlockLevel: 15,
+    rooms: [
+      "un Brigand \xE9go\xEFste",
+      "une Temp\xEAte de mis\xE8re",
+      "un Corbeau du doute",
+      "un Garde sourd",
+      "un Spectre de solitude"
+    ],
+    boss: "le Seigneur de l\u2019Indiff\xE9rence"
+  },
+  {
+    id: "dj-strategie",
+    theme: "strategie",
+    name: "\xC9chiquier G\xE9ant",
+    glyph: "\u265F\uFE0F",
+    blurb: "\xC9chiquier G\xE9ant met \xE0 l\u2019\xE9preuve ta discipline en jeux de strat\xE9gie.",
+    tier: 5,
+    unlockLevel: 15,
+    rooms: [
+      "un Pion hargneux",
+      "un Cavalier pi\xE9geux",
+      "un Fou retors",
+      "une Tour implacable",
+      "une Dame cruelle"
+    ],
+    boss: "le Roi Noir"
+  },
+  {
+    id: "dj-theatre",
+    theme: "theatre",
+    name: "Th\xE9\xE2tre des Ombres",
+    glyph: "\u{1F3AD}",
+    blurb: "Th\xE9\xE2tre des Ombres met \xE0 l\u2019\xE9preuve ta discipline en th\xE9\xE2tre et prise de parole.",
+    tier: 6,
+    unlockLevel: 18,
+    rooms: [
+      "un Trac d\xE9vorant",
+      "un Accessoire hant\xE9",
+      "un Critique mordant",
+      "un Fant\xF4me de l\u2019op\xE9ra",
+      "une Voix du public"
+    ],
+    boss: "le Souffleur Maudit"
+  },
+  {
+    id: "dj-culture",
+    theme: "culture",
+    name: "Mus\xE9e des \xC2ges",
+    glyph: "\u{1F3DB}\uFE0F",
+    blurb: "Mus\xE9e des \xC2ges met \xE0 l\u2019\xE9preuve ta discipline en culture g\xE9n\xE9rale.",
+    tier: 6,
+    unlockLevel: 18,
+    rooms: [
+      "une Statue sceptique",
+      "une Momie \xE9rudite",
+      "un Vase maudit",
+      "un Gardien de fresques",
+      "un Chevalier d\u2019armure vide"
+    ],
+    boss: "le Conservateur \xC9ternel"
+  },
+  {
+    id: "dj-escalade",
+    theme: "escalade",
+    name: "Falaise du Vertige",
+    glyph: "\u{1F9D7}",
+    blurb: "Falaise du Vertige met \xE0 l\u2019\xE9preuve ta discipline en escalade.",
+    tier: 6,
+    unlockLevel: 18,
+    rooms: [
+      "un Rocher branlant",
+      "une Chauve-souris des fissures",
+      "un Aigle jaloux",
+      "un Vertige rampant",
+      "un \xC9boulement vivant"
+    ],
+    boss: "le Gardien du Sommet"
+  },
+  {
+    id: "dj-programmation",
+    theme: "programmation",
+    name: "Labyrinthe du Code",
+    glyph: "\u{1F4BB}",
+    blurb: "Labyrinthe du Code met \xE0 l\u2019\xE9preuve ta discipline en programmation.",
+    tier: 6,
+    unlockLevel: 18,
+    rooms: [
+      "un Point-virgule manquant",
+      "une Boucle infinie",
+      "un Gobelin des d\xE9pendances",
+      "un Golem de spaghetti",
+      "un D\xE9mon de la production"
+    ],
+    boss: "le Bug Originel"
+  },
+  {
+    id: "dj-musculation",
+    theme: "musculation",
+    name: "Ar\xE8ne de Fonte",
+    glyph: "\u{1F3CB}\uFE0F",
+    blurb: "Ar\xE8ne de Fonte met \xE0 l\u2019\xE9preuve ta discipline en musculation.",
+    tier: 7,
+    unlockLevel: 20,
+    rooms: [
+      "un Halt\xE8re fou",
+      "un Sac de sable vivant",
+      "un Golem de plaques",
+      "un Minotaure du squat",
+      "un Titan de barres"
+    ],
+    boss: "le Colosse de Fonte"
+  },
+  {
+    id: "dj-arts-martiaux",
+    theme: "arts-martiaux",
+    name: "Dojo des Cent Combats",
+    glyph: "\u{1F94B}",
+    blurb: "Dojo des Cent Combats met \xE0 l\u2019\xE9preuve ta discipline en arts martiaux.",
+    tier: 7,
+    unlockLevel: 20,
+    rooms: [
+      "un Disciple fougueux",
+      "un Ninja des ombres",
+      "un Moine guerrier",
+      "un Samoura\xEF fant\xF4me",
+      "un Dragon de jade"
+    ],
+    boss: "le Ma\xEEtre Sans Nom"
+  }
+];
+
+// packages/content/data/items.fr.json
+var items_fr_default = [
+  {
+    id: "epee-du-sentier",
+    slot: "arme",
+    ability: "FOR",
+    name: "\xC9p\xE9e du sentier",
+    glyph: "\u2694\uFE0F",
+    blurb: "Une lame honn\xEAte, forg\xE9e pour ceux qui avancent un pas apr\xE8s l\u2019autre.",
+    setId: "titan"
+  },
+  {
+    id: "dague-vive",
+    slot: "arme",
+    ability: "DEX",
+    name: "Dague vive",
+    glyph: "\u{1F5E1}\uFE0F",
+    blurb: "L\xE9g\xE8re et rapide, elle r\xE9compense les gestes pr\xE9cis.",
+    setId: "ombre"
+  },
+  {
+    id: "baton-des-sages",
+    slot: "arme",
+    ability: "INT",
+    name: "B\xE2ton des sages",
+    glyph: "\u{1FA84}",
+    blurb: "Il s\u2019\xE9claire quand on r\xE9fl\xE9chit avant d\u2019agir.",
+    setId: "erudit"
+  },
+  {
+    id: "arc-de-l-aube",
+    slot: "arme",
+    ability: "SAG",
+    name: "Arc de l\u2019aube",
+    glyph: "\u{1F3F9}",
+    blurb: "Il ne rate jamais ceux qui savent attendre le bon moment.",
+    setId: "aube"
+  },
+  {
+    id: "sceptre-d-eloquence",
+    slot: "arme",
+    ability: "CHA",
+    name: "Sceptre d\u2019\xE9loquence",
+    glyph: "\u{1F531}",
+    blurb: "Les foules se taisent quand on le brandit.",
+    setId: "troubadour"
+  },
+  {
+    id: "masse-du-rempart",
+    slot: "arme",
+    ability: "CON",
+    name: "Masse du rempart",
+    glyph: "\u{1F528}",
+    blurb: "Lourde \xE0 porter, plus lourde encore \xE0 encaisser.",
+    setId: "rempart"
+  },
+  {
+    id: "hache-du-forgeron",
+    slot: "arme",
+    ability: "FOR",
+    name: "Hache du forgeron",
+    glyph: "\u{1FA93}",
+    blurb: "Chaque coup raconte des heures d\u2019entra\xEEnement.",
+    setId: null
+  },
+  {
+    id: "fleuret-leger",
+    slot: "arme",
+    ability: "DEX",
+    name: "Fleuret l\xE9ger",
+    glyph: "\u{1F93A}",
+    blurb: "Une pointe fine pour des appuis parfaits.",
+    setId: null
+  },
+  {
+    id: "casque-de-fer",
+    slot: "tete",
+    ability: "CON",
+    name: "Casque de fer",
+    glyph: "\u26D1\uFE0F",
+    blurb: "Il en a vu d\u2019autres, et il tient toujours.",
+    setId: "rempart"
+  },
+  {
+    id: "chapeau-de-voyageur",
+    slot: "tete",
+    ability: "DEX",
+    name: "Chapeau de voyageur",
+    glyph: "\u{1F3A9}",
+    blurb: "Un chapeau qui aime le grand air et les chemins de traverse.",
+    setId: "ombre"
+  },
+  {
+    id: "couronne-de-lauriers",
+    slot: "tete",
+    ability: "CHA",
+    name: "Couronne de lauriers",
+    glyph: "\u{1F451}",
+    blurb: "Offerte \xE0 celui qui a su rassembler.",
+    setId: "troubadour"
+  },
+  {
+    id: "diademe-du-savant",
+    slot: "tete",
+    ability: "INT",
+    name: "Diad\xE8me du savant",
+    glyph: "\u{1F393}",
+    blurb: "Il scintille \xE0 chaque nouvelle id\xE9e.",
+    setId: "erudit"
+  },
+  {
+    id: "capuche-du-veilleur",
+    slot: "tete",
+    ability: "SAG",
+    name: "Capuche du veilleur",
+    glyph: "\u{1F977}",
+    blurb: "Sous sa capuche, on entend mieux ce qui compte.",
+    setId: "aube"
+  },
+  {
+    id: "bandeau-du-guerrier",
+    slot: "tete",
+    ability: "FOR",
+    name: "Bandeau du guerrier",
+    glyph: "\u{1F3F4}",
+    blurb: "Nou\xE9 serr\xE9, il retient la sueur et le doute.",
+    setId: "titan"
+  },
+  {
+    id: "heaume-du-gardien",
+    slot: "tete",
+    ability: "CON",
+    name: "Heaume du gardien",
+    glyph: "\u{1FA96}",
+    blurb: "Un heaume qui n\u2019a jamais c\xE9d\xE9.",
+    setId: null
+  },
+  {
+    id: "lunettes-d-erudit",
+    slot: "tete",
+    ability: "INT",
+    name: "Lunettes d\u2019\xE9rudit",
+    glyph: "\u{1F453}",
+    blurb: "Elles lisent entre les lignes.",
+    setId: null
+  },
+  {
+    id: "cotte-de-mailles",
+    slot: "torse",
+    ability: "CON",
+    name: "Cotte de mailles",
+    glyph: "\u{1F6E1}\uFE0F",
+    blurb: "Des milliers d\u2019anneaux, pour une seule certitude : tenir bon.",
+    setId: "rempart"
+  },
+  {
+    id: "tunique-du-voyageur",
+    slot: "torse",
+    ability: "DEX",
+    name: "Tunique du voyageur",
+    glyph: "\u{1F455}",
+    blurb: "Souple et l\xE9g\xE8re, elle suit tous les mouvements.",
+    setId: "ombre"
+  },
+  {
+    id: "armure-de-plates",
+    slot: "torse",
+    ability: "FOR",
+    name: "Armure de plates",
+    glyph: "\u{1F9BA}",
+    blurb: "Pour qui porte sa force avec fiert\xE9.",
+    setId: "titan"
+  },
+  {
+    id: "robe-de-sagesse",
+    slot: "torse",
+    ability: "SAG",
+    name: "Robe de sagesse",
+    glyph: "\u{1F458}",
+    blurb: "Elle apaise tout ce qui la touche.",
+    setId: "aube"
+  },
+  {
+    id: "manteau-d-orateur",
+    slot: "torse",
+    ability: "CHA",
+    name: "Manteau d\u2019orateur",
+    glyph: "\u{1F9E5}",
+    blurb: "Un manteau qui donne envie de prendre la parole.",
+    setId: "troubadour"
+  },
+  {
+    id: "veste-de-l-artisan",
+    slot: "torse",
+    ability: "INT",
+    name: "Veste de l\u2019artisan",
+    glyph: "\u{1F97C}",
+    blurb: "Pleine de poches, pleine de solutions.",
+    setId: "erudit"
+  },
+  {
+    id: "plastron-de-cuir",
+    slot: "torse",
+    ability: "CON",
+    name: "Plastron de cuir",
+    glyph: "\u{1F94B}",
+    blurb: "\xC9prouv\xE9 par mille entra\xEEnements.",
+    setId: null
+  },
+  {
+    id: "cape-du-conteur",
+    slot: "torse",
+    ability: "CHA",
+    name: "Cape du conteur",
+    glyph: "\u{1F9E3}",
+    blurb: "Elle claque au vent quand l\u2019histoire commence.",
+    setId: null
+  },
+  {
+    id: "gantelets-de-force",
+    slot: "mains",
+    ability: "FOR",
+    name: "Gantelets de force",
+    glyph: "\u{1F9E4}",
+    blurb: "Ils serrent plus fort qu\u2019on ne l\u2019imagine.",
+    setId: "titan"
+  },
+  {
+    id: "gants-d-artisan",
+    slot: "mains",
+    ability: "DEX",
+    name: "Gants d\u2019artisan",
+    glyph: "\u270B",
+    blurb: "Un tour de main h\xE9rit\xE9 de g\xE9n\xE9rations d\u2019ateliers.",
+    setId: "ombre"
+  },
+  {
+    id: "bracelets-de-calme",
+    slot: "mains",
+    ability: "SAG",
+    name: "Bracelets de calme",
+    glyph: "\u{1F4FF}",
+    blurb: "Un souffle, un grain, un instant de paix.",
+    setId: "aube"
+  },
+  {
+    id: "mitaines-d-ecriture",
+    slot: "mains",
+    ability: "INT",
+    name: "Mitaines d\u2019\xE9criture",
+    glyph: "\u270D\uFE0F",
+    blurb: "Elles laissent les doigts libres pour la plume.",
+    setId: "erudit"
+  },
+  {
+    id: "poignets-du-rempart",
+    slot: "mains",
+    ability: "CON",
+    name: "Poignets du rempart",
+    glyph: "\u{1F932}",
+    blurb: "Rien ne les fait plier.",
+    setId: "rempart"
+  },
+  {
+    id: "gants-de-velours",
+    slot: "mains",
+    ability: "CHA",
+    name: "Gants de velours",
+    glyph: "\u{1F91D}",
+    blurb: "Pour les poign\xE9es de main qui scellent les amiti\xE9s.",
+    setId: "troubadour"
+  },
+  {
+    id: "poings-d-acier",
+    slot: "mains",
+    ability: "FOR",
+    name: "Poings d\u2019acier",
+    glyph: "\u{1F94A}",
+    blurb: "Une garde solide, une volont\xE9 plus solide encore.",
+    setId: null
+  },
+  {
+    id: "anneau-de-vivacite",
+    slot: "mains",
+    ability: "DEX",
+    name: "Anneau de vivacit\xE9",
+    glyph: "\u{1F48D}",
+    blurb: "Il rend chaque geste plus vif.",
+    setId: null
+  },
+  {
+    id: "bottes-de-sept-lieues",
+    slot: "bottes",
+    ability: "DEX",
+    name: "Bottes de sept lieues",
+    glyph: "\u{1F97E}",
+    blurb: "Elles avalent les kilom\xE8tres sans fatigue.",
+    setId: "ombre"
+  },
+  {
+    id: "sandales-du-pelerin",
+    slot: "bottes",
+    ability: "SAG",
+    name: "Sandales du p\xE8lerin",
+    glyph: "\u{1FA74}",
+    blurb: "Elles connaissent le chemin, m\xEAme sans carte.",
+    setId: "aube"
+  },
+  {
+    id: "bottes-de-fer",
+    slot: "bottes",
+    ability: "CON",
+    name: "Bottes de fer",
+    glyph: "\u{1F462}",
+    blurb: "Elles ancrent leur porteur dans la terre.",
+    setId: "rempart"
+  },
+  {
+    id: "souliers-de-danse",
+    slot: "bottes",
+    ability: "CHA",
+    name: "Souliers de danse",
+    glyph: "\u{1F45E}",
+    blurb: "Impossible de les porter sans sourire.",
+    setId: "troubadour"
+  },
+  {
+    id: "chaussons-de-lecture",
+    slot: "bottes",
+    ability: "INT",
+    name: "Chaussons de lecture",
+    glyph: "\u{1F9E6}",
+    blurb: "Pour les longues soir\xE9es avec un bon livre.",
+    setId: "erudit"
+  },
+  {
+    id: "sabots-du-bucheron",
+    slot: "bottes",
+    ability: "FOR",
+    name: "Sabots du b\xFBcheron",
+    glyph: "\u{1FAB5}",
+    blurb: "Solides comme le ch\xEAne qu\u2019ils ont vu tomber.",
+    setId: "titan"
+  },
+  {
+    id: "bottines-de-sentier",
+    slot: "bottes",
+    ability: "CON",
+    name: "Bottines de sentier",
+    glyph: "\u{1F97F}",
+    blurb: "Elles tiennent la distance, saison apr\xE8s saison.",
+    setId: null
+  },
+  {
+    id: "baskets-du-coureur",
+    slot: "bottes",
+    ability: "DEX",
+    name: "Baskets du coureur",
+    glyph: "\u{1F45F}",
+    blurb: "L\xE9g\xE8res, fid\xE8les, toujours pr\xEAtes \xE0 partir.",
+    setId: null
+  },
+  {
+    id: "pendentif-du-sage",
+    slot: "amulette",
+    ability: "INT",
+    name: "Pendentif du sage",
+    glyph: "\u{1F52E}",
+    blurb: "Il murmure la r\xE9ponse \xE0 ceux qui cherchent.",
+    setId: "erudit"
+  },
+  {
+    id: "talisman-de-force",
+    slot: "amulette",
+    ability: "FOR",
+    name: "Talisman de force",
+    glyph: "\u{1F9FF}",
+    blurb: "Il chauffe quand l\u2019effort se fait sentir.",
+    setId: "titan"
+  },
+  {
+    id: "medaillon-de-l-aube",
+    slot: "amulette",
+    ability: "SAG",
+    name: "M\xE9daillon de l\u2019aube",
+    glyph: "\u{1F305}",
+    blurb: "Il brille chaque matin o\xF9 l\u2019on recommence.",
+    setId: "aube"
+  },
+  {
+    id: "collier-du-troubadour",
+    slot: "amulette",
+    ability: "CHA",
+    name: "Collier du troubadour",
+    glyph: "\u{1F4EF}",
+    blurb: "Les chansons y sont grav\xE9es.",
+    setId: "troubadour"
+  },
+  {
+    id: "amulette-de-vigueur",
+    slot: "amulette",
+    ability: "CON",
+    name: "Amulette de vigueur",
+    glyph: "\u2764\uFE0F",
+    blurb: "Elle bat au rythme de ton endurance.",
+    setId: "rempart"
+  },
+  {
+    id: "breloque-agile",
+    slot: "amulette",
+    ability: "DEX",
+    name: "Breloque agile",
+    glyph: "\u{1F340}",
+    blurb: "Un porte-bonheur pour les pieds l\xE9gers.",
+    setId: "ombre"
+  },
+  {
+    id: "sautoir-d-erudit",
+    slot: "amulette",
+    ability: "INT",
+    name: "Sautoir d\u2019\xE9rudit",
+    glyph: "\u{1F4DC}",
+    blurb: "Il porte la m\xE9moire de mille lectures.",
+    setId: null
+  },
+  {
+    id: "sceau-du-gardien",
+    slot: "amulette",
+    ability: "SAG",
+    name: "Sceau du gardien",
+    glyph: "\u{1FAAC}",
+    blurb: "Il veille sur ceux qui veillent sur les autres.",
+    setId: null
+  }
+];
+
+// packages/content/data/sets.fr.json
+var sets_fr_default = [
+  {
+    id: "titan",
+    name: "Panoplie du Titan",
+    glyph: "\u{1F9BE}",
+    ability: "FOR",
+    blurb: "Forg\xE9e pour ceux qui soul\xE8vent le monde un effort apr\xE8s l\u2019autre.",
+    pieces: {
+      arme: "epee-du-sentier",
+      tete: "bandeau-du-guerrier",
+      torse: "armure-de-plates",
+      mains: "gantelets-de-force",
+      bottes: "sabots-du-bucheron",
+      amulette: "talisman-de-force"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  },
+  {
+    id: "ombre",
+    name: "Panoplie de l\u2019Ombre",
+    glyph: "\u{1F312}",
+    ability: "DEX",
+    blurb: "L\xE9g\xE8re, silencieuse, toujours un pas devant.",
+    pieces: {
+      arme: "dague-vive",
+      tete: "chapeau-de-voyageur",
+      torse: "tunique-du-voyageur",
+      mains: "gants-d-artisan",
+      bottes: "bottes-de-sept-lieues",
+      amulette: "breloque-agile"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  },
+  {
+    id: "rempart",
+    name: "Panoplie du Rempart",
+    glyph: "\u{1F3F0}",
+    ability: "CON",
+    blurb: "Rien ne la fait plier, et rien ne la fait reculer.",
+    pieces: {
+      arme: "masse-du-rempart",
+      tete: "casque-de-fer",
+      torse: "cotte-de-mailles",
+      mains: "poignets-du-rempart",
+      bottes: "bottes-de-fer",
+      amulette: "amulette-de-vigueur"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  },
+  {
+    id: "erudit",
+    name: "Panoplie de l\u2019\xC9rudit",
+    glyph: "\u{1F4DA}",
+    ability: "INT",
+    blurb: "Chaque pi\xE8ce garde la trace d\u2019une id\xE9e qui a fait ses preuves.",
+    pieces: {
+      arme: "baton-des-sages",
+      tete: "diademe-du-savant",
+      torse: "veste-de-l-artisan",
+      mains: "mitaines-d-ecriture",
+      bottes: "chaussons-de-lecture",
+      amulette: "pendentif-du-sage"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  },
+  {
+    id: "aube",
+    name: "Panoplie de l\u2019Aube",
+    glyph: "\u{1F304}",
+    ability: "SAG",
+    blurb: "Elle brille pour ceux qui recommencent chaque matin.",
+    pieces: {
+      arme: "arc-de-l-aube",
+      tete: "capuche-du-veilleur",
+      torse: "robe-de-sagesse",
+      mains: "bracelets-de-calme",
+      bottes: "sandales-du-pelerin",
+      amulette: "medaillon-de-l-aube"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  },
+  {
+    id: "troubadour",
+    name: "Panoplie du Troubadour",
+    glyph: "\u{1F3AD}",
+    ability: "CHA",
+    blurb: "Faite pour rassembler : on la porte pour qu\u2019on vous suive.",
+    pieces: {
+      arme: "sceptre-d-eloquence",
+      tete: "couronne-de-lauriers",
+      torse: "manteau-d-orateur",
+      mains: "gants-de-velours",
+      bottes: "souliers-de-danse",
+      amulette: "collier-du-troubadour"
+    },
+    bonuses: [
+      {
+        pieces: 2,
+        pp: 5,
+        ability: 1
+      },
+      {
+        pieces: 4,
+        pp: 12,
+        ability: 3
+      },
+      {
+        pieces: 6,
+        pp: 25,
+        ability: 6
+      }
+    ]
+  }
+];
+
+// packages/engine/src/server/hero-stats.ts
+var SETS = sets_fr_default;
 var CLASSES = classes_fr_default;
+function buildSnapshot(character, items) {
+  const masteries = masteriesOf(CLASSES, character.classId);
+  const equipped = items.filter((i) => i.equipped);
+  const setBonus = setBonusTotals(SETS, items);
+  return {
+    items,
+    equipped,
+    setBonus,
+    scores: adventureScores(abilityScores(character), equipped, masteries, setBonus),
+    power: heroPowerBreakdown(character, items, masteries, setBonus)
+  };
+}
+async function heroSnapshot(store, userId, character, known) {
+  return buildSnapshot(character, known ?? await store.listItems(userId));
+}
+async function heroCombatStats(store, userId, character) {
+  const snap = await heroSnapshot(store, userId, character);
+  return { power: snap.power.total, scores: snap.scores };
+}
+
+// packages/engine/src/server/season-game.ts
+var fail = (error, message) => ({ ok: false, error, message });
+async function recordPower(ctx, userId, character, power, today) {
+  const next = character.power === power ? character : { ...character, power };
+  if (next !== character) await ctx.store.saveCharacter(userId, next);
+  await ctx.store.upsertSeasonScore(userId, seasonInfo(today).key, power, today);
+  return next;
+}
+async function syncHeroPower(ctx, userId) {
+  const [character, settings] = await Promise.all([ctx.store.getCharacter(userId), ctx.store.getSettings(userId)]);
+  if (!character) return;
+  const snap = await heroSnapshot(ctx.store, userId, character);
+  await recordPower(ctx, userId, character, snap.power.total, gameDate(ctx.now(), settings.timezone, settings.resetHour));
+}
+function viewOfResult(r) {
+  const idx = seasonIndexOfKey(r.seasonKey) ?? 0;
+  return {
+    seasonKey: r.seasonKey,
+    name: `Saison ${idx}`,
+    rank: r.rank,
+    participants: r.participants,
+    power: r.power,
+    frame: r.frame ?? null,
+    chest: r.frame !== null
+  };
+}
+async function evaluateSeasons(ctx, userId, character, today, settings) {
+  const current = seasonInfo(today);
+  const [scores, results] = await Promise.all([ctx.store.listSeasonScores(userId), ctx.store.listSeasonResults(userId)]);
+  const done = new Set(results.map((r) => r.seasonKey));
+  const due = scores.filter((s) => !done.has(s.seasonKey) && (seasonIndexOfKey(s.seasonKey) ?? Infinity) < current.index).sort((a, b) => (seasonIndexOfKey(a.seasonKey) ?? 0) - (seasonIndexOfKey(b.seasonKey) ?? 0));
+  const evaluated = [];
+  const nowIso = new Date(ctx.now()).toISOString();
+  let hero = character;
+  for (const score of due) {
+    const qualifies = seasonQualifies(score.firstDay, score.lastDay);
+    let rank = null;
+    let participants = 0;
+    let reward = null;
+    if (qualifies) {
+      const board = settings.leaderboardOptIn ? rankSeason(await ctx.store.seasonRanking(userId, score.seasonKey)) : [];
+      participants = board.length;
+      rank = board.find((r) => r.profileId === userId)?.rank ?? null;
+      reward = seasonReward(rank, participants);
+      const chest = { id: ctx.uuid(), rarity: SEASON_CHEST, source: "season", sourceKey: score.seasonKey, instanceId: null, createdAt: nowIso, openedAt: null };
+      await ctx.store.insertChest(userId, chest);
+    }
+    const record = { seasonKey: score.seasonKey, rank, participants, power: score.power, frame: reward?.frame ?? null, createdAt: nowIso };
+    if (!await ctx.store.insertSeasonResult(userId, record)) continue;
+    const view = viewOfResult(record);
+    evaluated.push(view);
+    if (reward) {
+      hero = { ...hero, frameStyle: frameStyleOf(score.seasonKey, reward.frame) };
+      await ctx.store.saveCharacter(userId, hero);
+      try {
+        await ctx.store.notify(userId, "season_end", { season: score.seasonKey, name: view.name, rank, participants, frame: reward.frame });
+      } catch (e) {
+        console.error("season notify", e);
+      }
+    }
+  }
+  return { character: hero, evaluated };
+}
+async function getSeasonState(ctx, userId) {
+  const [character, settings] = await Promise.all([ctx.store.getCharacter(userId), ctx.store.getSettings(userId)]);
+  if (!character) return fail("no-character");
+  const today = gameDate(ctx.now(), settings.timezone, settings.resetHour);
+  const season = seasonInfo(today);
+  const evaluation = await evaluateSeasons(ctx, userId, character, today, settings);
+  const snap = await heroSnapshot(ctx.store, userId, evaluation.character);
+  const hero = await recordPower(ctx, userId, evaluation.character, snap.power.total, today);
+  const [scores, board, results] = await Promise.all([
+    ctx.store.listSeasonScores(userId),
+    ctx.store.seasonRanking(userId, season.key),
+    ctx.store.listSeasonResults(userId)
+  ]);
+  const ranked = settings.leaderboardOptIn ? rankSeason(board) : [];
+  const rank = ranked.find((r) => r.profileId === userId)?.rank ?? null;
+  const mine = scores.find((s) => s.seasonKey === season.key);
+  const reward = seasonReward(rank, ranked.length);
+  const def = SEASON_FRAME_DEFS[reward.frame];
+  const style = parseFrameStyle(hero.frameStyle);
+  return {
+    ok: true,
+    character: hero,
+    state: {
+      season,
+      power: snap.power.total,
+      optedIn: settings.leaderboardOptIn,
+      rank,
+      participants: ranked.length,
+      daysPlayed: mine ? Math.max(0, diffDays(mine.lastDay, mine.firstDay)) + 1 : 1,
+      qualifies: mine ? seasonQualifies(mine.firstDay, mine.lastDay) : false,
+      reward: { ...reward, frameLabel: def.label, frameGlyph: def.glyph, frameColor: def.color },
+      frame: style ? { ...style, ...SEASON_FRAME_DEFS[style.frame] } : null,
+      results: results.map(viewOfResult).sort((a, b) => (seasonIndexOfKey(b.seasonKey) ?? 0) - (seasonIndexOfKey(a.seasonKey) ?? 0)),
+      evaluated: evaluation.evaluated
+    }
+  };
+}
+
+// packages/engine/src/server/adventure-game.ts
+var ITEMS = items_fr_default;
+var DUNGEONS = dungeons_fr_default;
+var CLASSES2 = classes_fr_default;
+var fail2 = (error, message) => ({ ok: false, error, message });
+async function loadAdv(ctx, userId) {
+  const [character, settings] = await Promise.all([ctx.store.getCharacter(userId), ctx.store.getSettings(userId)]);
+  if (!character) return null;
+  const nowMs = ctx.now();
+  return {
+    ctx,
+    userId,
+    character,
+    settings,
+    nowMs,
+    nowIso: new Date(nowMs).toISOString(),
+    today: gameDate(nowMs, settings.timezone, settings.resetHour),
+    masteries: masteriesOf(CLASSES2, character.classId)
+  };
+}
+var SET_OF = new Map(ITEMS.filter((i) => i.setId).map((i) => [i.id, i.setId]));
+function viewOf(item, masteries) {
+  return {
+    ...item,
+    setId: SET_OF.get(item.templateId) ?? null,
+    power: itemPower(item, masteries),
+    abilityBonus: itemAbilityBonus(item, masteries),
+    upgradeCost: upgradeCost(item.level),
+    dismantleValue: dismantleValue(item.rarity)
+  };
+}
+var opensToday = (c, today) => c.chestOpensDate === today ? c.chestOpensToday : 0;
+function expeditionStart(env) {
+  const ms = Date.parse(env.character.expeditionStartedAt ?? "");
+  return Number.isNaN(ms) ? env.nowMs : Math.min(ms, env.nowMs);
+}
+async function snapshot(env, knownItems) {
+  return buildSnapshot(env.character, knownItems ?? await env.ctx.store.listItems(env.userId));
+}
+async function syncGear(env, character = env.character) {
+  const snap = await snapshot({ ...env, character });
+  return recordPower(env.ctx, env.userId, character, snap.power.total, env.today);
+}
+function expeditionOf(env, snap) {
+  const startMs = expeditionStart(env);
+  const y = expeditionYield({ pp: snap.power.total, scores: snap.scores, streak: env.character.streakCurrent, elapsedMs: env.nowMs - startMs });
+  return {
+    ...y,
+    startedAt: new Date(startMs).toISOString(),
+    capHours: EXPEDITION_CAP_HOURS,
+    streakMultiplier: streakMultiplier(env.character.streakCurrent),
+    claimable: env.nowMs - startMs >= EXPEDITION_MIN_CLAIM_MS
+  };
+}
+async function stateOf(env) {
+  const [snap, chests] = await Promise.all([snapshot(env), env.ctx.store.listChests(env.userId, { opened: false })]);
+  const counts = Object.fromEntries(CHEST_RARITIES.map((r) => [r, 0]));
+  for (const c of chests) counts[c.rarity]++;
+  const used = opensToday(env.character, env.today);
+  const equipped = {};
+  for (const it of snap.equipped) equipped[it.slot] = it.id;
+  return {
+    today: env.today,
+    power: snap.power.total,
+    powerBreakdown: { level: snap.power.level, scores: snap.power.scores, items: snap.power.items, sets: snap.power.sets },
+    scores: snap.scores,
+    gold: env.character.gold,
+    fragments: env.character.fragments,
+    keys: env.character.keys,
+    maxKeys: MAX_KEYS,
+    expedition: expeditionOf(env, snap),
+    chests,
+    chestCounts: counts,
+    opens: { today: used, max: CHEST_OPENS_PER_DAY, remaining: Math.max(0, CHEST_OPENS_PER_DAY - used) },
+    pity: env.character.chestPity,
+    items: snap.items.map((i) => viewOf(i, env.masteries)),
+    equipped,
+    sets: setsProgress(SETS, snap.items),
+    setBonus: { pp: snap.setBonus.pp, abilities: snap.setBonus.abilities },
+    seasonEvaluated: []
+  };
+}
+async function getAdventureState(ctx, userId) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  if (!env.character.expeditionStartedAt) {
+    env.character = { ...env.character, expeditionStartedAt: env.nowIso };
+    await ctx.store.saveCharacter(userId, env.character);
+  }
+  const season = await evaluateSeasons(ctx, userId, env.character, env.today, env.settings);
+  env.character = season.character;
+  const state = { ...await stateOf(env), seasonEvaluated: season.evaluated };
+  env.character = await recordPower(ctx, userId, env.character, state.power, env.today);
+  return { ok: true, state, character: env.character };
+}
+async function claimExpedition(ctx, userId) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  const startMs = expeditionStart(env);
+  if (env.nowMs - startMs < EXPEDITION_MIN_CLAIM_MS) return fail2("nothing-pending", "Ton exp\xE9dition vient de partir : reviens plus tard.");
+  const snap = await snapshot(env);
+  const y = expeditionOf(env, snap);
+  const keyGained = env.character.keys < MAX_KEYS && rollExpeditionKey(`${userId}|exp|${new Date(startMs).toISOString()}`, y.keyChance);
+  const character = {
+    ...env.character,
+    gold: env.character.gold + y.gold,
+    fragments: env.character.fragments + y.fragments,
+    keys: Math.min(MAX_KEYS, env.character.keys + (keyGained ? 1 : 0)),
+    expeditionStartedAt: env.nowIso
+  };
+  await ctx.store.saveCharacter(userId, character);
+  return { ok: true, claim: { gold: y.gold, fragments: y.fragments, hours: y.hours, capped: y.capped, keyGained }, character };
+}
+var newChest = (env, rarity, source, sourceKey, instanceId = null) => ({
+  id: env.ctx.uuid(),
+  rarity,
+  source,
+  sourceKey,
+  instanceId,
+  createdAt: env.nowIso,
+  openedAt: null
+});
+async function openChest(ctx, userId, input) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  const chests = await ctx.store.listChests(userId);
+  const chest = chests.find((c) => c.id === input.chestId);
+  if (!chest) return fail2("not-found", "Coffre introuvable.");
+  if (chest.openedAt) return fail2("not-found", "Ce coffre est d\xE9j\xE0 ouvert.");
+  const used = opensToday(env.character, env.today);
+  if (used >= CHEST_OPENS_PER_DAY) return fail2("daily-cap", `Tu as d\xE9j\xE0 ouvert ${CHEST_OPENS_PER_DAY} coffres aujourd\u2019hui : reviens demain.`);
+  const snap = await snapshot(env);
+  const draw = drawChest({
+    chest: chest.rarity,
+    sag: snap.scores.SAG,
+    pity: env.character.chestPity,
+    // Graine : profil + compteur d'ouvertures (déterministe pour les tests).
+    seed: `${userId}|chest|${chests.filter((c) => c.openedAt).length}`,
+    templates: ITEMS
+  });
+  if (!await ctx.store.markChestOpened(userId, chest.id, env.nowIso)) return fail2("not-found", "Ce coffre est d\xE9j\xE0 ouvert.");
+  const item = {
+    id: ctx.uuid(),
+    templateId: draw.template.id,
+    rarity: draw.rarity,
+    slot: draw.template.slot,
+    ability: draw.template.ability,
+    level: 0,
+    equipped: false,
+    createdAt: env.nowIso
+  };
+  await ctx.store.insertItems(userId, [item]);
+  const character = {
+    ...env.character,
+    gold: env.character.gold + draw.gold,
+    fragments: env.character.fragments + draw.fragments,
+    chestPity: draw.pity,
+    chestOpensDate: env.today,
+    chestOpensToday: used + 1
+  };
+  await ctx.store.saveCharacter(userId, character);
+  return {
+    ok: true,
+    opening: {
+      chest: { ...chest, openedAt: env.nowIso },
+      item: viewOf(item, env.masteries),
+      gold: draw.gold,
+      fragments: draw.fragments,
+      guaranteed: draw.guaranteed,
+      opensToday: used + 1
+    },
+    character
+  };
+}
+async function mergeChests(ctx, userId, input) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  if (!CHEST_RARITIES.includes(input.rarity)) return fail2("invalid", "Raret\xE9 de coffre inconnue.");
+  const next = nextChestRarity(input.rarity);
+  if (!next) return fail2("invalid", "Un coffre mythique ne peut pas \xEAtre fusionn\xE9.");
+  const pool = (await ctx.store.listChests(userId, { opened: false })).filter((c) => c.rarity === input.rarity);
+  if (pool.length < MERGE_COUNT) return fail2("insufficient", `Il faut ${MERGE_COUNT} coffres de m\xEAme raret\xE9 pour les fusionner.`);
+  for (const c of pool.slice(0, MERGE_COUNT)) {
+    if (!await ctx.store.markChestOpened(userId, c.id, env.nowIso)) return fail2("not-found", "Un des coffres a d\xE9j\xE0 \xE9t\xE9 utilis\xE9.");
+  }
+  const chest = newChest(env, next, "merge", ctx.uuid());
+  await ctx.store.insertChest(userId, chest);
+  return { ok: true, chest };
+}
+async function grantQuestChests(i) {
+  const chests = [];
+  let keysGained = 0;
+  const mk = (rarity, source, sourceKey) => ({
+    id: i.uuid(),
+    rarity,
+    source,
+    sourceKey,
+    instanceId: i.instanceId,
+    createdAt: i.nowIso,
+    openedAt: null
+  });
+  const give = async (chest, key) => {
+    if (await i.store.insertChest(i.userId, chest)) {
+      chests.push(chest);
+      if (key) keysGained++;
+    }
+  };
+  if (i.isTrackQuest && i.isDaily) await give(mk(dailyChestRarity(i.streak), "quest", i.completedDay), false);
+  if (i.promotion) await give(mk(rungChestRarity(i.promotion.rung), "rung", `${i.promotion.trackId}:${i.promotion.rung}`), true);
+  if (i.isDaily && i.streak > i.prevStreak) {
+    const rarity = streakMilestoneChest(i.streak);
+    if (rarity) await give(mk(rarity, "streak", `${i.streak}:${i.completedDay}`), true);
+  }
+  const keys = Math.min(MAX_KEYS, i.character.keys + keysGained);
+  return { character: keys === i.character.keys ? i.character : { ...i.character, keys }, chests, keysGained: keys - i.character.keys };
+}
+async function revokeQuestChests(store, userId, instanceId) {
+  const mine = (await store.listChests(userId, { opened: false })).filter((c) => c.instanceId === instanceId);
+  if (!mine.length) return { removed: 0, keysLost: 0 };
+  await store.deleteChests(userId, mine.map((c) => c.id));
+  return { removed: mine.length, keysLost: mine.filter((c) => c.source === "rung" || c.source === "streak").length };
+}
+var itemNotFound = () => fail2("not-found", "Objet introuvable.");
+async function equipItem(ctx, userId, input) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  const items = await ctx.store.listItems(userId);
+  const item = items.find((i) => i.id === input.itemId);
+  if (!item) return itemNotFound();
+  if (item.equipped) return { ok: true, item: viewOf(item, env.masteries), replaced: null };
+  const current = items.find((i) => i.slot === item.slot && i.equipped);
+  if (current) await ctx.store.updateItem(userId, current.id, { equipped: false });
+  await ctx.store.updateItem(userId, item.id, { equipped: true });
+  await syncGear(env);
+  return { ok: true, item: viewOf({ ...item, equipped: true }, env.masteries), replaced: current?.id ?? null };
+}
+async function unequipSlot(ctx, userId, input) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  if (!EQUIP_SLOTS.includes(input.slot)) return fail2("invalid", "Emplacement inconnu.");
+  const current = (await ctx.store.listItems(userId)).find((i) => i.slot === input.slot && i.equipped);
+  if (!current) return fail2("not-found", "Aucun objet \xE9quip\xE9 \xE0 cet emplacement.");
+  await ctx.store.updateItem(userId, current.id, { equipped: false });
+  await syncGear(env);
+  return { ok: true, item: viewOf({ ...current, equipped: false }, env.masteries) };
+}
+async function upgradeItem(ctx, userId, input) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  const item = (await ctx.store.listItems(userId)).find((i) => i.id === input.itemId);
+  if (!item) return itemNotFound();
+  const cost = upgradeCost(item.level);
+  if (!cost) return fail2("invalid", `Cet objet est d\xE9j\xE0 au niveau maximal (${ITEM_MAX_LEVEL}).`);
+  if (env.character.fragments < cost.fragments || env.character.gold < cost.gold) {
+    return fail2("insufficient", `Il faut ${cost.fragments} fragments et ${cost.gold} or pour am\xE9liorer cet objet.`);
+  }
+  const character = { ...env.character, fragments: env.character.fragments - cost.fragments, gold: env.character.gold - cost.gold };
+  await ctx.store.saveCharacter(userId, character);
+  await ctx.store.updateItem(userId, item.id, { level: item.level + 1 });
+  const synced = item.equipped ? await syncGear(env, character) : character;
+  return { ok: true, item: viewOf({ ...item, level: item.level + 1 }, env.masteries), character: synced };
+}
+async function mergeItems(ctx, userId, input) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  const ids = [...new Set(input.itemIds ?? [])];
+  if (ids.length !== MERGE_COUNT || (input.itemIds ?? []).length !== MERGE_COUNT) return fail2("invalid", `Choisis exactement ${MERGE_COUNT} objets diff\xE9rents.`);
+  const items = await ctx.store.listItems(userId);
+  const chosen = ids.map((id) => items.find((i) => i.id === id));
+  if (chosen.some((i) => !i)) return itemNotFound();
+  const picked = chosen;
+  if (picked.some((i) => i.equipped)) return fail2("invalid", "Un objet \xE9quip\xE9 ne peut pas \xEAtre fusionn\xE9.");
+  const rarity = picked[0].rarity;
+  if (picked.some((i) => i.rarity !== rarity)) return fail2("invalid", "Les 3 objets doivent avoir la m\xEAme raret\xE9.");
+  const next = nextItemRarity(rarity);
+  if (!next) return fail2("invalid", "Un objet l\xE9gendaire ne peut pas \xEAtre fusionn\xE9.");
+  const template = pickTemplateForSlot(ITEMS, picked[0].slot, `${userId}|${ids.join(",")}`);
+  if (!template) return fail2("invalid", "Aucun mod\xE8le d\u2019objet pour cet emplacement.");
+  await ctx.store.deleteItems(userId, ids);
+  const item = {
+    id: ctx.uuid(),
+    templateId: template.id,
+    rarity: next,
+    slot: template.slot,
+    ability: template.ability,
+    level: 0,
+    equipped: false,
+    createdAt: env.nowIso
+  };
+  await ctx.store.insertItems(userId, [item]);
+  return { ok: true, item: viewOf(item, env.masteries) };
+}
+async function dismantleItem(ctx, userId, input) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  const item = (await ctx.store.listItems(userId)).find((i) => i.id === input.itemId);
+  if (!item) return itemNotFound();
+  if (item.equipped) return fail2("invalid", "Retire cet objet avant de le d\xE9monter.");
+  const fragments = dismantleValue(item.rarity);
+  await ctx.store.deleteItems(userId, [item.id]);
+  const character = { ...env.character, fragments: env.character.fragments + fragments };
+  await ctx.store.saveCharacter(userId, character);
+  return { ok: true, fragments, character };
+}
+async function listDungeons(ctx, userId) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  const [progress, snap] = await Promise.all([ctx.store.listDungeonProgress(userId), snapshot(env)]);
+  const dungeons = DUNGEONS.map((d) => {
+    const p = progress.find((x) => x.dungeonId === d.id);
+    return {
+      dungeon: d,
+      unlocked: env.character.level >= d.unlockLevel,
+      bestRoom: p?.bestRoom ?? 0,
+      bossDefeatedTier: p?.bossDefeatedTier ?? 0,
+      lastRunDate: p?.lastRunDate ?? null,
+      roomPowers: Array.from({ length: DUNGEON_ROOMS }, (_, i) => dungeonRoomPower(d.tier, i)),
+      bossPower: dungeonBossPower(d.tier),
+      bossChest: dungeonBossChest(d.tier),
+      bossChestClaimed: (p?.bossDefeatedTier ?? 0) >= d.tier
+    };
+  });
+  return { ok: true, dungeons, keys: env.character.keys, maxKeys: MAX_KEYS, power: snap.power.total };
+}
+async function runDungeon(ctx, userId, input) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  const dungeon = DUNGEONS.find((d) => d.id === input.dungeonId);
+  if (!dungeon) return fail2("not-found", "Donjon inconnu.");
+  if (env.character.level < dungeon.unlockLevel) return fail2("level-too-low", `Ce donjon s\u2019ouvre au niveau ${dungeon.unlockLevel}.`);
+  if (env.character.keys < 1) return fail2("no-key", "Il te faut une Cl\xE9 de donjon.");
+  const [progressList, snap] = await Promise.all([ctx.store.listDungeonProgress(userId), snapshot(env)]);
+  const before = progressList.find((p) => p.dungeonId === dungeon.id) ?? { dungeonId: dungeon.id, bestRoom: 0, bossDefeatedTier: 0, lastRunDate: null };
+  const result = resolveDungeon({
+    dungeon,
+    pp: snap.power.total,
+    scores: snap.scores,
+    firstBossVictory: before.bossDefeatedTier < dungeon.tier,
+    seed: `${userId}|${dungeon.id}|${env.today}|${env.character.keys}`
+  });
+  let chest = null;
+  if (result.chest) {
+    const c = newChest(env, result.chest, "dungeon", dungeon.id);
+    if (await ctx.store.insertChest(userId, c)) chest = c;
+  }
+  const progress = {
+    dungeonId: dungeon.id,
+    bestRoom: Math.max(before.bestRoom, result.bossDefeated ? DUNGEON_BOSS_ROOM : result.reachedRoom),
+    bossDefeatedTier: result.bossDefeated ? Math.max(before.bossDefeatedTier, dungeon.tier) : before.bossDefeatedTier,
+    lastRunDate: env.today
+  };
+  await ctx.store.saveDungeonProgress(userId, progress);
+  const character = {
+    ...env.character,
+    keys: env.character.keys - 1,
+    gold: env.character.gold + result.gold,
+    fragments: env.character.fragments + result.fragments
+  };
+  await ctx.store.saveCharacter(userId, character);
+  return { ok: true, result: { ...result, chest: chest ? chest.rarity : null }, progress, chest, character };
+}
+
+// packages/engine/src/server/raid-game.ts
+var fail3 = (error, message) => ({ ok: false, error, message });
+var LOOKBACK_DAYS = 14;
+async function loadRaidEnv(ctx, userId) {
+  const [character, settings] = await Promise.all([ctx.store.getCharacter(userId), ctx.store.getSettings(userId)]);
+  if (!character) return null;
+  const nowMs = ctx.now();
+  const today = gameDate(nowMs, settings.timezone, settings.resetHour);
+  return { ctx, userId, character, settings, today, weekStart: raidWeekStart(today), weekEnd: raidWeekEnd(today), nowIso: new Date(nowMs).toISOString() };
+}
+var RAID_RULES = {
+  minMembers: RAID_MIN_MEMBERS,
+  maxMembers: RAID_MAX_MEMBERS,
+  baseHp: RAID_BASE_HP,
+  chaCap: RAID_CHA_CAP,
+  encourageStep: RAID_ENCOURAGE_STEP,
+  encourageCap: RAID_ENCOURAGE_CAP,
+  fastDays: RAID_FAST_DAYS,
+  winChest: RAID_WIN_CHEST,
+  fastChest: RAID_FAST_CHEST
+};
+function emptyRaidState(today, available = false) {
+  return {
+    available,
+    today,
+    week: raidWeekKey(today),
+    weekStart: raidWeekStart(today),
+    weekEnd: raidWeekEnd(today),
+    boss: raidBossFor(today),
+    rules: RAID_RULES,
+    team: null,
+    invitations: [],
+    hit: null,
+    lastResult: null
+  };
+}
+async function safeNotify(ctx, userId, type, payload) {
+  try {
+    await ctx.store.notify(userId, type, payload);
+  } catch (e) {
+    console.error("raid notify", type, e);
+  }
+}
+var joinedOf = (members) => members.filter((m) => m.status === "joined");
+var sumDamage = (rows) => rows.reduce((n, d) => n + d.damage, 0);
+var rewardOf = (team) => team.outcome === "victory" && team.victoryDay ? { rarity: raidRewardChest(raidDaysToKill(team.weekStart, team.victoryDay)), days: raidDaysToKill(team.weekStart, team.victoryDay) } : null;
+async function settleTeam(env, team) {
+  if (team.resolvedAt) return team;
+  const { ctx } = env;
+  const [members, damage] = await Promise.all([ctx.store.listRaidMembers(team.id), ctx.store.listRaidDamage(team.id)]);
+  const joined = joinedOf(members);
+  const maxHp = raidMaxHp(joined.length);
+  const totalDamage = sumDamage(damage);
+  const outcome = raidOutcome({ joined: joined.length, totalDamage, maxHp, weekOver: raidWeekOver(team.weekStart, env.today) });
+  if (!outcome) return team;
+  const victoryDay = outcome === "victory" ? raidVictoryDay(damage.map((d) => ({ date: d.gameDate, damage: d.damage })), maxHp) : null;
+  const reward = rewardOf({ outcome, victoryDay, weekStart: team.weekStart });
+  const week = raidWeekKey(team.weekStart);
+  if (reward) {
+    for (const m of joined) {
+      const chest = { id: ctx.uuid(), rarity: reward.rarity, source: "raid", sourceKey: `${week}:${team.id}`, instanceId: null, createdAt: env.nowIso, openedAt: null };
+      await ctx.store.insertChest(m.profileId, chest);
+    }
+  }
+  const closed = await ctx.store.resolveRaidTeam(team.id, { outcome, maxHp, totalDamage, victoryDay, at: env.nowIso });
+  if (closed && reward) {
+    for (const m of joined) {
+      await safeNotify(ctx, m.profileId, "raid_victory", { team: team.id, week, chest: reward.rarity, days: reward.days, boss: raidBossFor(team.weekStart).name });
+    }
+  }
+  return await ctx.store.getRaidTeam(team.id) ?? team;
+}
+async function loadRoster(ctx, members, me) {
+  return Promise.all(
+    members.map(async (record) => {
+      const character = me && record.profileId === me.id ? me.character : await ctx.store.getCharacter(record.profileId);
+      if (!character) return { record, character: null, power: 0, cha: 0, forScore: 0 };
+      const s = await heroCombatStats(ctx.store, record.profileId, character);
+      return { record, character, power: s.power, cha: s.scores.CHA, forScore: s.scores.FOR };
+    })
+  );
+}
+async function applyHit(env, team, roster, damage) {
+  if (team.resolvedAt || env.today < team.weekStart || env.today > raidWeekEnd(team.weekStart)) return null;
+  const mine = roster.find((r) => r.record.profileId === env.userId && r.record.status === "joined");
+  if (!mine) return null;
+  if (damage.some((d) => d.profileId === env.userId && d.gameDate === env.today)) return null;
+  const chaBonus = raidChaBonus(roster.filter((r) => r.record.status === "joined" && r.character).map((r) => r.cha));
+  const baseDamage = raidBaseDamage({ pp: mine.power, forScore: mine.forScore, chaBonus });
+  const received = (await env.ctx.store.listRaidEncouragements(team.id, env.today)).filter((e) => e.toId === env.userId).length;
+  const record = { teamId: team.id, profileId: env.userId, gameDate: env.today, baseDamage, encouragements: received, damage: raidDamage(baseDamage, received) };
+  if (!await env.ctx.store.insertRaidDamage(record)) return null;
+  return { teamId: team.id, date: env.today, damage: record.damage, baseDamage, chaBonus, encouragements: received, victory: false };
+}
+async function syncRaid(env) {
+  const { ctx } = env;
+  const memberships = await ctx.store.listRaidMemberships(env.userId, addDays(env.weekStart, -LOOKBACK_DAYS));
+  for (const m of memberships.filter((x) => x.status === "joined" && x.weekStart < env.weekStart)) {
+    const t = await ctx.store.getRaidTeam(m.teamId);
+    if (t && !t.resolvedAt) await settleTeam(env, t);
+  }
+  const mine = memberships.find((m) => m.status === "joined" && m.weekStart === env.weekStart);
+  if (!mine) return { team: null, members: [], hit: null, roster: [], damage: [], memberships };
+  let team = await ctx.store.getRaidTeam(mine.teamId);
+  if (!team) return { team: null, members: [], hit: null, roster: [], damage: [], memberships };
+  team = await settleTeam(env, team);
+  const members = await ctx.store.listRaidMembers(team.id);
+  const roster = await loadRoster(ctx, joinedOf(members), { id: env.userId, character: env.character });
+  let damage = await ctx.store.listRaidDamage(team.id);
+  const hit = await applyHit(env, team, roster, damage);
+  if (hit) {
+    damage = await ctx.store.listRaidDamage(team.id);
+    team = await settleTeam(env, team);
+    if (team.outcome === "victory") hit.victory = true;
+  }
+  return { team, members, hit, roster, damage, memberships };
+}
+async function teamView(env, s) {
+  const team = s.team;
+  if (!team) return null;
+  const { ctx } = env;
+  const joined = joinedOf(s.members);
+  const encToday = await ctx.store.listRaidEncouragements(team.id, env.today);
+  const resolved = !!team.resolvedAt;
+  const maxHp = resolved && team.maxHp !== null ? team.maxHp : raidMaxHp(joined.length);
+  const damage = resolved && team.totalDamage !== null ? team.totalDamage : sumDamage(s.damage);
+  const chaBonus = raidChaBonus(s.roster.filter((r) => r.character).map((r) => r.cha));
+  const members = s.roster.filter((r) => r.character).map((r) => {
+    const c = r.character;
+    const id = r.record.profileId;
+    const mineRows = s.damage.filter((d) => d.profileId === id);
+    const today = mineRows.find((d) => d.gameDate === env.today);
+    return {
+      profileId: id,
+      name: c.name,
+      classId: c.classId,
+      portraitId: c.portraitId,
+      frameColor: c.frameColor,
+      level: c.level,
+      power: r.power,
+      isLeader: id === team.leaderId,
+      isMe: id === env.userId,
+      joinedAt: r.record.joinedAt,
+      hitToday: !!today,
+      damageToday: today?.damage ?? 0,
+      damageWeek: sumDamage(mineRows),
+      encouragementsToday: encToday.filter((e) => e.toId === id).length,
+      encouragedByMe: encToday.some((e) => e.toId === id && e.fromId === env.userId)
+    };
+  }).sort((a, b) => Number(b.isLeader) - Number(a.isLeader) || (a.joinedAt ?? "").localeCompare(b.joinedAt ?? "") || a.profileId.localeCompare(b.profileId));
+  const pendingRecords = s.members.filter((m) => m.status === "invited");
+  const pending = await Promise.all(
+    pendingRecords.map(async (m) => ({ profileId: m.profileId, name: (await ctx.store.getCharacter(m.profileId))?.name ?? "" }))
+  );
+  const reward = rewardOf(team);
+  const status = team.outcome ?? (joined.length < RAID_MIN_MEMBERS ? "forming" : "active");
+  return {
+    id: team.id,
+    weekStart: team.weekStart,
+    weekEnd: raidWeekEnd(team.weekStart),
+    leaderId: team.leaderId,
+    status,
+    members,
+    pending,
+    maxHp,
+    damage,
+    hpLeft: Math.max(0, maxHp - damage),
+    ratio: maxHp > 0 ? Math.min(1, damage / maxHp) : 0,
+    chaBonus,
+    daysLeft: Math.max(0, diffDays(raidWeekEnd(team.weekStart), env.today) + 1),
+    victoryDay: team.victoryDay,
+    daysToKill: team.victoryDay ? raidDaysToKill(team.weekStart, team.victoryDay) : null,
+    reward: reward?.rarity ?? null,
+    resolvedAt: team.resolvedAt
+  };
+}
+async function stateOf2(env, s) {
+  const { ctx } = env;
+  const team = await teamView(env, s);
+  const invitations = [];
+  if (!team) {
+    for (const inv of s.memberships.filter((m) => m.status === "invited" && m.weekStart === env.weekStart)) {
+      const t = await ctx.store.getRaidTeam(inv.teamId);
+      if (!t || t.resolvedAt) continue;
+      const [leader, members] = await Promise.all([ctx.store.getCharacter(t.leaderId), ctx.store.listRaidMembers(t.id)]);
+      invitations.push({ teamId: t.id, leaderId: t.leaderId, leaderName: leader?.name ?? "", invitedAt: inv.createdAt, members: joinedOf(members).length });
+    }
+  }
+  let lastResult = null;
+  const past = s.memberships.filter((m) => m.status === "joined" && m.weekStart < env.weekStart).sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+  for (const m of past) {
+    const t = await ctx.store.getRaidTeam(m.teamId);
+    if (!t?.resolvedAt || !t.outcome) continue;
+    const reward = rewardOf(t);
+    lastResult = {
+      teamId: t.id,
+      weekStart: t.weekStart,
+      boss: raidBossFor(t.weekStart),
+      outcome: t.outcome,
+      maxHp: t.maxHp ?? 0,
+      damage: t.totalDamage ?? 0,
+      daysToKill: t.victoryDay ? raidDaysToKill(t.weekStart, t.victoryDay) : null,
+      reward: reward?.rarity ?? null,
+      resolvedAt: t.resolvedAt
+    };
+    break;
+  }
+  return {
+    ...emptyRaidState(env.today, true),
+    team,
+    invitations,
+    hit: s.hit,
+    lastResult
+  };
+}
+async function freshState(env) {
+  return stateOf2(env, await syncRaid(env));
+}
+async function getRaidState(ctx, userId) {
+  const env = await loadRaidEnv(ctx, userId);
+  if (!env) return fail3("no-character");
+  return { ok: true, state: await freshState(env) };
+}
+async function autoRaidHit(ctx, userId) {
+  try {
+    const env = await loadRaidEnv(ctx, userId);
+    return env ? (await syncRaid(env)).hit : null;
+  } catch (e) {
+    console.error("raid auto-hit", e);
+    return null;
+  }
+}
+async function createRaidTeam(ctx, userId) {
+  const env = await loadRaidEnv(ctx, userId);
+  if (!env) return fail3("no-character");
+  const team = { id: ctx.uuid(), weekStart: env.weekStart, leaderId: userId, createdAt: env.nowIso, resolvedAt: null, outcome: null, maxHp: null, totalDamage: null, victoryDay: null };
+  const leader = { teamId: team.id, profileId: userId, weekStart: env.weekStart, status: "joined", invitedBy: userId, createdAt: env.nowIso, joinedAt: env.nowIso };
+  const existing = (await ctx.store.listRaidMemberships(userId, env.weekStart)).find((m) => m.status === "joined" && m.weekStart === env.weekStart);
+  if (existing) return fail3("already-active", "Tu es d\xE9j\xE0 dans une \xE9quipe de raid cette semaine.");
+  if (!await ctx.store.insertRaidTeam(team, leader)) return fail3("already-active", "Tu es d\xE9j\xE0 dans une \xE9quipe de raid cette semaine.");
+  await ctx.store.deleteRaidInvites(userId, env.weekStart);
+  return { ok: true, state: await freshState(env) };
+}
+async function myOpenTeam(env) {
+  const mine = (await env.ctx.store.listRaidMemberships(env.userId, env.weekStart)).find((m) => m.status === "joined" && m.weekStart === env.weekStart);
+  if (!mine) return null;
+  const team = await env.ctx.store.getRaidTeam(mine.teamId);
+  return team && !team.resolvedAt ? team : null;
+}
+async function inviteToRaid(ctx, userId, input) {
+  const env = await loadRaidEnv(ctx, userId);
+  if (!env) return fail3("no-character");
+  const team = await myOpenTeam(env);
+  if (!team) return fail3("no-team", "Cr\xE9e d\u2019abord ton \xE9quipe de raid.");
+  if (team.leaderId !== userId) return fail3("forbidden", "Seul le chef d\u2019\xE9quipe peut inviter.");
+  const target = input.profileId;
+  if (!target || target === userId) return fail3("invalid", "Choisis un ami \xE0 inviter.");
+  if (!await ctx.store.areFriends(userId, target)) return fail3("not-friends", "Tu ne peux inviter que tes compagnons.");
+  const targetChar = await ctx.store.getCharacter(target);
+  if (!targetChar) return fail3("not-found", "Ce compagnon n\u2019a pas encore de h\xE9ros.");
+  const members = await ctx.store.listRaidMembers(team.id);
+  if (members.some((m) => m.profileId === target)) return { ok: true, state: await freshState(env) };
+  const theirs = await ctx.store.listRaidMemberships(target, env.weekStart);
+  if (theirs.some((m) => m.status === "joined" && m.weekStart === env.weekStart)) return fail3("already-active", `${targetChar.name} est d\xE9j\xE0 dans une \xE9quipe cette semaine.`);
+  if (members.length >= RAID_MAX_MEMBERS) return fail3("team-full", `Une \xE9quipe compte ${RAID_MAX_MEMBERS} membres au plus.`);
+  const w = await ctx.store.insertRaidMember({ teamId: team.id, profileId: target, weekStart: env.weekStart, status: "invited", invitedBy: userId, createdAt: env.nowIso, joinedAt: null });
+  if (w === "full") return fail3("team-full", `Une \xE9quipe compte ${RAID_MAX_MEMBERS} membres au plus.`);
+  if (w === "not-friend") return fail3("not-friends", "Tu ne peux inviter que tes compagnons.");
+  if (w === "conflict") return fail3("already-active", `${targetChar.name} est d\xE9j\xE0 dans une \xE9quipe cette semaine.`);
+  if (w === "ok") await safeNotify(ctx, target, "raid_invite", { from: userId, username: env.character.name, team: team.id, week: raidWeekKey(env.weekStart) });
+  return { ok: true, state: await freshState(env) };
+}
+async function joinRaidTeam(ctx, userId, input) {
+  const env = await loadRaidEnv(ctx, userId);
+  if (!env) return fail3("no-character");
+  const team = input.teamId ? await ctx.store.getRaidTeam(input.teamId) : null;
+  if (!team) return fail3("not-found", "Cette \xE9quipe n\u2019existe plus.");
+  if (team.resolvedAt || team.weekStart !== env.weekStart) return fail3("raid-closed", "Ce raid est termin\xE9.");
+  const members = await ctx.store.listRaidMembers(team.id);
+  const me = members.find((m) => m.profileId === userId);
+  if (me?.status === "joined") return { ok: true, state: await freshState(env) };
+  if (!me) return fail3("forbidden", "Tu n\u2019as pas \xE9t\xE9 invit\xE9 dans cette \xE9quipe.");
+  if ((await ctx.store.listRaidMemberships(userId, env.weekStart)).some((m) => m.status === "joined" && m.weekStart === env.weekStart)) {
+    return fail3("already-active", "Tu es d\xE9j\xE0 dans une \xE9quipe de raid cette semaine.");
+  }
+  if (!await ctx.store.areFriends(me.invitedBy, userId)) {
+    await ctx.store.deleteRaidMember(team.id, userId);
+    return fail3("not-friends", "Tu n\u2019es plus compagnon de ce chef d\u2019\xE9quipe.");
+  }
+  if (joinedOf(members).length >= RAID_MAX_MEMBERS) return fail3("team-full", `Cette \xE9quipe compte d\xE9j\xE0 ${RAID_MAX_MEMBERS} membres.`);
+  const w = await ctx.store.joinRaidMember(team.id, userId, env.nowIso);
+  if (w === "full") return fail3("team-full", `Cette \xE9quipe compte d\xE9j\xE0 ${RAID_MAX_MEMBERS} membres.`);
+  if (w === "conflict") return fail3("already-active", "Tu es d\xE9j\xE0 dans une \xE9quipe de raid cette semaine.");
+  if (w === "not-friend") return fail3("not-friends", "Tu n\u2019es plus compagnon de ce chef d\u2019\xE9quipe.");
+  await ctx.store.deleteRaidInvites(userId, env.weekStart);
+  return { ok: true, state: await freshState(env) };
+}
+async function leaveRaidTeam(ctx, userId, input = {}) {
+  const env = await loadRaidEnv(ctx, userId);
+  if (!env) return fail3("no-character");
+  const mine = (await ctx.store.listRaidMemberships(userId, env.weekStart)).filter((m) => m.weekStart === env.weekStart && (!input.teamId || m.teamId === input.teamId));
+  const joined = mine.find((m) => m.status === "joined");
+  const invited = mine.filter((m) => m.status === "invited");
+  if (!joined) {
+    if (!invited.length) return fail3("no-team", "Tu n\u2019as ni \xE9quipe ni invitation cette semaine.");
+    for (const inv of invited) await ctx.store.deleteRaidMember(inv.teamId, userId);
+    return { ok: true, state: await freshState(env) };
+  }
+  const team = await ctx.store.getRaidTeam(joined.teamId);
+  if (team?.resolvedAt) return fail3("raid-closed", "Ce raid est termin\xE9.");
+  await ctx.store.deleteRaidMember(joined.teamId, userId);
+  if (team) {
+    const rest = joinedOf(await ctx.store.listRaidMembers(team.id)).sort((a, b) => (a.joinedAt ?? "").localeCompare(b.joinedAt ?? "") || a.profileId.localeCompare(b.profileId));
+    if (!rest.length) await ctx.store.deleteRaidTeam(team.id);
+    else if (team.leaderId === userId) await ctx.store.setRaidLeader(team.id, rest[0].profileId);
+  }
+  return { ok: true, state: await freshState(env) };
+}
+async function encourageRaid(ctx, userId, input) {
+  const env = await loadRaidEnv(ctx, userId);
+  if (!env) return fail3("no-character");
+  const team = await myOpenTeam(env);
+  if (!team) return fail3("no-team", "Tu n\u2019as pas d\u2019\xE9quipe de raid en cours.");
+  const target = input.profileId;
+  if (!target || target === userId) return fail3("invalid", "Choisis un co\xE9quipier \xE0 encourager.");
+  const members = joinedOf(await ctx.store.listRaidMembers(team.id));
+  if (!members.some((m) => m.profileId === target)) return fail3("not-found", "Ce joueur ne fait pas partie de ton \xE9quipe.");
+  const inserted = await ctx.store.insertRaidEncouragement({ teamId: team.id, fromId: userId, toId: target, gameDate: env.today, createdAt: env.nowIso });
+  if (!inserted) return fail3("already-done", "Tu as d\xE9j\xE0 encourag\xE9 ce compagnon aujourd\u2019hui.");
+  const received = (await ctx.store.listRaidEncouragements(team.id, env.today)).filter((e) => e.toId === target).length;
+  const row = (await ctx.store.listRaidDamage(team.id)).find((d) => d.profileId === target && d.gameDate === env.today);
+  if (row) await ctx.store.updateRaidDamage(team.id, target, env.today, { encouragements: received, damage: raidDamage(row.baseDamage, received) });
+  await safeNotify(ctx, target, "raid_encouraged", { from: userId, username: env.character.name, team: team.id, week: raidWeekKey(env.weekStart) });
+  return { ok: true, state: await freshState(env) };
+}
+
+// packages/engine/src/server/game.ts
+var CLASSES3 = classes_fr_default;
 var ACHIEVEMENTS = achievements_fr_default;
 var STREAK_POSTS = [7, 14, 30, 60, 100, 200, 365];
 var MAX_FREE_QUESTS_PER_DAY = 4;
-var fail = (error, message) => ({ ok: false, error, message });
+var fail4 = (error, message) => ({ ok: false, error, message });
 async function loadEnv(ctx, userId) {
   const [character, settings] = await Promise.all([ctx.store.getCharacter(userId), ctx.store.getSettings(userId)]);
   if (!character) return null;
@@ -2645,10 +4998,10 @@ function loadTemplates(env, withRungs = true) {
   return c.plain ??= env.ctx.store.listTemplates(env.userId, { withRungs: false }).then((l) => l.filter((t) => !t.trackId));
 }
 function masteriesFor(c) {
-  return masteriesOf(CLASSES, c.classId);
+  return masteriesOf(CLASSES3, c.classId);
 }
 function pathAbilityFor(c) {
-  return pathAbilityOf(CLASSES, c.classId, c.pathId);
+  return pathAbilityOf(CLASSES3, c.classId, c.pathId);
 }
 function snapshotOf(t) {
   return {
@@ -2665,11 +5018,11 @@ function snapshotOf(t) {
   };
 }
 function newInstance(id, t, period, start, end, status, nowIso, free = false, tune = 0, meta = {}) {
-  const snapshot = tunedSnapshot(snapshotOf(t), t.validation, tune ?? 0);
+  const snapshot2 = tunedSnapshot(snapshotOf(t), t.validation, tune ?? 0);
   return {
     id,
     templateId: t.id,
-    snapshot,
+    snapshot: snapshot2,
     period,
     periodStart: start,
     periodEnd: end,
@@ -2802,12 +5155,12 @@ async function streakInfo(store, userId, settings, today) {
   return { current: s.current, doneToday: s.doneToday, best: computeBestStreak(days, rest), days };
 }
 async function createCharacter(ctx, userId, input) {
-  if (await ctx.store.getCharacter(userId)) return fail("already-has-character");
+  if (await ctx.store.getCharacter(userId)) return fail4("already-has-character");
   const name = input.name.trim();
-  if (name.length < 2 || name.length > 30) return fail("invalid", "Le nom doit faire entre 2 et 30 caract\xE8res.");
-  if (!CLASSES.some((c) => c.id === input.classId)) return fail("invalid", "Classe inconnue.");
-  if (!isValidPointBuy(input.scores)) return fail("invalid", "R\xE9partition de points invalide.");
-  if ((input.motto ?? "").length > 80) return fail("invalid", "Devise trop longue.");
+  if (name.length < 2 || name.length > 30) return fail4("invalid", "Le nom doit faire entre 2 et 30 caract\xE8res.");
+  if (!CLASSES3.some((c) => c.id === input.classId)) return fail4("invalid", "Classe inconnue.");
+  if (!isValidPointBuy(input.scores)) return fail4("invalid", "R\xE9partition de points invalide.");
+  if ((input.motto ?? "").length > 80) return fail4("invalid", "Devise trop longue.");
   const nowIso = new Date(ctx.now()).toISOString();
   const character = {
     id: ctx.uuid(),
@@ -2831,7 +5184,10 @@ async function createCharacter(ctx, userId, input) {
     titleEquipped: null,
     rerollsDate: null,
     rerollsUsed: 0,
-    createdAt: nowIso
+    createdAt: nowIso,
+    ...emptyAdventureFields(),
+    // L'expédition est toujours en cours dès la création du personnage.
+    expeditionStartedAt: nowIso
   };
   await ctx.store.saveSettings(userId, { ...defaultSettings(input.timezone), interests: sanitizeInterests(input.interests) });
   await ctx.store.saveCharacter(userId, character);
@@ -2978,12 +5334,12 @@ async function ensureQuestsFor(env) {
 }
 async function acceptQuest(ctx, userId, instanceId) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
+  if (!env) return fail4("no-character");
   const inst = await ctx.store.getInstance(userId, instanceId);
-  if (!inst) return fail("not-found");
-  if (inst.status !== "proposed") return fail("not-accepted");
+  if (!inst) return fail4("not-found");
+  if (inst.status !== "proposed") return fail4("not-accepted");
   if (env.today > lastAcceptDate(inst.period, inst.periodStart, inst.periodEnd) || env.today > inst.periodEnd) {
-    return fail("too-late-to-accept", "Il est trop tard pour accepter cette qu\xEAte.");
+    return fail4("too-late-to-accept", "Il est trop tard pour accepter cette qu\xEAte.");
   }
   const patch = { status: "accepted", acceptedAt: new Date(env.nowMs).toISOString() };
   await ctx.store.updateInstance(userId, instanceId, patch);
@@ -2991,18 +5347,18 @@ async function acceptQuest(ctx, userId, instanceId) {
 }
 async function abandonQuest(ctx, userId, instanceId) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
+  if (!env) return fail4("no-character");
   const inst = await ctx.store.getInstance(userId, instanceId);
-  if (!inst) return fail("not-found");
-  if (inst.status !== "proposed" && inst.status !== "accepted") return fail("not-accepted");
-  if (inst.origin === "track") return fail("invalid", "Mets le parcours en pause plut\xF4t que d\u2019abandonner sa qu\xEAte.");
+  if (!inst) return fail4("not-found");
+  if (inst.status !== "proposed" && inst.status !== "accepted") return fail4("not-accepted");
+  if (inst.origin === "track") return fail4("invalid", "Mets le parcours en pause plut\xF4t que d\u2019abandonner sa qu\xEAte.");
   await ctx.store.updateInstance(userId, instanceId, { status: "abandoned" });
   return { ok: true, instance: { ...inst, status: "abandoned" } };
 }
 async function updateProgress(ctx, userId, instanceId, patch) {
   const inst = await ctx.store.getInstance(userId, instanceId);
-  if (!inst) return fail("not-found");
-  if (inst.status !== "accepted") return fail("not-accepted");
+  if (!inst) return fail4("not-found");
+  if (inst.status !== "accepted") return fail4("not-accepted");
   const next = {};
   if (patch.progress !== void 0) next.progress = Math.max(0, patch.progress);
   if (patch.stepsDone) next.stepsDone = patch.stepsDone;
@@ -3011,15 +5367,15 @@ async function updateProgress(ctx, userId, instanceId, patch) {
 }
 async function startFromTemplate(env, t, period) {
   const { ctx, userId, character } = env;
-  if (!PERIODS.includes(period) || !t.periods.includes(period)) return fail("invalid", "Cette qu\xEAte ne se fait pas sur cette p\xE9riode.");
-  if (period === "epic" && !unlocksAt(character.level).epic) return fail("level-too-low", "Les qu\xEAtes \xE9piques s\u2019ouvrent au niveau 11.");
+  if (!PERIODS.includes(period) || !t.periods.includes(period)) return fail4("invalid", "Cette qu\xEAte ne se fait pas sur cette p\xE9riode.");
+  if (period === "epic" && !unlocksAt(character.level).epic) return fail4("level-too-low", "Les qu\xEAtes \xE9piques s\u2019ouvrent au niveau 11.");
   const lock = questLock(t.difficulty, abilityScores(character)[t.ability], character.level);
-  if (lock.locked) return fail("locked", lock.reason);
+  if (lock.locked) return fail4("locked", lock.reason);
   const b = periodBounds(period, env.today);
-  if (env.today > lastAcceptDate(period, b.start, b.end)) return fail("too-late-to-accept", "Il est trop tard pour d\xE9marrer cette qu\xEAte.");
+  if (env.today > lastAcceptDate(period, b.start, b.end)) return fail4("too-late-to-accept", "Il est trop tard pour d\xE9marrer cette qu\xEAte.");
   const inPeriod = await ctx.store.listInstances(userId, { period, from: b.start, to: b.start });
   const same = inPeriod.filter((i) => i.templateId === t.id);
-  if (same.some((i) => i.status === "accepted")) return fail("already-active", "Cette qu\xEAte est d\xE9j\xE0 en cours.");
+  if (same.some((i) => i.status === "accepted")) return fail4("already-active", "Cette qu\xEAte est d\xE9j\xE0 en cours.");
   const nowIso = new Date(env.nowMs).toISOString();
   const proposed = same.find((i) => i.status === "proposed");
   if (proposed) {
@@ -3028,10 +5384,10 @@ async function startFromTemplate(env, t, period) {
     return { ok: true, instance: { ...proposed, ...patch } };
   }
   if (same.filter((i) => i.status === "completed").length >= MAX_RUNS[period]) {
-    return fail("run-limit", period === "daily" ? "Tu as d\xE9j\xE0 refait cette qu\xEAte trois fois aujourd\u2019hui." : "Cette qu\xEAte a d\xE9j\xE0 \xE9t\xE9 faite le maximum de fois sur cette p\xE9riode.");
+    return fail4("run-limit", period === "daily" ? "Tu as d\xE9j\xE0 refait cette qu\xEAte trois fois aujourd\u2019hui." : "Cette qu\xEAte a d\xE9j\xE0 \xE9t\xE9 faite le maximum de fois sur cette p\xE9riode.");
   }
   const openExtras = inPeriod.filter((i) => i.status === "accepted" && (i.free || (i.origin ?? "draw") !== "draw")).length;
-  if (openExtras >= MAX_OPEN_EXTRAS[period]) return fail("too-many-open", "Trop de qu\xEAtes en cours : termine-en une avant d\u2019en ajouter.");
+  if (openExtras >= MAX_OPEN_EXTRAS[period]) return fail4("too-many-open", "Trop de qu\xEAtes en cours : termine-en une avant d\u2019en ajouter.");
   const run = same.reduce((n, i) => Math.max(n, i.run ?? 1), 0) + 1;
   const prefs = await ctx.store.getPreferences(userId);
   const inst = newInstance(ctx.uuid(), t, period, b.start, b.end, "accepted", nowIso, true, prefs[t.id]?.tune, { origin: same.length ? "redo" : "chosen", run });
@@ -3040,30 +5396,30 @@ async function startFromTemplate(env, t, period) {
 }
 async function startQuest(ctx, userId, input) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
+  if (!env) return fail4("no-character");
   const t = (await loadTemplates(env, false)).find((x) => x.id === input.templateId && x.isActive !== false && !x.trackId);
-  if (!t) return fail("not-found");
+  if (!t) return fail4("not-found");
   return startFromTemplate(env, t, input.period);
 }
 async function redoQuest(ctx, userId, instanceId) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
+  if (!env) return fail4("no-character");
   const inst = await ctx.store.getInstance(userId, instanceId);
-  if (!inst) return fail("not-found");
-  if (inst.status === "proposed" || inst.status === "accepted") return fail("already-active", "Cette qu\xEAte est d\xE9j\xE0 en cours.");
-  if (inst.trackId) return fail("invalid", "Une qu\xEAte de parcours ne se refait pas : elle revient chaque jour.");
+  if (!inst) return fail4("not-found");
+  if (inst.status === "proposed" || inst.status === "accepted") return fail4("already-active", "Cette qu\xEAte est d\xE9j\xE0 en cours.");
+  if (inst.trackId) return fail4("invalid", "Une qu\xEAte de parcours ne se refait pas : elle revient chaque jour.");
   const t = (await loadTemplates(env, false)).find((x) => x.id === inst.templateId && x.isActive !== false && !x.trackId);
-  if (!t) return fail("not-found", "Cette qu\xEAte n\u2019existe plus dans le catalogue.");
+  if (!t) return fail4("not-found", "Cette qu\xEAte n\u2019existe plus dans le catalogue.");
   return startFromTemplate(env, t, inst.period);
 }
 async function rerollQuest(ctx, userId, instanceId) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
+  if (!env) return fail4("no-character");
   const inst = await ctx.store.getInstance(userId, instanceId);
-  if (!inst) return fail("not-found");
-  if (inst.status === "completed" || inst.status === "expired" || inst.status === "abandoned") return fail("not-accepted");
-  if (inst.progress > 0) return fail("invalid", "Une qu\xEAte d\xE9j\xE0 entam\xE9e ne peut pas \xEAtre relanc\xE9e.");
-  if ((inst.origin ?? "draw") !== "draw") return fail("invalid", "Seules les qu\xEAtes tir\xE9es peuvent \xEAtre relanc\xE9es.");
+  if (!inst) return fail4("not-found");
+  if (inst.status === "completed" || inst.status === "expired" || inst.status === "abandoned") return fail4("not-accepted");
+  if (inst.progress > 0) return fail4("invalid", "Une qu\xEAte d\xE9j\xE0 entam\xE9e ne peut pas \xEAtre relanc\xE9e.");
+  if ((inst.origin ?? "draw") !== "draw") return fail4("invalid", "Seules les qu\xEAtes tir\xE9es peuvent \xEAtre relanc\xE9es.");
   const character = { ...env.character };
   if (character.rerollsDate !== env.today) {
     character.rerollsDate = env.today;
@@ -3071,7 +5427,7 @@ async function rerollQuest(ctx, userId, instanceId) {
   }
   let usedInspiration = false;
   if (character.rerollsUsed >= 1) {
-    if (character.inspiration < 1) return fail("no-reroll", "Plus de relance gratuite aujourd\u2019hui et aucune Inspiration.");
+    if (character.inspiration < 1) return fail4("no-reroll", "Plus de relance gratuite aujourd\u2019hui et aucune Inspiration.");
     character.inspiration -= 1;
     usedInspiration = true;
   }
@@ -3098,7 +5454,7 @@ async function rerollQuest(ctx, userId, instanceId) {
     skipPinned: true
   });
   const t = draw.picks[0];
-  if (!t) return fail("invalid", "Aucune autre qu\xEAte disponible.");
+  if (!t) return fail4("invalid", "Aucune autre qu\xEAte disponible.");
   const fresh = newInstance(ctx.uuid(), t, inst.period, inst.periodStart, inst.periodEnd, inst.status, new Date(env.nowMs).toISOString(), inst.free, prefs[t.id]?.tune);
   await ctx.store.deleteInstance(userId, instanceId);
   await ctx.store.insertInstances(userId, [fresh]);
@@ -3107,29 +5463,29 @@ async function rerollQuest(ctx, userId, instanceId) {
 }
 async function tuneQuest(ctx, userId, instanceId, direction) {
   const inst = await ctx.store.getInstance(userId, instanceId);
-  if (!inst) return fail("not-found");
-  if (inst.status !== "proposed" && inst.status !== "accepted") return fail("not-accepted");
-  if (inst.origin === "track") return fail("invalid", "L\u2019exigence d\u2019une qu\xEAte de parcours suit ton \xE9chelon : elle ne se r\xE8gle pas.");
+  if (!inst) return fail4("not-found");
+  if (inst.status !== "proposed" && inst.status !== "accepted") return fail4("not-accepted");
+  if (inst.origin === "track") return fail4("invalid", "L\u2019exigence d\u2019une qu\xEAte de parcours suit ton \xE9chelon : elle ne se r\xE8gle pas.");
   const template = (await ctx.store.listTemplates(userId, { withRungs: false })).find((t) => t.id === inst.templateId);
   const base = template?.validation;
-  if (!base || tunableTarget(base) === null) return fail("invalid", "Cette qu\xEAte ne peut pas \xEAtre ajust\xE9e.");
+  if (!base || tunableTarget(base) === null) return fail4("invalid", "Cette qu\xEAte ne peut pas \xEAtre ajust\xE9e.");
   const next = nextTune(inst.snapshot.tune, base, direction);
-  if (next === null) return fail("invalid", direction === "easier" ? "Cette qu\xEAte est d\xE9j\xE0 au plus facile." : "Cette qu\xEAte est d\xE9j\xE0 au plus difficile.");
+  if (next === null) return fail4("invalid", direction === "easier" ? "Cette qu\xEAte est d\xE9j\xE0 au plus facile." : "Cette qu\xEAte est d\xE9j\xE0 au plus difficile.");
   const { tune: _t, baseTarget: _b, ...plain } = inst.snapshot;
-  const snapshot = tunedSnapshot(plain, base, next);
-  const target = tunableTarget(snapshot.validation) ?? 0;
+  const snapshot2 = tunedSnapshot(plain, base, next);
+  const target = tunableTarget(snapshot2.validation) ?? 0;
   const progress = Math.min(inst.progress, target);
-  await ctx.store.updateInstance(userId, instanceId, { snapshot, progress });
+  await ctx.store.updateInstance(userId, instanceId, { snapshot: snapshot2, progress });
   const prefs = await ctx.store.getPreferences(userId);
   await ctx.store.savePreference(userId, { ...prefs[inst.templateId] ?? { templateId: inst.templateId }, tune: next });
-  return { ok: true, instance: { ...inst, snapshot, progress } };
+  return { ok: true, instance: { ...inst, snapshot: snapshot2, progress } };
 }
 async function completeQuestAction(ctx, userId, req) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
+  if (!env) return fail4("no-character");
   const { store } = ctx;
   const inst = await store.getInstance(userId, req.instanceId);
-  if (!inst) return fail("not-found");
+  if (!inst) return fail4("not-found");
   if (inst.status === "completed") {
     const streak2 = await streakInfo(store, userId, env.settings, env.today);
     return {
@@ -3154,22 +5510,22 @@ async function completeQuestAction(ctx, userId, req) {
   const offline = !!req.clientCompletedAt;
   if (offline) {
     const clientMs = Date.parse(req.clientCompletedAt);
-    if (Number.isNaN(clientMs)) return fail("invalid");
-    if (env.nowMs - clientMs > OFFLINE_MAX_DELAY_MS) return fail("too-late", "Cette validation hors ligne date de plus de 72 h et ne peut plus \xEAtre enregistr\xE9e.");
+    if (Number.isNaN(clientMs)) return fail4("invalid");
+    if (env.nowMs - clientMs > OFFLINE_MAX_DELAY_MS) return fail4("too-late", "Cette validation hors ligne date de plus de 72 h et ne peut plus \xEAtre enregistr\xE9e.");
     completedMs = Math.min(clientMs, env.nowMs);
   }
   const completedDay = gameDate(completedMs, env.settings.timezone, env.settings.resetHour);
   if (!isDateInRange(completedDay, inst.periodStart, inst.periodEnd)) {
-    return fail("out-of-period", "Cette qu\xEAte n\u2019est plus valable \xE0 cette date.");
+    return fail4("out-of-period", "Cette qu\xEAte n\u2019est plus valable \xE0 cette date.");
   }
   const statusOk = inst.status === "accepted" || inst.status === "proposed" && inst.origin === "track" || offline && inst.status === "expired";
-  if (!statusOk) return fail("not-accepted");
+  if (!statusOk) return fail4("not-accepted");
   const trackBefore = inst.trackId ? (await store.listTracks(userId)).find((t) => t.trackId === inst.trackId) : void 0;
   if (offline && inst.status === "expired" && trackBefore?.status === "active" && trackBefore.lastCheckedDate && inst.periodStart <= trackBefore.lastCheckedDate) {
     const startMs = Date.parse(trackBefore.startedAt);
     const startDay = Number.isNaN(startMs) ? null : gameDate(startMs, env.settings.timezone, env.settings.resetHour);
     if (inst.periodStart !== startDay) {
-      return fail("too-late", "Ce jour est d\xE9j\xE0 r\xE9gl\xE9 pour ce parcours : cette validation hors ligne ne peut plus \xEAtre enregistr\xE9e.");
+      return fail4("too-late", "Ce jour est d\xE9j\xE0 r\xE9gl\xE9 pour ce parcours : cette validation hors ligne ne peut plus \xEAtre enregistr\xE9e.");
     }
   }
   const siblings = await store.listInstances(userId, { period: inst.period, from: inst.periodStart, to: inst.periodStart });
@@ -3186,7 +5542,7 @@ async function completeQuestAction(ctx, userId, req) {
     stepsDone: req.stepsDone,
     journalText: req.journalText
   });
-  if (!check.ok) return fail(check.error);
+  if (!check.ok) return fail4(check.error);
   const res = check.result;
   const completedAtIso = new Date(completedMs).toISOString();
   const levelUps = [...res.levelsGained];
@@ -3198,19 +5554,19 @@ async function completeQuestAction(ctx, userId, req) {
     (p) => eventFor(ctx, { instanceId: inst.id, ability: p.ability, amount: p.amount, reason: "quest", custom }, completedDay)
   );
   let trackUpdate;
-  let snapshot = inst.snapshot;
+  let snapshot2 = inst.snapshot;
   if (trackBefore) {
     const maxRung = trackShapes(templates).get(inst.trackId)?.rungs.length ?? TRACK_RUNGS;
     const after = advanceOnCompletion(trackBefore, inst.periodStart, maxRung);
     trackUpdate = { state: after, promoted: after.rung > trackBefore.rung };
     if (after !== trackBefore) {
       const { rung, hits, bestRung, lastDoneDate } = trackBefore;
-      snapshot = { ...inst.snapshot, trackBefore: { rung, hits, bestRung, lastDoneDate } };
+      snapshot2 = { ...inst.snapshot, trackBefore: { rung, hits, bestRung, lastDoneDate } };
     }
   }
   await store.updateInstance(userId, inst.id, {
     status: "completed",
-    ...snapshot !== inst.snapshot ? { snapshot } : {},
+    ...snapshot2 !== inst.snapshot ? { snapshot: snapshot2 } : {},
     progress: req.progress ?? inst.progress,
     stepsDone: req.stepsDone ?? inst.stepsDone,
     xpAwarded: res.xpAwarded,
@@ -3235,6 +5591,21 @@ async function completeQuestAction(ctx, userId, req) {
     inspirationGained = g.gained;
     inspirationOverflow = g.overflow;
   }
+  const granted = inst.period === "daily" ? await grantQuestChests({
+    store,
+    userId,
+    uuid: ctx.uuid,
+    nowIso: completedAtIso,
+    instanceId: inst.id,
+    completedDay,
+    isTrackQuest: inst.origin === "track",
+    isDaily: true,
+    streak: streak.current,
+    prevStreak,
+    promotion: trackUpdate?.promoted ? { trackId: inst.trackId, rung: trackUpdate.state.rung } : void 0,
+    character
+  }) : null;
+  if (granted) character = granted.character;
   await store.saveCharacter(userId, character);
   const unlockedNow = [];
   const already = new Set((await store.listUnlocked(userId)).map((u) => u.achievementId));
@@ -3284,6 +5655,8 @@ async function completeQuestAction(ctx, userId, req) {
     autos.push({ type: "streak", text: "", visibility: env.settings.defaultVisibility, mediaPaths: [], payload: { days: streak.current } });
   }
   for (const d of autos) await store.createPost(userId, d);
+  const raidHit = await autoRaidHit(ctx, userId);
+  if (levelUps.length) await syncHeroPower(ctx, userId).catch((e) => console.error("sync power", e));
   return {
     ok: true,
     data: {
@@ -3300,6 +5673,8 @@ async function completeQuestAction(ctx, userId, req) {
       inspirationOverflow,
       streak: streak.current,
       postId,
+      ...granted?.chests.length ? { chests: granted.chests, keysGained: granted.keysGained } : {},
+      ...raidHit ? { raid: raidHit } : {},
       ...res.balance.length ? { balance: res.balance } : {},
       ...trackUpdate ? { track: trackUpdate.state, trackPromoted: trackUpdate.promoted } : {}
     }
@@ -3307,10 +5682,10 @@ async function completeQuestAction(ctx, userId, req) {
 }
 async function undoQuest(ctx, userId, instanceId) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
+  if (!env) return fail4("no-character");
   const inst = await ctx.store.getInstance(userId, instanceId);
-  if (!inst) return fail("not-found");
-  if (inst.status !== "completed" || !canUndo(inst.completedAt, env.nowMs)) return fail("cannot-undo", "Cette qu\xEAte ne peut plus \xEAtre annul\xE9e (24 h maximum).");
+  if (!inst) return fail4("not-found");
+  if (inst.status !== "completed" || !canUndo(inst.completedAt, env.nowMs)) return fail4("cannot-undo", "Cette qu\xEAte ne peut plus \xEAtre annul\xE9e (24 h maximum).");
   const paid = emptyAbilityRecord(0);
   let hasEvents = false;
   for (const e of await ctx.store.listXpEvents(userId)) {
@@ -3343,19 +5718,19 @@ async function undoQuest(ctx, userId, instanceId) {
     }
   }
   let character = env.character;
-  if (inst.inspirationUsed) {
-    character = { ...character, inspiration: Math.min(character.inspiration + 1, MAX_INSPIRATION) };
-    await ctx.store.saveCharacter(userId, character);
-  }
+  const revoked = await revokeQuestChests(ctx.store, userId, instanceId);
+  if (revoked.keysLost) character = { ...character, keys: Math.max(0, character.keys - revoked.keysLost) };
+  if (inst.inspirationUsed) character = { ...character, inspiration: Math.min(character.inspiration + 1, MAX_INSPIRATION) };
+  if (character !== env.character) await ctx.store.saveCharacter(userId, character);
   const recomputed = await recomputeCharacter(ctx, userId) ?? character;
   return { ok: true, character: recomputed, instance: { ...inst, ...patch } };
 }
 async function startTrack(ctx, userId, input) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
+  if (!env) return fail4("no-character");
   const shapes = trackShapes(await loadTemplates(env));
-  if (!shapes.has(input.trackId)) return fail("not-found", "Parcours inconnu.");
-  const refusal = (tracks) => tracks.some((t) => t.trackId === input.trackId) ? fail("already-active", "Ce parcours est d\xE9j\xE0 suivi.") : countActiveTracks(tracks, shapes) >= MAX_ACTIVE_TRACKS ? fail("too-many-open", `Tu peux suivre ${MAX_ACTIVE_TRACKS} parcours \xE0 la fois : mets-en un en pause ou arr\xEAte-en un.`) : null;
+  if (!shapes.has(input.trackId)) return fail4("not-found", "Parcours inconnu.");
+  const refusal = (tracks) => tracks.some((t) => t.trackId === input.trackId) ? fail4("already-active", "Ce parcours est d\xE9j\xE0 suivi.") : countActiveTracks(tracks, shapes) >= MAX_ACTIVE_TRACKS ? fail4("too-many-open", `Tu peux suivre ${MAX_ACTIVE_TRACKS} parcours \xE0 la fois : mets-en un en pause ou arr\xEAte-en un.`) : null;
   const first = refusal(await ctx.store.listTracks(userId));
   if (first) return first;
   const track = {
@@ -3376,14 +5751,14 @@ async function startTrack(ctx, userId, input) {
 }
 async function setTrackPaused(ctx, userId, input) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
+  if (!env) return fail4("no-character");
   const tracks = await ctx.store.listTracks(userId);
   const current = tracks.find((t) => t.trackId === input.trackId);
-  if (!current) return fail("not-found", "Parcours inconnu.");
+  if (!current) return fail4("not-found", "Parcours inconnu.");
   if (input.paused === (current.status === "paused")) return { ok: true, track: current };
   const resumeRefused = async (list) => {
     if (input.paused) return null;
-    return countActiveTracks(list, trackShapes(await loadTemplates(env))) >= MAX_ACTIVE_TRACKS ? fail("too-many-open", `Tu peux suivre ${MAX_ACTIVE_TRACKS} parcours \xE0 la fois : mets-en un en pause ou arr\xEAte-en un.`) : null;
+    return countActiveTracks(list, trackShapes(await loadTemplates(env))) >= MAX_ACTIVE_TRACKS ? fail4("too-many-open", `Tu peux suivre ${MAX_ACTIVE_TRACKS} parcours \xE0 la fois : mets-en un en pause ou arr\xEAte-en un.`) : null;
   };
   const first = await resumeRefused(tracks);
   if (first) return first;
@@ -3397,8 +5772,8 @@ async function setTrackPaused(ctx, userId, input) {
 }
 async function stopTrack(ctx, userId, input) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
-  if (!(await ctx.store.listTracks(userId)).some((t) => t.trackId === input.trackId)) return fail("not-found", "Parcours inconnu.");
+  if (!env) return fail4("no-character");
+  if (!(await ctx.store.listTracks(userId)).some((t) => t.trackId === input.trackId)) return fail4("not-found", "Parcours inconnu.");
   await ctx.store.deleteTrack(userId, input.trackId);
   const stale = await ctx.store.listInstances(userId, { period: "daily", status: "proposed", from: env.today, to: env.today });
   for (const q of stale) if (q.origin === "track" && q.trackId === input.trackId) await ctx.store.deleteInstance(userId, q.id);
@@ -3406,31 +5781,31 @@ async function stopTrack(ctx, userId, input) {
 }
 async function choosePath(ctx, userId, pathId) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
-  if (env.character.level < PATH_LEVEL) return fail("level-too-low");
-  if (env.character.pathId) return fail("nothing-pending");
-  const cls = CLASSES.find((c) => c.id === env.character.classId);
-  if (!cls?.paths.some((p) => p.id === pathId)) return fail("invalid");
+  if (!env) return fail4("no-character");
+  if (env.character.level < PATH_LEVEL) return fail4("level-too-low");
+  if (env.character.pathId) return fail4("nothing-pending");
+  const cls = CLASSES3.find((c) => c.id === env.character.classId);
+  if (!cls?.paths.some((p) => p.id === pathId)) return fail4("invalid");
   const character = { ...env.character, pathId };
   await ctx.store.saveCharacter(userId, character);
   return { ok: true, character };
 }
 async function chooseImprovement(ctx, userId, choice) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
+  if (!env) return fail4("no-character");
   const c = env.character;
-  if (pendingImprovements(c.level, c.improvementsChosen) < 1) return fail("nothing-pending");
+  if (pendingImprovements(c.level, c.improvementsChosen) < 1) return fail4("nothing-pending");
   const add = emptyAbilityRecord(0);
   if ("plus2" in choice) add[choice.plus2] += 2;
   else {
     const [a, b] = choice.plus1;
-    if (a === b) return fail("invalid", "Choisis deux caract\xE9ristiques diff\xE9rentes.");
+    if (a === b) return fail4("invalid", "Choisis deux caract\xE9ristiques diff\xE9rentes.");
     add[a] += 1;
     add[b] += 1;
   }
   const scores = abilityScores(c);
   for (const a of ABILITIES) {
-    if (add[a] && scores[a] + add[a] > SOFT_CAP_SCORE) return fail("invalid", "Une caract\xE9ristique ne peut pas d\xE9passer 20 par am\xE9lioration.");
+    if (add[a] && scores[a] + add[a] > SOFT_CAP_SCORE) return fail4("invalid", "Une caract\xE9ristique ne peut pas d\xE9passer 20 par am\xE9lioration.");
   }
   const improvements = { ...c.improvements };
   for (const a of ABILITIES) improvements[a] += add[a];
@@ -3440,9 +5815,9 @@ async function chooseImprovement(ctx, userId, choice) {
 }
 async function declareRest(ctx, userId) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
+  if (!env) return fail4("no-character");
   const rest = await ctx.store.listRestDays(userId);
-  if (rest.includes(env.today) || !canDeclareRest(rest, env.today)) return fail("rest-unavailable", "Tu as d\xE9j\xE0 utilis\xE9 ton jour de repos cette semaine.");
+  if (rest.includes(env.today) || !canDeclareRest(rest, env.today)) return fail4("rest-unavailable", "Tu as d\xE9j\xE0 utilis\xE9 ton jour de repos cette semaine.");
   await ctx.store.addRestDay(userId, env.today);
   const streak = await streakInfo(ctx.store, userId, env.settings, env.today);
   await ctx.store.saveCharacter(userId, { ...env.character, streakCurrent: streak.current });
@@ -3450,11 +5825,11 @@ async function declareRest(ctx, userId) {
 }
 async function equipTitle(ctx, userId, title) {
   const env = await loadEnv(ctx, userId);
-  if (!env) return fail("no-character");
+  if (!env) return fail4("no-character");
   if (title) {
     const unlocked = new Set((await ctx.store.listUnlocked(userId)).map((u) => u.achievementId));
     const owned = ACHIEVEMENTS.some((a) => unlocked.has(a.id) && a.titleUnlocked === title);
-    if (!owned) return fail("forbidden", "Ce titre n\u2019est pas encore d\xE9bloqu\xE9.");
+    if (!owned) return fail4("forbidden", "Ce titre n\u2019est pas encore d\xE9bloqu\xE9.");
   }
   const character = { ...env.character, titleEquipped: title };
   await ctx.store.saveCharacter(userId, character);
@@ -3478,7 +5853,12 @@ var emptyUserData = () => ({
   unlocked: [],
   restDays: [],
   journal: [],
-  tracks: []
+  tracks: [],
+  items: [],
+  chests: [],
+  dungeons: [],
+  seasonScores: [],
+  seasonResults: []
 });
 var asArray = (v) => v === void 0 ? void 0 : Array.isArray(v) ? v : [v];
 var MemoryStore = class {
@@ -3489,6 +5869,15 @@ var MemoryStore = class {
   posts = [];
   /** Appelé après chaque écriture (persistance du mode local) */
   onChange;
+  /** Raids d'amis : équipes, membres, dégâts, encouragements (partagés entre joueurs, jamais persistés en mode local) */
+  raidTeams = [];
+  raidMembers = [];
+  raidDamage = [];
+  raidEncouragements = [];
+  /** Amitiés acceptées, sous la forme « a|b » (a < b) ; réservé aux tests (l'app locale n'a pas d'amis) */
+  friendPairs = /* @__PURE__ */ new Set();
+  /** Notifications créées (tests) */
+  notifications = [];
   socialCountsFn;
   data(userId) {
     let d = this.users.get(userId);
@@ -3497,6 +5886,11 @@ var MemoryStore = class {
       this.users.set(userId, d);
     }
     d.tracks ??= [];
+    d.items ??= [];
+    d.chests ??= [];
+    d.dungeons ??= [];
+    d.seasonScores ??= [];
+    d.seasonResults ??= [];
     return d;
   }
   touch() {
@@ -3510,7 +5904,8 @@ var MemoryStore = class {
     this.posts = s.posts ?? [];
   }
   async getCharacter(userId) {
-    return this.data(userId).character ? { ...this.data(userId).character } : null;
+    const c = this.data(userId).character;
+    return c ? structuredClone({ ...emptyAdventureFields(), ...c }) : null;
   }
   async saveCharacter(userId, c) {
     this.data(userId).character = structuredClone(c);
@@ -3615,6 +6010,201 @@ var MemoryStore = class {
     d.tracks = d.tracks.filter((t) => t.trackId !== trackId);
     this.touch();
   }
+  async listItems(userId) {
+    return structuredClone(this.data(userId).items);
+  }
+  async insertItems(userId, items) {
+    this.data(userId).items.push(...structuredClone(items));
+    this.touch();
+  }
+  async updateItem(userId, id, patch) {
+    const it = this.data(userId).items.find((x) => x.id === id);
+    if (it) Object.assign(it, patch);
+    this.touch();
+  }
+  async deleteItems(userId, ids) {
+    const d = this.data(userId);
+    d.items = d.items.filter((i) => !ids.includes(i.id));
+    this.touch();
+  }
+  async listChests(userId, filter = {}) {
+    return structuredClone(
+      this.data(userId).chests.filter((c) => filter.opened === void 0 || c.openedAt !== null === filter.opened)
+    );
+  }
+  async insertChest(userId, chest) {
+    const list = this.data(userId).chests;
+    if (list.some((c) => c.source === chest.source && c.sourceKey === chest.sourceKey)) return false;
+    list.push(structuredClone(chest));
+    this.touch();
+    return true;
+  }
+  async markChestOpened(userId, id, at) {
+    const c = this.data(userId).chests.find((x) => x.id === id);
+    if (!c || c.openedAt) return false;
+    c.openedAt = at;
+    this.touch();
+    return true;
+  }
+  async deleteChests(userId, ids) {
+    const d = this.data(userId);
+    d.chests = d.chests.filter((c) => !ids.includes(c.id));
+    this.touch();
+  }
+  async listDungeonProgress(userId) {
+    return structuredClone(this.data(userId).dungeons);
+  }
+  async saveDungeonProgress(userId, p) {
+    const list = this.data(userId).dungeons;
+    const i = list.findIndex((x) => x.dungeonId === p.dungeonId);
+    if (i >= 0) list[i] = structuredClone(p);
+    else list.push(structuredClone(p));
+    this.touch();
+  }
+  // ───── Raids d'amis
+  addFriendship(a, b) {
+    this.friendPairs.add([a, b].sort().join("|"));
+  }
+  async areFriends(a, b) {
+    return a !== b && this.friendPairs.has([a, b].sort().join("|"));
+  }
+  async getRaidTeam(teamId) {
+    const t = this.raidTeams.find((x) => x.id === teamId);
+    return t ? structuredClone(t) : null;
+  }
+  async listRaidMemberships(userId, since) {
+    return structuredClone(this.raidMembers.filter((m) => m.profileId === userId && m.weekStart >= since));
+  }
+  async listRaidMembers(teamId) {
+    return structuredClone(this.raidMembers.filter((m) => m.teamId === teamId));
+  }
+  joinedElsewhere(m) {
+    return this.raidMembers.some((x) => x.status === "joined" && x.profileId === m.profileId && x.weekStart === m.weekStart && x.teamId !== m.teamId);
+  }
+  joinedCount(teamId, except) {
+    return this.raidMembers.filter((x) => x.teamId === teamId && x.status === "joined" && x.profileId !== except).length;
+  }
+  async insertRaidTeam(team, leader) {
+    if (this.joinedElsewhere(leader)) return false;
+    this.raidTeams.push(structuredClone(team));
+    this.raidMembers.push(structuredClone(leader));
+    this.touch();
+    return true;
+  }
+  async insertRaidMember(m) {
+    const team = this.raidTeams.find((t) => t.id === m.teamId);
+    if (!team || team.weekStart !== m.weekStart) return "conflict";
+    if (this.raidMembers.some((x) => x.teamId === m.teamId && x.profileId === m.profileId)) return "duplicate";
+    if (m.profileId !== team.leaderId && !await this.areFriends(team.leaderId, m.profileId)) return "not-friend";
+    if (m.status === "joined") {
+      if (this.joinedElsewhere(m)) return "conflict";
+      if (this.joinedCount(m.teamId) >= RAID_MAX_MEMBERS) return "full";
+    }
+    this.raidMembers.push(structuredClone(m));
+    this.touch();
+    return "ok";
+  }
+  async joinRaidMember(teamId, profileId, at) {
+    const m = this.raidMembers.find((x) => x.teamId === teamId && x.profileId === profileId);
+    if (!m) return "conflict";
+    if (m.status === "joined") return "duplicate";
+    if (this.joinedElsewhere(m)) return "conflict";
+    if (this.joinedCount(teamId) >= RAID_MAX_MEMBERS) return "full";
+    m.status = "joined";
+    m.joinedAt = at;
+    this.touch();
+    return "ok";
+  }
+  async deleteRaidMember(teamId, profileId) {
+    this.raidMembers = this.raidMembers.filter((m) => !(m.teamId === teamId && m.profileId === profileId));
+    this.raidDamage = this.raidDamage.filter((d) => !(d.teamId === teamId && d.profileId === profileId));
+    this.raidEncouragements = this.raidEncouragements.filter((e) => !(e.teamId === teamId && (e.fromId === profileId || e.toId === profileId)));
+    this.touch();
+  }
+  async deleteRaidInvites(profileId, weekStart) {
+    this.raidMembers = this.raidMembers.filter((m) => !(m.profileId === profileId && m.weekStart === weekStart && m.status === "invited"));
+    this.touch();
+  }
+  async setRaidLeader(teamId, leaderId) {
+    const t = this.raidTeams.find((x) => x.id === teamId);
+    if (t) t.leaderId = leaderId;
+    this.touch();
+  }
+  async deleteRaidTeam(teamId) {
+    this.raidTeams = this.raidTeams.filter((t) => t.id !== teamId);
+    this.raidMembers = this.raidMembers.filter((m) => m.teamId !== teamId);
+    this.raidDamage = this.raidDamage.filter((d) => d.teamId !== teamId);
+    this.raidEncouragements = this.raidEncouragements.filter((e) => e.teamId !== teamId);
+    this.touch();
+  }
+  async resolveRaidTeam(teamId, r) {
+    const t = this.raidTeams.find((x) => x.id === teamId);
+    if (!t || t.resolvedAt) return false;
+    Object.assign(t, { resolvedAt: r.at, outcome: r.outcome, maxHp: r.maxHp, totalDamage: r.totalDamage, victoryDay: r.victoryDay });
+    this.touch();
+    return true;
+  }
+  async listRaidDamage(teamId) {
+    return structuredClone(this.raidDamage.filter((d) => d.teamId === teamId));
+  }
+  async insertRaidDamage(d) {
+    if (this.raidDamage.some((x) => x.profileId === d.profileId && x.gameDate === d.gameDate)) return false;
+    this.raidDamage.push(structuredClone(d));
+    this.touch();
+    return true;
+  }
+  async updateRaidDamage(teamId, profileId, gameDate2, patch) {
+    const d = this.raidDamage.find((x) => x.teamId === teamId && x.profileId === profileId && x.gameDate === gameDate2);
+    if (d) Object.assign(d, patch);
+    this.touch();
+  }
+  async listRaidEncouragements(teamId, gameDate2) {
+    return structuredClone(this.raidEncouragements.filter((e) => e.teamId === teamId && e.gameDate === gameDate2));
+  }
+  async insertRaidEncouragement(e) {
+    if (this.raidEncouragements.some((x) => x.teamId === e.teamId && x.fromId === e.fromId && x.toId === e.toId && x.gameDate === e.gameDate)) return false;
+    this.raidEncouragements.push(structuredClone(e));
+    this.touch();
+    return true;
+  }
+  async notify(userId, type, payload) {
+    this.notifications.push({ userId, type, payload: structuredClone(payload) });
+  }
+  // ───── Saisons
+  async upsertSeasonScore(userId, seasonKey, power, day) {
+    const list = this.data(userId).seasonScores;
+    const cur = list.find((x) => x.seasonKey === seasonKey);
+    if (cur) {
+      cur.power = power;
+      if (day > cur.lastDay) cur.lastDay = day;
+      if (day < cur.firstDay) cur.firstDay = day;
+    } else list.push({ seasonKey, power, firstDay: day, lastDay: day });
+    this.touch();
+  }
+  async listSeasonScores(userId) {
+    return structuredClone(this.data(userId).seasonScores);
+  }
+  async seasonRanking(userId, seasonKey) {
+    const optedIn = (id) => this.data(id).settings.leaderboardOptIn !== false;
+    if (!optedIn(userId)) return [];
+    const rows = [];
+    for (const id of this.users.keys()) {
+      if (id !== userId && (!await this.areFriends(userId, id) || !optedIn(id))) continue;
+      const score = this.data(id).seasonScores.find((x) => x.seasonKey === seasonKey);
+      if (score) rows.push({ profileId: id, power: score.power });
+    }
+    return rows;
+  }
+  async listSeasonResults(userId) {
+    return structuredClone(this.data(userId).seasonResults);
+  }
+  async insertSeasonResult(userId, r) {
+    const list = this.data(userId).seasonResults;
+    if (list.some((x) => x.seasonKey === r.seasonKey)) return false;
+    list.push(structuredClone(r));
+    this.touch();
+    return true;
+  }
   async createPost(userId, draft) {
     const id = `post-${this.posts.length + 1}-${Math.random().toString(36).slice(2, 8)}`;
     this.posts.push({ ...structuredClone(draft), id, authorId: userId, createdAt: (/* @__PURE__ */ new Date()).toISOString() });
@@ -3637,7 +6227,7 @@ var MemoryStore = class {
 };
 
 // packages/engine/src/server/supabase-store.ts
-var fail2 = (error, ctx) => {
+var fail5 = (error, ctx) => {
   if (error) throw new Error(`${ctx}: ${error.message ?? error}`);
 };
 var PAGE = 1e3;
@@ -3645,12 +6235,51 @@ async function pageAll(build, ctx) {
   const out = [];
   for (let from = 0; from < 2e5; from += PAGE) {
     const { data, error } = await build(from, from + PAGE - 1);
-    fail2(error, ctx);
+    fail5(error, ctx);
     out.push(...data ?? []);
     if ((data?.length ?? 0) < PAGE) break;
   }
   return out;
 }
+function memberWrite(error, ctx) {
+  if (!error) return "ok";
+  const msg = String(error.message ?? "");
+  if (/raid_full/.test(msg)) return "full";
+  if (/raid_not_friend/.test(msg)) return "not-friend";
+  if (/one_team_per_week/.test(msg)) return "conflict";
+  if (error.code === "23505" || /duplicate key|unique/i.test(msg)) return "duplicate";
+  if (error.code === "23503") return "conflict";
+  throw new Error(`${ctx}: ${msg}`);
+}
+var toTeam = (r) => ({
+  id: r.id,
+  weekStart: r.week_start,
+  leaderId: r.leader_id,
+  createdAt: r.created_at,
+  resolvedAt: r.resolved_at ?? null,
+  outcome: r.outcome ?? null,
+  maxHp: r.max_hp ?? null,
+  totalDamage: r.total_damage ?? null,
+  victoryDay: r.victory_day ?? null
+});
+var toMember = (r) => ({
+  teamId: r.team_id,
+  profileId: r.profile_id,
+  weekStart: r.week_start,
+  status: r.status,
+  invitedBy: r.invited_by ?? "",
+  createdAt: r.created_at,
+  joinedAt: r.joined_at ?? null
+});
+var fromMember = (m) => ({
+  team_id: m.teamId,
+  profile_id: m.profileId,
+  week_start: m.weekStart,
+  status: m.status,
+  invited_by: m.invitedBy,
+  created_at: m.createdAt,
+  joined_at: m.joinedAt ?? null
+});
 var SupabaseStore = class {
   constructor(db) {
     this.db = db;
@@ -3658,7 +6287,7 @@ var SupabaseStore = class {
   // ───── Personnage et réglages
   async getCharacter(userId) {
     const { data, error } = await this.db.from("characters").select("*").eq("profile_id", userId).maybeSingle();
-    fail2(error, "characters.select");
+    fail5(error, "characters.select");
     if (!data) return null;
     const { data: s } = await this.db.from("settings").select("oath").eq("profile_id", userId).maybeSingle();
     return {
@@ -3683,7 +6312,16 @@ var SupabaseStore = class {
       inspiration: data.inspiration,
       rerollsDate: data.rerolls_date,
       rerollsUsed: data.rerolls_used,
-      createdAt: data.created_at
+      createdAt: data.created_at,
+      gold: data.gold ?? 0,
+      fragments: data.fragments ?? 0,
+      keys: data.keys ?? 0,
+      chestPity: data.chest_pity ?? {},
+      expeditionStartedAt: data.expedition_started_at ?? null,
+      chestOpensDate: data.chest_opens_date ?? null,
+      chestOpensToday: data.chest_opens_today ?? 0,
+      power: data.power ?? 0,
+      frameStyle: data.frame_style ?? null
     };
   }
   async saveCharacter(userId, c) {
@@ -3708,19 +6346,28 @@ var SupabaseStore = class {
         streak_best: c.streakBest,
         inspiration: c.inspiration,
         rerolls_date: c.rerollsDate ?? null,
-        rerolls_used: c.rerollsUsed
+        rerolls_used: c.rerollsUsed,
+        gold: c.gold ?? 0,
+        fragments: c.fragments ?? 0,
+        keys: c.keys ?? 0,
+        chest_pity: c.chestPity ?? {},
+        expedition_started_at: c.expeditionStartedAt ?? null,
+        chest_opens_date: c.chestOpensDate ?? null,
+        chest_opens_today: c.chestOpensToday ?? 0,
+        power: c.power ?? 0,
+        frame_style: c.frameStyle ?? null
       },
       { onConflict: "profile_id" }
     );
-    fail2(error, "characters.upsert");
+    fail5(error, "characters.upsert");
     if (typeof c.oath === "string") {
       const { error: e2 } = await this.db.from("settings").update({ oath: c.oath }).eq("profile_id", userId);
-      fail2(e2, "settings.oath");
+      fail5(e2, "settings.oath");
     }
   }
   async getSettings(userId) {
     const { data, error } = await this.db.from("settings").select("*").eq("profile_id", userId).maybeSingle();
-    fail2(error, "settings.select");
+    fail5(error, "settings.select");
     if (!data) {
       return {
         resetHour: 4,
@@ -3780,7 +6427,7 @@ var SupabaseStore = class {
       },
       { onConflict: "profile_id" }
     );
-    fail2(error, "settings.upsert");
+    fail5(error, "settings.upsert");
   }
   // ───── Catalogue et préférences
   async listTemplates(userId, opts = {}) {
@@ -3810,7 +6457,7 @@ var SupabaseStore = class {
   }
   async getPreferences(userId) {
     const { data, error } = await this.db.from("quest_preferences").select("*").eq("profile_id", userId);
-    fail2(error, "prefs.select");
+    fail5(error, "prefs.select");
     const out = {};
     for (const p of data ?? []) out[p.template_id] = { templateId: p.template_id, isFavorite: p.is_favorite, isExcluded: p.is_excluded, isPinned: p.is_pinned, tune: p.tune ?? 0 };
     return out;
@@ -3824,7 +6471,7 @@ var SupabaseStore = class {
       is_pinned: !!p.isPinned,
       tune: p.tune ?? 0
     }, { onConflict: "profile_id,template_id" });
-    fail2(error, "prefs.upsert");
+    fail5(error, "prefs.upsert");
   }
   // ───── Instances
   toInstance(r) {
@@ -3883,13 +6530,13 @@ var SupabaseStore = class {
   }
   async getInstance(userId, id) {
     const { data, error } = await this.db.from("quest_instances").select("*").eq("profile_id", userId).eq("id", id).maybeSingle();
-    fail2(error, "instances.get");
+    fail5(error, "instances.get");
     return data ? this.toInstance(data) : null;
   }
   async insertInstances(userId, instances) {
     if (!instances.length) return;
     const { error } = await this.db.from("quest_instances").upsert(instances.map((i) => this.fromInstance(userId, i)), { onConflict: "profile_id,template_id,period,period_start,run", ignoreDuplicates: true });
-    fail2(error, "instances.insert");
+    fail5(error, "instances.insert");
   }
   async updateInstance(userId, id, patch) {
     const row = {};
@@ -3902,16 +6549,16 @@ var SupabaseStore = class {
     if ("completedAt" in patch) row.completed_at = patch.completedAt ?? null;
     if ("snapshot" in patch) row.snapshot = patch.snapshot;
     const { error } = await this.db.from("quest_instances").update(row).eq("profile_id", userId).eq("id", id);
-    fail2(error, "instances.update");
+    fail5(error, "instances.update");
   }
   async deleteInstance(userId, id) {
     const { error } = await this.db.from("quest_instances").delete().eq("profile_id", userId).eq("id", id);
-    fail2(error, "instances.delete");
+    fail5(error, "instances.delete");
   }
   // ───── Parcours de discipline
   async listTracks(userId) {
     const { data, error } = await this.db.from("tracks").select("*").eq("profile_id", userId).order("track_id", { ascending: true });
-    fail2(error, "tracks.select");
+    fail5(error, "tracks.select");
     return (data ?? []).map((r) => ({
       trackId: r.track_id,
       status: r.status,
@@ -3938,11 +6585,253 @@ var SupabaseStore = class {
       },
       { onConflict: "profile_id,track_id" }
     );
-    fail2(error, "tracks.upsert");
+    fail5(error, "tracks.upsert");
   }
   async deleteTrack(userId, trackId) {
     const { error } = await this.db.from("tracks").delete().eq("profile_id", userId).eq("track_id", trackId);
-    fail2(error, "tracks.delete");
+    fail5(error, "tracks.delete");
+  }
+  // ───── Aventure : équipement, coffres, donjons
+  async listItems(userId) {
+    const rows = await pageAll((a, b) => this.db.from("inventory_items").select("*").eq("profile_id", userId).order("created_at", { ascending: true }).order("id", { ascending: true }).range(a, b), "items.select");
+    return rows.map((r) => ({
+      id: r.id,
+      templateId: r.template_id,
+      rarity: r.rarity,
+      slot: r.slot,
+      ability: r.ability,
+      level: r.level,
+      equipped: r.equipped,
+      createdAt: r.created_at
+    }));
+  }
+  async insertItems(userId, items) {
+    if (!items.length) return;
+    const { error } = await this.db.from("inventory_items").insert(
+      items.map((i) => ({
+        id: i.id,
+        profile_id: userId,
+        template_id: i.templateId,
+        rarity: i.rarity,
+        slot: i.slot,
+        ability: i.ability,
+        level: i.level ?? 0,
+        equipped: !!i.equipped,
+        created_at: i.createdAt
+      }))
+    );
+    fail5(error, "items.insert");
+  }
+  async updateItem(userId, id, patch) {
+    const row = {};
+    if ("level" in patch) row.level = patch.level;
+    if ("equipped" in patch) row.equipped = !!patch.equipped;
+    if (!Object.keys(row).length) return;
+    const { error } = await this.db.from("inventory_items").update(row).eq("profile_id", userId).eq("id", id);
+    fail5(error, "items.update");
+  }
+  async deleteItems(userId, ids) {
+    if (!ids.length) return;
+    const { error } = await this.db.from("inventory_items").delete().eq("profile_id", userId).in("id", ids);
+    fail5(error, "items.delete");
+  }
+  async listChests(userId, filter = {}) {
+    let q = this.db.from("chests").select("*").eq("profile_id", userId);
+    if (filter.opened === true) q = q.not("opened_at", "is", null);
+    if (filter.opened === false) q = q.is("opened_at", null);
+    const rows = await pageAll((a, b) => q.order("created_at", { ascending: true }).order("id", { ascending: true }).range(a, b), "chests.select");
+    return rows.map((r) => ({
+      id: r.id,
+      rarity: r.rarity,
+      source: r.source,
+      sourceKey: r.source_key,
+      instanceId: r.instance_id ?? null,
+      createdAt: r.created_at,
+      openedAt: r.opened_at ?? null
+    }));
+  }
+  async insertChest(userId, c) {
+    const { error } = await this.db.from("chests").insert({
+      id: c.id,
+      profile_id: userId,
+      rarity: c.rarity,
+      source: c.source,
+      source_key: c.sourceKey,
+      instance_id: c.instanceId ?? null,
+      created_at: c.createdAt,
+      opened_at: c.openedAt ?? null
+    });
+    if (error && (error.code === "23505" || /duplicate key|unique/i.test(error.message ?? ""))) return false;
+    fail5(error, "chests.insert");
+    return true;
+  }
+  async markChestOpened(userId, id, at) {
+    const { data, error } = await this.db.from("chests").update({ opened_at: at }).eq("profile_id", userId).eq("id", id).is("opened_at", null).select("id");
+    fail5(error, "chests.open");
+    return (data?.length ?? 0) > 0;
+  }
+  async deleteChests(userId, ids) {
+    if (!ids.length) return;
+    const { error } = await this.db.from("chests").delete().eq("profile_id", userId).in("id", ids);
+    fail5(error, "chests.delete");
+  }
+  async listDungeonProgress(userId) {
+    const { data, error } = await this.db.from("dungeon_progress").select("*").eq("profile_id", userId).order("dungeon_id", { ascending: true });
+    fail5(error, "dungeon_progress.select");
+    return (data ?? []).map((r) => ({ dungeonId: r.dungeon_id, bestRoom: r.best_room, bossDefeatedTier: r.boss_defeated_tier, lastRunDate: r.last_run_date ?? null }));
+  }
+  async saveDungeonProgress(userId, p) {
+    const { error } = await this.db.from("dungeon_progress").upsert(
+      { profile_id: userId, dungeon_id: p.dungeonId, best_room: p.bestRoom, boss_defeated_tier: p.bossDefeatedTier, last_run_date: p.lastRunDate ?? null },
+      { onConflict: "profile_id,dungeon_id" }
+    );
+    fail5(error, "dungeon_progress.upsert");
+  }
+  // ───── Raids d'amis
+  async areFriends(a, b) {
+    if (a === b) return false;
+    const { data, error } = await this.db.rpc("can_view_owner", { viewer: a, owner: b });
+    fail5(error, "can_view_owner");
+    return data === true;
+  }
+  async getRaidTeam(teamId) {
+    const { data, error } = await this.db.from("raid_teams").select("*").eq("id", teamId).maybeSingle();
+    fail5(error, "raid_teams.select");
+    return data ? toTeam(data) : null;
+  }
+  async listRaidMemberships(userId, since) {
+    const { data, error } = await this.db.from("raid_members").select("*").eq("profile_id", userId).gte("week_start", since).order("week_start", { ascending: true }).order("team_id", { ascending: true });
+    fail5(error, "raid_members.select");
+    return (data ?? []).map(toMember);
+  }
+  async listRaidMembers(teamId) {
+    const { data, error } = await this.db.from("raid_members").select("*").eq("team_id", teamId).order("created_at", { ascending: true }).order("profile_id", { ascending: true });
+    fail5(error, "raid_members.list");
+    return (data ?? []).map(toMember);
+  }
+  async insertRaidTeam(team, leader) {
+    const { error } = await this.db.from("raid_teams").insert({ id: team.id, week_start: team.weekStart, leader_id: team.leaderId, created_at: team.createdAt });
+    fail5(error, "raid_teams.insert");
+    const r = memberWrite((await this.db.from("raid_members").insert(fromMember(leader))).error, "raid_members.insert");
+    if (r === "ok") return true;
+    await this.db.from("raid_teams").delete().eq("id", team.id);
+    if (r === "conflict" || r === "duplicate") return false;
+    throw new Error(`raid_members.insert: ${r}`);
+  }
+  async insertRaidMember(m) {
+    return memberWrite((await this.db.from("raid_members").insert(fromMember(m))).error, "raid_members.insert");
+  }
+  async joinRaidMember(teamId, profileId, at) {
+    const { data, error } = await this.db.from("raid_members").update({ status: "joined", joined_at: at }).eq("team_id", teamId).eq("profile_id", profileId).eq("status", "invited").select("profile_id");
+    const r = memberWrite(error, "raid_members.join");
+    if (r !== "ok") return r;
+    return (data?.length ?? 0) > 0 ? "ok" : "conflict";
+  }
+  async deleteRaidMember(teamId, profileId) {
+    const { error } = await this.db.from("raid_members").delete().eq("team_id", teamId).eq("profile_id", profileId);
+    fail5(error, "raid_members.delete");
+  }
+  async deleteRaidInvites(profileId, weekStart) {
+    const { error } = await this.db.from("raid_members").delete().eq("profile_id", profileId).eq("week_start", weekStart).eq("status", "invited");
+    fail5(error, "raid_members.invites");
+  }
+  async setRaidLeader(teamId, leaderId) {
+    const { error } = await this.db.from("raid_teams").update({ leader_id: leaderId }).eq("id", teamId);
+    fail5(error, "raid_teams.leader");
+  }
+  async deleteRaidTeam(teamId) {
+    const { error } = await this.db.from("raid_teams").delete().eq("id", teamId);
+    fail5(error, "raid_teams.delete");
+  }
+  async resolveRaidTeam(teamId, r) {
+    const { data, error } = await this.db.from("raid_teams").update({ resolved_at: r.at, outcome: r.outcome, max_hp: r.maxHp, total_damage: r.totalDamage, victory_day: r.victoryDay }).eq("id", teamId).is("resolved_at", null).select("id");
+    fail5(error, "raid_teams.resolve");
+    return (data?.length ?? 0) > 0;
+  }
+  async listRaidDamage(teamId) {
+    const { data, error } = await this.db.from("raid_damage").select("*").eq("team_id", teamId).order("game_date", { ascending: true }).order("profile_id", { ascending: true });
+    fail5(error, "raid_damage.select");
+    return (data ?? []).map((r) => ({
+      teamId: r.team_id,
+      profileId: r.profile_id,
+      gameDate: r.game_date,
+      damage: r.damage,
+      baseDamage: r.base_damage,
+      encouragements: r.encouragements
+    }));
+  }
+  async insertRaidDamage(d) {
+    const { error } = await this.db.from("raid_damage").insert({
+      team_id: d.teamId,
+      profile_id: d.profileId,
+      game_date: d.gameDate,
+      damage: d.damage,
+      base_damage: d.baseDamage,
+      encouragements: d.encouragements
+    });
+    if (error && (error.code === "23505" || /duplicate key|unique/i.test(error.message ?? ""))) return false;
+    fail5(error, "raid_damage.insert");
+    return true;
+  }
+  async updateRaidDamage(teamId, profileId, gameDate2, patch) {
+    const { error } = await this.db.from("raid_damage").update({ damage: patch.damage, encouragements: patch.encouragements }).eq("team_id", teamId).eq("profile_id", profileId).eq("game_date", gameDate2);
+    fail5(error, "raid_damage.update");
+  }
+  async listRaidEncouragements(teamId, gameDate2) {
+    const { data, error } = await this.db.from("raid_encouragements").select("*").eq("team_id", teamId).eq("game_date", gameDate2);
+    fail5(error, "raid_encouragements.select");
+    return (data ?? []).map((r) => ({ teamId: r.team_id, fromId: r.from_id, toId: r.to_id, gameDate: r.game_date, createdAt: r.created_at }));
+  }
+  async insertRaidEncouragement(e) {
+    const { error } = await this.db.from("raid_encouragements").insert({ team_id: e.teamId, from_id: e.fromId, to_id: e.toId, game_date: e.gameDate, created_at: e.createdAt });
+    if (error && (error.code === "23505" || /duplicate key|unique/i.test(error.message ?? ""))) return false;
+    fail5(error, "raid_encouragements.insert");
+    return true;
+  }
+  async notify(userId, type, payload) {
+    const { error } = await this.db.rpc("notify_user", { p_to: userId, p_type: type, p_payload: payload });
+    fail5(error, "notify_user");
+  }
+  // ───── Saisons
+  async upsertSeasonScore(userId, seasonKey, power, day) {
+    const { error } = await this.db.rpc("record_season_power", { p_profile: userId, p_season: seasonKey, p_power: power, p_day: day });
+    fail5(error, "record_season_power");
+  }
+  async listSeasonScores(userId) {
+    const { data, error } = await this.db.from("season_scores").select("*").eq("profile_id", userId).order("season_key", { ascending: true });
+    fail5(error, "season_scores.select");
+    return (data ?? []).map((r) => ({ seasonKey: r.season_key, power: r.power, firstDay: r.first_day, lastDay: r.last_day }));
+  }
+  async seasonRanking(userId, seasonKey) {
+    const { data, error } = await this.db.rpc("season_ranking", { p_viewer: userId, p_season: seasonKey });
+    fail5(error, "season_ranking");
+    return (data ?? []).map((r) => ({ profileId: r.profile_id, power: Number(r.power) }));
+  }
+  async listSeasonResults(userId) {
+    const { data, error } = await this.db.from("season_results").select("*").eq("profile_id", userId).order("season_key", { ascending: true });
+    fail5(error, "season_results.select");
+    return (data ?? []).map((r) => ({
+      seasonKey: r.season_key,
+      rank: r.rank ?? null,
+      participants: r.participants,
+      power: r.power,
+      frame: r.frame ?? null,
+      createdAt: r.created_at
+    }));
+  }
+  async insertSeasonResult(userId, r) {
+    const { error } = await this.db.from("season_results").insert({
+      profile_id: userId,
+      season_key: r.seasonKey,
+      rank: r.rank ?? null,
+      participants: r.participants,
+      power: r.power,
+      frame: r.frame ?? null,
+      created_at: r.createdAt
+    });
+    if (error && (error.code === "23505" || /duplicate key|unique/i.test(error.message ?? ""))) return false;
+    fail5(error, "season_results.insert");
+    return true;
   }
   // ───── Registre d'XP
   async insertXpEvents(userId, events) {
@@ -3960,7 +6849,7 @@ var SupabaseStore = class {
         created_at: e.createdAt
       }))
     );
-    fail2(error, "xp_events.insert");
+    fail5(error, "xp_events.insert");
   }
   async listXpEvents(userId, since) {
     let q = this.db.from("xp_events").select("*").eq("profile_id", userId);
@@ -3980,29 +6869,29 @@ var SupabaseStore = class {
   // ───── Trophées, repos, journal
   async listUnlocked(userId) {
     const { data, error } = await this.db.from("unlocked_achievements").select("*").eq("profile_id", userId);
-    fail2(error, "unlocked.select");
+    fail5(error, "unlocked.select");
     return (data ?? []).map((u) => ({ achievementId: u.achievement_id, unlockedAt: u.unlocked_at }));
   }
   async unlockAchievement(userId, achievementId, at) {
     const { error } = await this.db.from("unlocked_achievements").upsert({ profile_id: userId, achievement_id: achievementId, unlocked_at: at }, { onConflict: "profile_id,achievement_id", ignoreDuplicates: true });
-    fail2(error, "unlocked.insert");
+    fail5(error, "unlocked.insert");
   }
   async listRestDays(userId) {
     const { data, error } = await this.db.from("rest_days").select("day").eq("profile_id", userId);
-    fail2(error, "rest_days.select");
+    fail5(error, "rest_days.select");
     return (data ?? []).map((r) => r.day);
   }
   async addRestDay(userId, day) {
     const { error } = await this.db.from("rest_days").upsert({ profile_id: userId, day }, { onConflict: "profile_id,day", ignoreDuplicates: true });
-    fail2(error, "rest_days.insert");
+    fail5(error, "rest_days.insert");
   }
   async saveJournal(userId, e) {
     const { error } = await this.db.from("journal_entries").insert({ id: e.id, profile_id: userId, instance_id: e.instanceId, text: e.text, created_at: e.createdAt });
-    fail2(error, "journal.insert");
+    fail5(error, "journal.insert");
   }
   async countJournal(userId) {
     const { count, error } = await this.db.from("journal_entries").select("id", { count: "exact", head: true }).eq("profile_id", userId);
-    fail2(error, "journal.count");
+    fail5(error, "journal.count");
     return count ?? 0;
   }
   async listJournal(userId) {
@@ -4019,10 +6908,10 @@ var SupabaseStore = class {
       visibility: d.visibility,
       payload: d.payload ?? {}
     }).select("id").single();
-    fail2(error, "posts.insert");
+    fail5(error, "posts.insert");
     if (d.mediaPaths?.length) {
       const { error: e2 } = await this.db.from("post_media").insert(d.mediaPaths.slice(0, 4).map((p, i) => ({ post_id: data.id, storage_path: p, position: i })));
-      fail2(e2, "post_media.insert");
+      fail5(e2, "post_media.insert");
     }
     return data.id;
   }
@@ -4032,7 +6921,7 @@ var SupabaseStore = class {
       const payload = { ...p.payload ?? {}, questDetached: true };
       delete payload.xp;
       const { error } = await this.db.from("posts").update({ instance_id: null, payload }).eq("id", p.id);
-      fail2(error, "posts.detach");
+      fail5(error, "posts.detach");
     }
   }
   async socialCounts(userId) {
@@ -4061,25 +6950,64 @@ export {
   BALANCE_SPECIALIZE_FACTOR,
   BALANCE_SPECIALIZE_GAP,
   BASE_XP,
-  CLASSES,
+  CHEST_OPENS_PER_DAY,
+  CHEST_RARITIES,
+  CHEST_TABLE,
+  CLASSES3 as CLASSES,
   DIFFICULTIES,
   DIFFICULTY_LABEL,
   DIFFICULTY_SWORDS,
+  DISMANTLE_FRAGMENTS,
+  DUNGEONS,
+  DUNGEON_BASE_START,
+  DUNGEON_BOSS_MULT,
+  DUNGEON_BOSS_REWARD_ROOMS,
+  DUNGEON_BOSS_ROOM,
+  DUNGEON_CON_DIV,
+  DUNGEON_FOR_DIV,
+  DUNGEON_ROOMS,
+  DUNGEON_ROOM_FRAGMENTS,
+  DUNGEON_ROOM_GOLD,
+  DUNGEON_ROOM_GROWTH,
+  DUNGEON_SILVER_TIER,
+  DUNGEON_TIER_GROWTH,
+  DUNGEON_UNLOCK_PER_TIER,
   EPIC_LEVEL,
+  EQUIP_SLOTS,
+  EXPEDITION_CAP_HOURS,
+  EXPEDITION_DEX_DIV,
+  EXPEDITION_FRAGMENT_PP_DIV,
+  EXPEDITION_GOLD_PER_HOUR,
+  EXPEDITION_GOLD_PP_DIV,
+  EXPEDITION_INT_DIV,
+  EXPEDITION_KEY_CHANCE,
+  EXPEDITION_MIN_CLAIM_MS,
+  EXPEDITION_STREAK_MAX,
+  EXPEDITION_STREAK_STEP,
   FORGE_LEVEL,
   IMPROVEMENT_LEVELS,
+  ITEMS,
+  ITEM_ABILITY_BONUS_DIV,
+  ITEM_AFFINITY_BONUS,
+  ITEM_BASE_POWER,
+  ITEM_LEVEL_STEP,
+  ITEM_MAX_LEVEL,
+  ITEM_RARITIES,
   JOURNAL_MIN_CHARS,
   LEVEL_XP,
   MAX_ACTIVE_TRACKS,
   MAX_FREE_QUESTS_PER_DAY,
   MAX_INSPIRATION,
   MAX_INTERESTS,
+  MAX_KEYS,
   MAX_LEVEL,
   MAX_OPEN_EXTRAS,
   MAX_RUNS,
   MAX_SCORE,
+  MERGE_COUNT,
   MIN_SCORE,
   MemoryStore,
+  NO_SET_BONUS,
   OFFLINE_MAX_DELAY_MS,
   PATH_LEVEL,
   PERIODS,
@@ -4087,14 +7015,43 @@ export {
   PERIOD_MULTIPLIER,
   PERIOD_SHORT,
   PERIOD_TAB_LABEL,
+  PITY_EPIC,
+  PITY_EPIC_MIN_CHEST,
+  PITY_LEGENDARY,
+  PITY_LEGENDARY_MIN_CHEST,
   POINT_BUY_BUDGET,
   POINT_BUY_COST,
   POINT_BUY_MAX,
+  RAID_BASE_HP,
+  RAID_BOSSES,
+  RAID_CHA_CAP,
+  RAID_CHA_STEP,
+  RAID_ENCOURAGE_CAP,
+  RAID_ENCOURAGE_STEP,
+  RAID_FAST_CHEST,
+  RAID_FAST_DAYS,
+  RAID_FOR_DIV,
+  RAID_HP_PER_MEMBER,
+  RAID_MAX_MEMBERS,
+  RAID_MIN_MEMBERS,
+  RAID_RULES,
+  RAID_WIN_CHEST,
   REACTION_EMOJI,
   REACTION_KINDS,
   REACTION_LABEL,
   REPEAT_FACTORS,
+  SAG_SHIFT_PCT,
+  SAG_SHIFT_STEP,
+  SEASON_ANCHOR,
+  SEASON_CHEST,
+  SEASON_DAYS,
+  SEASON_FRAMES,
+  SEASON_FRAME_DEFS,
+  SEASON_MIN_SPAN_DAYS,
+  SEASON_WEEKS,
+  SETS,
   SOFT_CAP_SCORE,
+  STREAK_MILESTONE_CHESTS,
   SupabaseStore,
   TIER3_MIN_SCORE,
   TIER4_MIN_LEVEL,
@@ -4103,6 +7060,9 @@ export {
   TRACK_RUNGS,
   TUNE_FACTOR,
   UNDO_WINDOW_MS,
+  UPGRADE_FRAGMENTS_STEP,
+  UPGRADE_GOLD_EXPONENT,
+  UPGRADE_GOLD_STEP,
   UPGRADE_XP_STEP,
   VALIDATION_LABEL,
   abandonQuest,
@@ -4114,11 +7074,14 @@ export {
   achievementProgress,
   activityOf,
   addDays,
+  adjustedOdds,
   advanceOnCompletion,
+  adventureScores,
   applyBalance,
   applyMisses,
   applyXp,
   applyXpParts,
+  autoRaidHit,
   availableAgainOn,
   balanceAmount,
   balanceDetails,
@@ -4126,11 +7089,13 @@ export {
   baseTargetOf,
   buildRecap,
   buildRungTemplates,
+  buildSnapshot,
   canDeclareRest,
   canForge,
   canUndo,
   chooseImprovement,
   choosePath,
+  claimExpedition,
   completeQuest,
   completeQuestAction,
   computeBestStreak,
@@ -4138,51 +7103,91 @@ export {
   computeStreak,
   conditionProgress,
   createCharacter,
+  createRaidTeam,
   createRng,
+  dailyChestRarity,
   daysLeft,
   declareRest,
   defaultSettings,
   diffDays,
+  dismantleItem,
+  dismantleValue,
+  drawChest,
   drawQuests,
+  dungeonBase,
+  dungeonBossChest,
+  dungeonBossPower,
+  dungeonRoomPower,
+  dungeonUnlockLevel,
   effectiveRung,
   emptyAbilityRecord,
+  emptyAdventureFields,
+  emptyRaidState,
   emptyStats,
   emptyUserData,
+  encourageRaid,
   endOfIsoWeek,
   endOfMonth,
   endOfQuarter,
   ensureQuests,
+  equipItem,
   equipTitle,
+  equippedBySlot,
   evaluateAchievements,
+  evaluateSeasons,
+  expeditionRates,
+  expeditionYield,
   expiredPartialXp,
+  frameStyleOf,
   gameDate,
+  getAdventureState,
+  getRaidState,
+  getSeasonState,
+  grantQuestChests,
   hardcorePenalty,
   hasLegacyBaseScores,
   hashString,
+  heroCombatStats,
+  heroPower,
+  heroPowerBreakdown,
+  heroSnapshot,
   inspirationAfterStreak,
   interestKey,
   interestWeight,
   interpolate,
+  inviteToRaid,
   isDateInRange,
   isReadyToComplete,
   isValidPointBuy,
   isoWeek,
   isoWeekday,
+  itemAbilityBonus,
+  itemPower,
+  joinRaidTeam,
   lastAcceptDate,
   lastDrawnMap,
+  leaveRaidTeam,
   levelFromXp,
   levelProgress,
   listDays,
+  listDungeons,
   localDate,
   localMinutes,
   masteriesFor,
   masteriesOf,
+  mergeChests,
+  mergeItems,
   missedDays,
   msUntilReset,
   newlyUnlocked,
+  nextChestRarity,
+  nextItemRarity,
+  nextSetTier,
   nextTune,
   offlineCompletionAllowed,
+  openChest,
   parseDateStr,
+  parseFrameStyle,
   partialXp,
   pathAbilityFor,
   pathAbilityOf,
@@ -4190,6 +7195,7 @@ export {
   pendingPath,
   periodBounds,
   pickTavernMessage,
+  pickTemplateForSlot,
   pointBuySpent,
   previewBalance,
   proficiencyBonus,
@@ -4197,16 +7203,47 @@ export {
   questCountFor,
   questLock,
   questXp,
+  raidBaseDamage,
+  raidBossFor,
+  raidChaBonus,
+  raidDamage,
+  raidDaysToKill,
+  raidEncouragementBonus,
+  raidMaxHp,
+  raidOutcome,
+  raidRewardChest,
+  raidVictoryDay,
+  raidWeekEnd,
+  raidWeekKey,
+  raidWeekOver,
+  raidWeekStart,
+  rankSeason,
   recomputeCharacter,
+  recordPower,
   redoQuest,
   repeatMultiplier,
   rerollQuest,
   rescaleLegacyBaseScores,
+  resolveDungeon,
   revertCompletion,
+  revokeQuestChests,
+  rollExpeditionKey,
+  runDungeon,
+  rungChestRarity,
   rungTemplateId,
   sanitizeInterests,
   scoresFromAssessment,
+  seasonBounds,
+  seasonIndex,
+  seasonIndexOfKey,
+  seasonInfo,
+  seasonKeyOf,
+  seasonQualifies,
+  seasonReward,
+  setBonusTotals,
+  setTier,
   setTrackPaused,
+  setsProgress,
   shuffle,
   slugify,
   splitXp,
@@ -4217,6 +7254,9 @@ export {
   startQuest,
   startTrack,
   stopTrack,
+  streakMilestoneChest,
+  streakMultiplier,
+  syncHeroPower,
   tierAt,
   tierUnlocked,
   toDateStr,
@@ -4230,8 +7270,11 @@ export {
   tunedSnapshot,
   tunedTarget,
   undoQuest,
+  unequipSlot,
   unlocksAt,
   updateProgress,
+  upgradeCost,
+  upgradeItem,
   validationTarget,
   weekStartOf,
   weightedPick,

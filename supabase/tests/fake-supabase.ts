@@ -68,6 +68,7 @@ export function fakeSupabase(pg: PGlite) {
     lte(col: string, val: unknown) { this.filters.push({ col, op: '<=', val }); return this; }
     lt(col: string, val: unknown) { this.filters.push({ col, op: '<', val }); return this; }
     is(col: string, val: unknown) { this.filters.push({ col, op: 'is', val }); return this; }
+    not(col: string, op: string, val: unknown) { this.filters.push({ col, op: `not ${op}`, val }); return this; }
     or(expr: string) {
       // « source.eq.catalog,owner_id.eq.<uuid> »
       this.ors.push(
@@ -95,6 +96,7 @@ export function fakeSupabase(pg: PGlite) {
           params.push(f.val);
           return `${quote(f.col)} = any($${params.length})`;
         }
+        if (f.op === 'not is') return `${quote(f.col)} is not ${f.val === null ? 'null' : String(f.val)}`;
         if (f.op === 'is') return `${quote(f.col)} is ${f.val === null ? 'null' : String(f.val)}`;
         params.push(f.val);
         return `${quote(f.col)} ${f.op} $${params.length}`;
@@ -178,6 +180,21 @@ export function fakeSupabase(pg: PGlite) {
   return {
     from(table: string) {
       return new Query(table);
+    },
+    /** Appel d'une fonction SQL du schéma public avec des arguments nommés (objets passés en jsonb). */
+    async rpc(name: string, args: Record<string, unknown> = {}) {
+      try {
+        const params: unknown[] = [];
+        const named = Object.entries(args).map(([k, v]) => {
+          const isJson = v !== null && typeof v === 'object';
+          params.push(isJson ? JSON.stringify(v) : v);
+          return `${k} => $${params.length}${isJson ? '::jsonb' : ''}`;
+        });
+        const r = await db.query(`select public.${name}(${named.join(', ')}) as result`, params);
+        return { data: (r.rows[0] as { result: unknown } | undefined)?.result ?? null, error: null };
+      } catch (e) {
+        return { data: null, error: { message: (e as Error).message, code: (e as { code?: string }).code } };
+      }
     },
   };
 }

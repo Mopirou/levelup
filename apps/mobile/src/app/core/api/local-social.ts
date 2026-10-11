@@ -7,6 +7,7 @@ import type {
   FeedPost,
   FriendRow,
   LeaderRow,
+  SeasonRow,
   NewPost,
   PendingRequest,
   PostComment,
@@ -417,6 +418,14 @@ export async function createLocalSocial(deps: {
         })),
       ];
       return rows.sort((x, y) => y.xp - x.xp);
+    },
+    // Mode local : pas d'amis, le classement de saison ne compte que le héros.
+    async seasonLeaderboard(): Promise<SeasonRow[]> {
+      const [a, c] = await Promise.all([me(), store.getCharacter(myId)]);
+      return [{ profileId: myId, username: a.username, name: a.name, level: a.level, classId: a.classId, portraitId: a.portraitId, frameColor: a.frameColor, frameStyle: c?.frameStyle ?? null, power: c?.power ?? 0 }];
+    },
+    async profileGear() {
+      return null;
     },
     subscribe(h) {
       watchers.add(h);

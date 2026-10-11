@@ -24,6 +24,7 @@ import { IconComponent } from '../../shared/icon.component';
 import { ModalComponent } from '../../shared/modal.component';
 import { fmt } from '../../shared/format';
 import { trackDef } from '../../shared/tracks';
+import { AdventureStore } from '../adventure/adventure.store';
 import { renderSheetPng } from './sheet-image';
 
 const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
@@ -46,7 +47,7 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
           <!-- Identité -->
           <section class="lu-card ident" [class.legend]="game.level() >= 20">
             <div class="top">
-              <lu-portrait [id]="ch.portraitId" [size]="92" [frame]="ch.frameColor" />
+              <lu-portrait [id]="ch.portraitId" [size]="92" [frame]="ch.frameColor" [gear]="adventure.gear()" [frameStyle]="ch.frameStyle" />
               <div class="id">
                 <h2 class="nm">{{ ch.name }}</h2>
                 <p class="cls">{{ game.classDef()?.name }}{{ game.pathDef() ? ' · ' + game.pathDef()!.name : '' }}</p>
@@ -56,6 +57,7 @@ const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
             </div>
             <div class="chips">
               <span class="lu-chip mint">Niveau {{ ch.level }}</span>
+              @if (adventure.state(); as adv) { <button type="button" class="lu-chip" data-testid="hero-pp" (click)="ui.go('/tabs/adventure')" [attr.aria-label]="adv.power + ' points de puissance : voir l’aventure'">⚡ {{ adv.power }} PP</button> }
               <button type="button" class="lu-chip gold" (click)="pickTitle()" aria-label="Choisir mon titre">{{ game.displayTitle() }} ⌄</button>
               <span class="lu-chip">Maîtrise +{{ game.proficiency() }}</span>
             </div>
@@ -277,6 +279,7 @@ export class HeroPage {
   protected game = inject(GameService);
   protected ui = inject(UiService);
   protected auth = inject(AuthService);
+  protected adventure = inject(AdventureStore);
   private be = inject(BackendService);
   readonly fmt = fmt;
   readonly c = this.game.character;
@@ -362,6 +365,7 @@ export class HeroPage {
     void this.loadHistory();
     void this.be.game.store.getCharacter(this.be.game.userId());
     void this.loadOath();
+    void this.adventure.load();
   }
 
   private async loadHistory(): Promise<void> {

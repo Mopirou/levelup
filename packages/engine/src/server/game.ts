@@ -42,6 +42,7 @@ import {
   ABILITIES,
   AbilityId,
   CharacterCore,
+  Chest,
   Difficulty,
   MAX_ACTIVE_TRACKS,
   Period,
@@ -52,6 +53,7 @@ import {
   QuestTemplate,
   TrackState,
   emptyAbilityRecord,
+  emptyAdventureFields,
 } from '../types';
 import {
   FORGE_LEVEL,
@@ -72,6 +74,9 @@ import {
   tierUnlocked,
   type XpPart,
 } from '../xp';
+import { grantQuestChests, revokeQuestChests } from './adventure-game';
+import { autoRaidHit, type RaidHit } from './raid-game';
+import { syncHeroPower } from './season-game';
 import {
   CharacterRecord,
   GameStore,
@@ -111,7 +116,17 @@ export type GameError =
   | 'already-active'
   | 'run-limit'
   | 'too-many-open'
-  | 'forbidden';
+  | 'forbidden'
+  // Aventure (voir docs/DONJONS.md)
+  | 'no-key'
+  | 'daily-cap'
+  | 'insufficient'
+  // Raids d'amis (voir docs/DONJONS.md §8)
+  | 'no-team'
+  | 'team-full'
+  | 'not-friends'
+  | 'raid-closed'
+  | 'already-done';
 
 export type Result<T> = ({ ok: true } & T) | { ok: false; error: GameError; message?: string };
 
@@ -399,6 +414,9 @@ export async function createCharacter(ctx: ServerContext, userId: string, input:
     rerollsDate: null,
     rerollsUsed: 0,
     createdAt: nowIso,
+    ...emptyAdventureFields(),
+    // L'expédition est toujours en cours dès la création du personnage.
+    expeditionStartedAt: nowIso,
   };
   await ctx.store.saveSettings(userId, { ...defaultSettings(input.timezone), interests: sanitizeInterests(input.interests) });
   await ctx.store.saveCharacter(userId, character);
@@ -825,6 +843,12 @@ export interface CompleteResponse {
   inspirationOverflow: boolean;
   streak: number;
   postId?: string;
+  /** Coffres gagnés par cette validation (quête du jour, promotion d'échelon, jalon de série) */
+  chests?: Chest[];
+  /** Clés de donjon gagnées par cette validation (promotion d'échelon, jalon de série) */
+  keysGained?: number;
+  /** Raid d'amis : coup infligé au boss par cette validation (premier chargement du jour) */
+  raid?: RaidHit;
   /** Quête de parcours : état du parcours après la validation (montée d'échelon incluse) */
   track?: TrackState;
   trackPromoted?: boolean;
@@ -966,6 +990,25 @@ export async function completeQuestAction(ctx: ServerContext, userId: string, re
     inspirationGained = g.gained;
     inspirationOverflow = g.overflow;
   }
+  // Coffres (idempotents) : 1re quête de parcours du jour, promotion d'échelon, jalon de série.
+  const granted =
+    inst.period === 'daily'
+      ? await grantQuestChests({
+          store,
+          userId,
+          uuid: ctx.uuid,
+          nowIso: completedAtIso,
+          instanceId: inst.id,
+          completedDay,
+          isTrackQuest: inst.origin === 'track',
+          isDaily: true,
+          streak: streak.current,
+          prevStreak,
+          promotion: trackUpdate?.promoted ? { trackId: inst.trackId!, rung: trackUpdate.state.rung } : undefined,
+          character,
+        })
+      : null;
+  if (granted) character = granted.character;
   await store.saveCharacter(userId, character);
 
   // Trophées (peuvent en débloquer d'autres via le bonus d'XP : quelques passes).
@@ -1020,6 +1063,11 @@ export async function completeQuestAction(ctx: ServerContext, userId: string, re
   }
   for (const d of autos) await store.createPost(userId, d);
 
+  // Raid d'amis : le coup du jour s'applique au premier chargement du jour (jamais bloquant).
+  const raidHit = await autoRaidHit(ctx, userId);
+  // Un niveau de plus change la puissance : publiée pour la carte de compagnon et le classement de saison (jamais bloquant).
+  if (levelUps.length) await syncHeroPower(ctx, userId).catch((e) => console.error('sync power', e));
+
   return {
     ok: true,
     data: {
@@ -1036,6 +1084,8 @@ export async function completeQuestAction(ctx: ServerContext, userId: string, re
       inspirationOverflow,
       streak: streak.current,
       postId,
+      ...(granted?.chests.length ? { chests: granted.chests, keysGained: granted.keysGained } : {}),
+      ...(raidHit ? { raid: raidHit } : {}),
       ...(res.balance.length ? { balance: res.balance } : {}),
       ...(trackUpdate ? { track: trackUpdate.state, trackPromoted: trackUpdate.promoted } : {}),
     },
@@ -1088,10 +1138,11 @@ export async function undoQuest(ctx: ServerContext, userId: string, instanceId: 
     }
   }
   let character = env.character;
-  if (inst.inspirationUsed) {
-    character = { ...character, inspiration: Math.min(character.inspiration + 1, MAX_INSPIRATION) };
-    await ctx.store.saveCharacter(userId, character);
-  }
+  // Les coffres donnés par cette quête (et les Clés) sont retirés tant qu'ils ne sont pas ouverts.
+  const revoked = await revokeQuestChests(ctx.store, userId, instanceId);
+  if (revoked.keysLost) character = { ...character, keys: Math.max(0, character.keys - revoked.keysLost) };
+  if (inst.inspirationUsed) character = { ...character, inspiration: Math.min(character.inspiration + 1, MAX_INSPIRATION) };
+  if (character !== env.character) await ctx.store.saveCharacter(userId, character);
   const recomputed = (await recomputeCharacter(ctx, userId)) ?? character;
   return { ok: true, character: recomputed, instance: { ...inst, ...patch } };
 }

@@ -104,6 +104,18 @@ export class MessengerPage {
         case 'friend_level':
           out.push({ key: n.id, icon: 'crown', text: `${p['username']} a atteint le niveau ${p['level']}.`, at: n.createdAt, unread: !n.readAt, ids: [n.id], go: () => this.ui.go(p['post'] ? ['/post', p['post']] : '/tabs/village') });
           break;
+        case 'raid_invite':
+          out.push({ key: n.id, icon: 'swords', text: `${p['username']} t’invite dans son équipe de raid cette semaine.`, at: n.createdAt, unread: !n.readAt, ids: [n.id], go: () => this.ui.go('/tabs/adventure') });
+          break;
+        case 'raid_encouraged':
+          out.push({ key: n.id, icon: 'swords', text: `${p['username']} t’encourage : +5 % de dégâts sur le boss aujourd’hui.`, at: n.createdAt, unread: !n.readAt, ids: [n.id], go: () => this.ui.go('/tabs/adventure') });
+          break;
+        case 'raid_victory':
+          out.push({ key: n.id, icon: 'crown', text: `Victoire de l’équipe : le boss est tombé en ${p['days']} jour${Number(p['days']) > 1 ? 's' : ''} ! Un coffre ${p['chest'] === 'mythique' ? 'mythique' : 'd’or'} t’attend.`, at: n.createdAt, unread: !n.readAt, ids: [n.id], go: () => this.ui.go('/tabs/adventure') });
+          break;
+        case 'season_end':
+          out.push({ key: n.id, icon: 'crown', text: `${p['name'] ?? 'La saison'} est terminée${p['rank'] ? ` : tu finis ${p['rank'] === 1 ? '1er' : p['rank'] + 'e'} sur ${p['participants']}` : ''}. Un cadre de portrait et un coffre d’or t’attendent.`, at: n.createdAt, unread: !n.readAt, ids: [n.id], go: () => this.ui.go('/tabs/adventure') });
+          break;
         case 'reaction':
           reactionGroups.set(p['post'], [...(reactionGroups.get(p['post']) ?? []), n]);
           break;

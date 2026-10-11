@@ -195,3 +195,143 @@ export const MAX_ACTIVE_TRACKS = 3;
 export const TRACK_PROMOTE_HITS = 5;
 /** Jours manqués d'affilée (hors repos et pause) avant de descendre d'un échelon */
 export const TRACK_DEMOTE_MISSES = 4;
+
+// ───────────────────────── Aventure : coffres, équipement, donjons ─────────────────────────
+//
+// Le héros part à l'aventure : puissance (PP), expédition, coffres gagnés par la discipline, équipement, donjons.
+// Règles et formules dans `adventure.ts` ; spécification dans docs/DONJONS.md.
+
+export type ChestRarity = 'bois' | 'bronze' | 'argent' | 'or' | 'mythique';
+/** Du plus commun au plus rare */
+export const CHEST_RARITIES: readonly ChestRarity[] = ['bois', 'bronze', 'argent', 'or', 'mythique'] as const;
+
+export type ItemRarity = 'commun' | 'peu_commun' | 'rare' | 'epique' | 'legendaire';
+/** Du plus commun au plus rare */
+export const ITEM_RARITIES: readonly ItemRarity[] = ['commun', 'peu_commun', 'rare', 'epique', 'legendaire'] as const;
+
+export type EquipSlot = 'arme' | 'tete' | 'torse' | 'mains' | 'bottes' | 'amulette';
+export const EQUIP_SLOTS: readonly EquipSlot[] = ['arme', 'tete', 'torse', 'mains', 'bottes', 'amulette'] as const;
+
+/** Modèle d'objet (contenu statique `items.fr.json`) : un glyphe, un nom, aucune image. */
+export interface ItemDef {
+  id: string;
+  slot: EquipSlot;
+  /** Caractéristique augmentée par l'objet (bonus d'aventure) */
+  ability: AbilityId;
+  name: string;
+  /** Un emoji */
+  glyph: string;
+  blurb: string;
+  /** Panoplie dont l'objet est une pièce (`null` : hors set) */
+  setId?: string | null;
+}
+
+/** Palier de bonus d'une panoplie : atteint dès `pieces` pièces équipées (le palier atteint remplace le précédent). */
+export interface SetBonusTier {
+  pieces: number;
+  /** PP ajoutés à la puissance */
+  pp: number;
+  /** Bonus de score d'aventure sur la caractéristique du set */
+  ability: number;
+}
+
+/** Panoplie : 6 pièces (une par emplacement) et des bonus à 2 / 4 / 6 pièces équipées (contenu statique `sets.fr.json`). */
+export interface SetDef {
+  id: string;
+  name: string;
+  glyph: string;
+  /** Caractéristique de toutes les pièces, et du bonus de score */
+  ability: AbilityId;
+  blurb: string;
+  /** Identifiant du modèle d'objet de chaque emplacement */
+  pieces: Record<EquipSlot, string>;
+  bonuses: SetBonusTier[];
+}
+
+/** Objet possédé par un joueur. */
+export interface InventoryItem {
+  id: string;
+  templateId: string;
+  rarity: ItemRarity;
+  slot: EquipSlot;
+  ability: AbilityId;
+  /** Niveau d'amélioration 0..10 */
+  level: number;
+  equipped: boolean;
+  createdAt: string;
+}
+
+/** D'où vient un coffre : quête du jour, promotion d'échelon, jalon de série, boss de donjon, fusion, raid (V2). */
+export type ChestSource = 'quest' | 'rung' | 'streak' | 'dungeon' | 'merge' | 'raid' | 'season';
+
+export interface Chest {
+  id: string;
+  rarity: ChestRarity;
+  source: ChestSource;
+  /** Clé d'idempotence avec `source` (ex. le jour de jeu pour `quest`, `{parcours}:{échelon}` pour `rung`) */
+  sourceKey: string;
+  /** Quête dont la validation a donné ce coffre (sert à l'annulation) */
+  instanceId?: string | null;
+  createdAt: string;
+  openedAt: string | null;
+}
+
+/** Compteurs de pitié : `{rareté de coffre}` (sans Épique+) et `{rareté de coffre}:legendaire` (sans Légendaire). */
+export type ChestPity = Record<string, number>;
+
+/** Un donjon par thème de parcours (contenu statique `dungeons.fr.json`). */
+export interface DungeonDef {
+  id: string;
+  /** Discipline (thème de parcours) dont il est issu */
+  theme: string;
+  name: string;
+  glyph: string;
+  blurb: string;
+  /** Palier (1..) : plus il est haut, plus le donjon est dur */
+  tier: number;
+  /** Niveau du personnage requis */
+  unlockLevel: number;
+  /** Monstres des 5 salles (avec article : « un Gobelin ancien ») */
+  rooms: string[];
+  /** Boss (avec article) */
+  boss: string;
+}
+
+/** Progression d'un joueur dans un donjon. */
+export interface DungeonProgress {
+  dungeonId: string;
+  /** Meilleure salle franchie : 0..5, ou 6 si le boss a été vaincu */
+  bestRoom: number;
+  /** Palier du donjon quand son boss a été vaincu pour la première fois (0 = jamais) */
+  bossDefeatedTier: number;
+  lastRunDate: string | null;
+}
+
+/** Champs d'aventure d'un personnage (colonnes de `characters`). */
+export interface AdventureFields {
+  gold: number;
+  fragments: number;
+  /** Clés de donjon en stock (0..MAX_KEYS) */
+  keys: number;
+  chestPity: ChestPity;
+  /** Début de l'expédition en cours (ISO) ; null = pas encore initialisée */
+  expeditionStartedAt: string | null;
+  chestOpensDate: string | null;
+  chestOpensToday: number;
+  /** Puissance (PP) à la dernière synchronisation : lue par les amis (carte de compagnon) */
+  power: number;
+  /** Cadre de portrait cosmétique gagné en fin de saison, `{saison}:{cadre}` (ex. « S1:or ») ; null = aucun */
+  frameStyle: string | null;
+}
+
+export const emptyAdventureFields = (): AdventureFields => ({
+  gold: 0,
+  fragments: 0,
+  keys: 0,
+  chestPity: {},
+  expeditionStartedAt: null,
+  chestOpensDate: null,
+  chestOpensToday: 0,
+  power: 0,
+  frameStyle: null,
+});

@@ -1,6 +1,12 @@
+import type { RaidOutcome } from '../raid';
+import type { SeasonScoreLike } from '../seasons';
 import type {
   AbilityId,
+  AdventureFields,
   CharacterCore,
+  Chest,
+  DungeonProgress,
+  InventoryItem,
   Period,
   QuestInstance,
   QuestPreference,
@@ -13,7 +19,7 @@ import type {
 export type PostType = 'quest' | 'photo' | 'level_up' | 'achievement' | 'streak';
 export type Visibility = 'friends' | 'private';
 
-export interface CharacterRecord extends CharacterCore {
+export interface CharacterRecord extends CharacterCore, AdventureFields {
   profileId: string;
   portraitId: string;
   frameColor: string;
@@ -55,7 +61,7 @@ export const defaultSettings = (timezone = 'Europe/Paris'): SettingsRecord => ({
   autoShare: { level: true, achievement: true, streak: true },
   defaultVisibility: 'friends',
   leaderboardOptIn: true,
-  notifPrefs: { daily: true, dailyTime: '09:00', weekEnd: true, friendRequests: true, reactions: true, comments: true },
+  notifPrefs: { daily: true, dailyTime: '09:00', weekEnd: true, friendRequests: true, reactions: true, comments: true, raid: true, season: true },
   friendRequestsFrom: 'everyone',
   theme: 'auto',
   sounds: true,
@@ -150,6 +156,61 @@ export interface GameStore {
   deleteTrack(userId: string, trackId: string): Promise<void>;
   listJournal(userId: string): Promise<JournalEntry[]>;
 
+  // ───── Aventure (voir docs/DONJONS.md)
+  listItems(userId: string): Promise<InventoryItem[]>;
+  insertItems(userId: string, items: InventoryItem[]): Promise<void>;
+  updateItem(userId: string, id: string, patch: Partial<Pick<InventoryItem, 'level' | 'equipped'>>): Promise<void>;
+  deleteItems(userId: string, ids: string[]): Promise<void>;
+  /** Coffres du joueur ; `opened: false` = fermés seulement, `true` = ouverts seulement */
+  listChests(userId: string, filter?: { opened?: boolean }): Promise<Chest[]>;
+  /** Insère un coffre. Retourne `false` (sans rien écrire) si `(source, sourceKey)` existe déjà : idempotence. */
+  insertChest(userId: string, chest: Chest): Promise<boolean>;
+  /** Marque un coffre comme ouvert. Retourne `false` s'il n'existe pas ou était déjà ouvert (ouverture atomique). */
+  markChestOpened(userId: string, id: string, at: string): Promise<boolean>;
+  deleteChests(userId: string, ids: string[]): Promise<void>;
+  listDungeonProgress(userId: string): Promise<DungeonProgress[]>;
+  saveDungeonProgress(userId: string, p: DungeonProgress): Promise<void>;
+
+  // ───── Raids d'amis (V2). Données partagées entre joueurs : les méthodes prennent des identifiants explicites.
+  /** Amis acceptés et non bloqués (même règle que `can_view_owner`) */
+  areFriends(a: string, b: string): Promise<boolean>;
+  getRaidTeam(teamId: string): Promise<RaidTeamRecord | null>;
+  /** Appartenances du joueur (invitations comprises) pour les semaines `weekStart >= since` */
+  listRaidMemberships(userId: string, since: string): Promise<RaidMemberRecord[]>;
+  listRaidMembers(teamId: string): Promise<RaidMemberRecord[]>;
+  /** Crée l'équipe et son chef (membre `joined`). `false` si le chef est déjà dans une équipe cette semaine. */
+  insertRaidTeam(team: RaidTeamRecord, leader: RaidMemberRecord): Promise<boolean>;
+  insertRaidMember(m: RaidMemberRecord): Promise<RaidMemberWrite>;
+  /** Passe une invitation à `joined`. */
+  joinRaidMember(teamId: string, profileId: string, at: string): Promise<RaidMemberWrite>;
+  /** Retire un membre ou une invitation, avec ses dégâts et ses encouragements. */
+  deleteRaidMember(teamId: string, profileId: string): Promise<void>;
+  /** Retire les invitations en attente d'un joueur pour une semaine (il vient de rejoindre une équipe). */
+  deleteRaidInvites(profileId: string, weekStart: string): Promise<void>;
+  setRaidLeader(teamId: string, leaderId: string): Promise<void>;
+  deleteRaidTeam(teamId: string): Promise<void>;
+  /** Clôture atomique : `false` si l'équipe est déjà close. */
+  resolveRaidTeam(teamId: string, r: { outcome: RaidOutcome; maxHp: number; totalDamage: number; victoryDay: string | null; at: string }): Promise<boolean>;
+  listRaidDamage(teamId: string): Promise<RaidDamageRecord[]>;
+  /** Un seul coup par joueur et par jour (toutes équipes confondues) : `false` s'il existe déjà. */
+  insertRaidDamage(d: RaidDamageRecord): Promise<boolean>;
+  updateRaidDamage(teamId: string, profileId: string, gameDate: string, patch: Pick<RaidDamageRecord, 'damage' | 'encouragements'>): Promise<void>;
+  listRaidEncouragements(teamId: string, gameDate: string): Promise<RaidEncouragementRecord[]>;
+  /** `false` si ce joueur a déjà encouragé cet ami aujourd'hui. */
+  insertRaidEncouragement(e: RaidEncouragementRecord): Promise<boolean>;
+  /** Crée une notification (`notify_user`) ; l'envoi push dépend des préférences du destinataire. */
+  notify(userId: string, type: string, payload: Record<string, unknown>): Promise<void>;
+
+  // ───── Saisons (V3). Puissance publiée par saison, classement entre amis, récompense de fin de saison.
+  /** Publie la puissance du joueur pour la saison (garde le premier jour, met à jour le dernier et la puissance). */
+  upsertSeasonScore(userId: string, seasonKey: string, power: number, day: string): Promise<void>;
+  listSeasonScores(userId: string): Promise<SeasonScoreRecord[]>;
+  /** Puissance de la saison du joueur et de ses amis qui acceptent le classement (même règle que `weekly_leaderboard`). Vide si le joueur refuse. */
+  seasonRanking(userId: string, seasonKey: string): Promise<SeasonScoreLike[]>;
+  listSeasonResults(userId: string): Promise<SeasonResultRecord[]>;
+  /** Enregistre le résultat d'une saison. `false` s'il existe déjà : seul l'appel qui l'insère applique cadre et notification. */
+  insertSeasonResult(userId: string, r: SeasonResultRecord): Promise<boolean>;
+
   createPost(userId: string, draft: PostDraft): Promise<string>;
   /** RG-22 : retire la mention de quête et l'XP d'une publication quand la quête est annulée. */
   detachPostsFromInstance(userId: string, instanceId: string): Promise<void>;
@@ -157,6 +218,80 @@ export interface GameStore {
   socialCounts(userId: string): Promise<{ posts: number; friends: number; reactionsGiven: number }>;
 
 }
+
+// ───── Saisons (V3, voir docs/DONJONS.md §9)
+
+/** Puissance publiée par un joueur pour une saison. */
+export interface SeasonScoreRecord {
+  seasonKey: string;
+  power: number;
+  /** Premier et dernier jour de jeu où la puissance a été publiée */
+  firstDay: string;
+  lastDay: string;
+}
+
+/** Résultat d'une saison pour un joueur : écrit une seule fois, à la première lecture après la clôture. */
+export interface SeasonResultRecord {
+  seasonKey: string;
+  /** Rang parmi les amis classés (null : classement refusé ou saison sans participation suffisante) */
+  rank: number | null;
+  participants: number;
+  power: number;
+  /** Cadre gagné (`or`, `argent`, `bronze`, `laurier`), null si la participation n'a pas suffi */
+  frame: string | null;
+  createdAt: string;
+}
+
+// ───── Raids d'amis (V2, voir docs/DONJONS.md §8)
+
+/** Équipe de raid : une par semaine ISO (`weekStart` = lundi). */
+export interface RaidTeamRecord {
+  id: string;
+  weekStart: string;
+  leaderId: string;
+  createdAt: string;
+  /** Renseigné quand le raid est clos (victoire dès que le boss tombe, sinon à la clôture de la semaine) */
+  resolvedAt: string | null;
+  outcome: RaidOutcome | null;
+  /** PV et dégâts figés à la clôture */
+  maxHp: number | null;
+  totalDamage: number | null;
+  victoryDay: string | null;
+}
+
+export type RaidMemberStatus = 'invited' | 'joined';
+
+export interface RaidMemberRecord {
+  teamId: string;
+  profileId: string;
+  weekStart: string;
+  status: RaidMemberStatus;
+  /** Qui a invité ce joueur (le chef pour un invité, le joueur lui-même pour le chef) */
+  invitedBy: string;
+  createdAt: string;
+  joinedAt: string | null;
+}
+
+/** Dégâts d'un membre pour un jour de jeu : `damage = floor(baseDamage × (1 + 5 % × encouragements))`. */
+export interface RaidDamageRecord {
+  teamId: string;
+  profileId: string;
+  gameDate: string;
+  damage: number;
+  baseDamage: number;
+  encouragements: number;
+}
+
+export interface RaidEncouragementRecord {
+  teamId: string;
+  fromId: string;
+  toId: string;
+  gameDate: string;
+  createdAt: string;
+}
+
+/** Résultat d'une écriture de membre : la base garantit l'unicité, le plafond de 6 et l'amitié avec le chef. */
+export type RaidMemberWrite = 'ok' | 'duplicate' | 'full' | 'not-friend' | 'conflict';
 
 export interface ServerContext {
   store: GameStore;

@@ -50,7 +50,7 @@ import taverne from '@levelup/content/taverne.fr.json';
 import { TRACKS, suggestTracks, trackDef, trackLock, trackProgress, type TrackLock, type TrackProgress } from '../shared/tracks';
 import { BackendService } from './backend.service';
 import { offline, type PendingAction } from './offline';
-import type { CommandResult, CompleteRequest, CompleteResponse } from './api/types';
+import type { AdventureState, Chest, ChestOpening, ChestRarity, CommandResult, CompleteRequest, CompleteResponse, DungeonEntry, DungeonProgress, DungeonRunResult, EquipSlot, ExpeditionClaim, ItemView, RaidState, SeasonResultView, SeasonState } from './api/types';
 
 export type Overlay =
   | { kind: 'level-up'; level: number }
@@ -398,6 +398,16 @@ export class GameService {
       case 'no-character': return 'Crée d’abord ton personnage.';
       case 'no-reroll': return 'Plus de relance gratuite aujourd’hui et aucune Inspiration.';
       case 'cannot-undo': return 'Cette quête ne peut plus être annulée (24 h maximum).';
+      case 'no-key': return 'Il te faut une Clé de donjon.';
+      case 'daily-cap': return 'Tu as déjà ouvert 2 coffres aujourd’hui : reviens demain.';
+      case 'insufficient': return 'Tu n’as pas assez de ressources pour cela.';
+      case 'no-team': return 'Tu n’as pas d’équipe de raid cette semaine.';
+      case 'team-full': return 'Cette équipe est complète (6 membres).';
+      case 'not-friends': return 'Seuls tes compagnons peuvent rejoindre ton équipe.';
+      case 'raid-closed': return 'Ce raid est terminé.';
+      case 'already-done': return 'C’est déjà fait aujourd’hui.';
+      case 'level-too-low': return 'Ton niveau est encore trop bas.';
+      case 'nothing-pending': return 'Rien à réclamer pour le moment.';
       default: return 'Quelque chose s’est mal passé. Réessaie.';
     }
   }
@@ -585,6 +595,8 @@ export class GameService {
   private applyCompletion(inst: QuestInstance, d: CompleteResponse): void {
     this.character.set(d.character);
     this.patchInstance({ ...inst, status: 'completed', xpAwarded: d.xpAwarded, completedAt: new Date().toISOString(), inspirationUsed: d.breakdown.doubled });
+    // Raid d'amis : la validation a joué le coup du jour ; on rafraîchit l'état sans bruit (l'UI lit `raid()`).
+    if (d.raid) void this.be.game.raidState().then((s) => { if (s.ok) this.raid.set(s.state); });
     for (const l of d.levelUps) this.pushOverlay({ kind: 'level-up', level: l });
     for (const u of d.abilityUps) this.pushOverlay({ kind: 'ability-up', up: u });
     for (const a of d.achievements) this.pushOverlay({ kind: 'achievement', achievement: a });
@@ -773,6 +785,127 @@ export class GameService {
     }
     this.toast(this.trackError(r.error, r.message), 'error');
     return false;
+  }
+
+  // ───────────────────────── Aventure : expédition, coffres, équipement, donjons ─────────────────────────
+  // Chaque commande met à jour le personnage (or, fragments, Clés) et renvoie son résultat, ou `null` après un toast d'erreur.
+
+  /** Dernier état d'aventure lu (voir `loadAdventure`) */
+  readonly adventure = signal<AdventureState | null>(null);
+
+  private async adventureCmd<T extends object>(run: () => Promise<CommandResult<T>>): Promise<(T & { ok: true }) | null> {
+    const r = await run();
+    if (!r.ok) {
+      this.toast(this.errorMessage(r.error, r.message), 'error');
+      return null;
+    }
+    const character = (r as { character?: CharacterRecord }).character;
+    if (character) this.character.set(character);
+    return r as T & { ok: true };
+  }
+
+  /** Charge l'état complet de l'aventure (PP, expédition, coffres, inventaire, ressources). */
+  async loadAdventure(): Promise<AdventureState | null> {
+    const r = await this.adventureCmd(() => this.be.game.adventureState());
+    if (r) {
+      this.adventure.set(r.state);
+      this.announceSeason(r.state.seasonEvaluated);
+    }
+    return r?.state ?? null;
+  }
+  async claimExpedition(): Promise<ExpeditionClaim | null> {
+    return (await this.adventureCmd(() => this.be.game.expeditionClaim()))?.claim ?? null;
+  }
+  async openChest(chestId: string): Promise<ChestOpening | null> {
+    return (await this.adventureCmd(() => this.be.game.chestOpen(chestId)))?.opening ?? null;
+  }
+  async mergeChests(rarity: ChestRarity): Promise<Chest | null> {
+    return (await this.adventureCmd(() => this.be.game.chestMerge(rarity)))?.chest ?? null;
+  }
+  async equipItem(itemId: string): Promise<ItemView | null> {
+    return (await this.adventureCmd(() => this.be.game.itemEquip(itemId)))?.item ?? null;
+  }
+  async unequipSlot(slot: EquipSlot): Promise<ItemView | null> {
+    return (await this.adventureCmd(() => this.be.game.itemUnequip(slot)))?.item ?? null;
+  }
+  async upgradeItem(itemId: string): Promise<ItemView | null> {
+    return (await this.adventureCmd(() => this.be.game.itemUpgrade(itemId)))?.item ?? null;
+  }
+  async mergeItems(itemIds: string[]): Promise<ItemView | null> {
+    return (await this.adventureCmd(() => this.be.game.itemMerge(itemIds)))?.item ?? null;
+  }
+  async dismantleItem(itemId: string): Promise<number | null> {
+    return (await this.adventureCmd(() => this.be.game.itemDismantle(itemId)))?.fragments ?? null;
+  }
+  async loadDungeons(): Promise<{ dungeons: DungeonEntry[]; keys: number; maxKeys: number; power: number } | null> {
+    return this.adventureCmd(() => this.be.game.dungeonList());
+  }
+  async runDungeon(dungeonId: string): Promise<{ result: DungeonRunResult; progress: DungeonProgress; chest: Chest | null } | null> {
+    return this.adventureCmd(() => this.be.game.dungeonRun(dungeonId));
+  }
+
+  // ───────────────────────── Raids d'amis (V2) ─────────────────────────
+  // Chaque commande renvoie l'état frais du raid et met à jour le signal `raid` ; `null` après un toast d'erreur.
+
+  /** Dernier état de raid lu (boss de la semaine, mon équipe, invitations) */
+  readonly raid = signal<RaidState | null>(null);
+
+  private async raidCmd(run: () => Promise<CommandResult<{ state: RaidState }>>): Promise<RaidState | null> {
+    const r = await run();
+    if (!r.ok) {
+      this.toast(this.errorMessage(r.error, r.message), 'error');
+      return null;
+    }
+    this.raid.set(r.state);
+    return r.state;
+  }
+
+  /** Charge l'état du raid (applique le coup du jour, clôt les raids dus). */
+  async loadRaid(): Promise<RaidState | null> {
+    return this.raidCmd(() => this.be.game.raidState());
+  }
+  async createRaid(): Promise<RaidState | null> {
+    return this.raidCmd(() => this.be.game.raidCreate());
+  }
+  /** Le chef invite un ami accepté. */
+  async inviteToRaid(profileId: string): Promise<RaidState | null> {
+    return this.raidCmd(() => this.be.game.raidInvite(profileId));
+  }
+  async joinRaid(teamId: string): Promise<RaidState | null> {
+    return this.raidCmd(() => this.be.game.raidJoin(teamId));
+  }
+  /** Quitte l'équipe de la semaine, ou refuse l'invitation `teamId`. */
+  async leaveRaid(teamId?: string): Promise<RaidState | null> {
+    return this.raidCmd(() => this.be.game.raidLeave(teamId));
+  }
+  async encourageRaid(profileId: string): Promise<RaidState | null> {
+    return this.raidCmd(() => this.be.game.raidEncourage(profileId));
+  }
+
+  // ───────────────────────── Saisons (V3) ─────────────────────────
+
+  /** Dernier état de saison lu (jours restants, rang, récompense, saisons passées) */
+  readonly season = signal<SeasonState | null>(null);
+
+  /** Charge la saison en cours (évalue aussi les saisons terminées : récompense versée une seule fois). */
+  async loadSeason(): Promise<SeasonState | null> {
+    const r = await this.adventureCmd(() => this.be.game.seasonState());
+    if (!r) return null;
+    this.season.set(r.state);
+    this.announceSeason(r.state.evaluated);
+    return r.state;
+  }
+
+  /** Résultats de fin de saison à annoncer (une seule fois : le serveur ne les renvoie qu'à l'appel qui les a calculés) */
+  readonly seasonNews = signal<SeasonResultView[]>([]);
+
+  private announceSeason(list: readonly SeasonResultView[] | undefined): void {
+    const fresh = (list ?? []).filter((r) => !this.seasonNews().some((n) => n.seasonKey === r.seasonKey));
+    if (!fresh.length) return;
+    this.seasonNews.update((cur) => [...cur, ...fresh]);
+    for (const r of fresh) {
+      if (r.frame) this.toast(`${r.name} terminée : cadre de portrait et coffre d’or reçus !`, 'success', 6000);
+    }
   }
 
   // ───────────────────────── Choix de personnage ─────────────────────────

@@ -228,3 +228,45 @@ const names = [...new Set(await imp('names.mjs'))].slice(0, 200);
 if (names.length !== 200) throw new Error(`noms: ${names.length} (attendu 200)`);
 write('names.fr.json', names);
 console.log(`${achievements.length} trophées, ${taverne.length} messages, ${recapCount} phrases de bilan, ${names.length} noms`);
+
+// ───────────── Aventure : équipement et donjons (voir docs/DONJONS.md) ─────────────
+const SLOTS = ['arme', 'tete', 'torse', 'mains', 'bottes', 'amulette'];
+const itemRows = await imp('items.mjs');
+const { default: setRows, SET_BONUSES } = await import(pathToFileURL(join(root, 'src', 'sets.mjs')).href);
+const setOf = new Map();
+for (const [setId, , , , , pieces] of setRows) for (const id of Object.values(pieces)) setOf.set(id, setId);
+const items = itemRows.map(([id, slot, ability, name, glyph, blurb]) => ({ id, slot, ability, name, glyph, blurb, setId: setOf.get(id) ?? null }));
+if (new Set(items.map((i) => i.id)).size !== items.length) throw new Error('objets en double');
+for (const s of SLOTS) {
+  const inSlot = items.filter((i) => i.slot === s);
+  if (inSlot.length !== 8) throw new Error(`objets: ${inSlot.length} pour l’emplacement ${s} (attendu 8)`);
+  for (const a of ABILITIES) if (!inSlot.some((i) => i.ability === a)) throw new Error(`objets: aucune caractéristique ${a} pour l’emplacement ${s}`);
+}
+for (const i of items) {
+  if (!SLOTS.includes(i.slot) || !ABILITIES.includes(i.ability) || !i.name.trim() || !i.glyph.trim() || !i.blurb.trim()) throw new Error(`objet invalide : ${i.id}`);
+}
+write('items.fr.json', items);
+
+// ───────────── Panoplies : 6 sets de 6 pièces, une par emplacement ─────────────
+const sets = setRows.map(([id, name, glyph, ability, blurb, pieces]) => ({ id, name, glyph, ability, blurb, pieces, bonuses: SET_BONUSES }));
+if (sets.length !== 6 || new Set(sets.map((x) => x.id)).size !== 6) throw new Error('sets: 6 sets distincts attendus');
+const usedPieces = new Set();
+for (const st of sets) {
+  if (!ABILITIES.includes(st.ability) || !st.name.trim() || !st.glyph.trim() || !st.blurb.trim()) throw new Error(`set invalide : ${st.id}`);
+  if (Object.keys(st.pieces).length !== SLOTS.length) throw new Error(`set ${st.id} : une pièce par emplacement attendue`);
+  for (const s of SLOTS) {
+    const it = items.find((i) => i.id === st.pieces[s]);
+    if (!it || it.slot !== s) throw new Error(`set ${st.id} : pièce invalide pour l’emplacement ${s}`);
+    if (it.ability !== st.ability) throw new Error(`set ${st.id} : ${it.id} n’a pas la caractéristique du set`);
+    if (usedPieces.has(it.id)) throw new Error(`set ${st.id} : ${it.id} figure dans deux sets`);
+    usedPieces.add(it.id);
+  }
+}
+if (!SET_BONUSES.every((b, i, a) => b.pieces > 0 && b.pp > 0 && (i === 0 || (b.pieces > a[i - 1].pieces && b.pp > a[i - 1].pp)))) throw new Error('sets: bonus croissants attendus');
+write('sets.fr.json', sets);
+
+const { buildDungeons } = await import(pathToFileURL(join(root, 'src', 'dungeons.mjs')).href);
+const dungeons = buildDungeons(themeRows);
+if (dungeons.length !== themeRows.length || dungeons.length !== new Set(tracks.map((t) => t.theme)).size) throw new Error('donjons: un par thème de parcours attendu');
+write('dungeons.fr.json', dungeons);
+console.log(`${items.length} objets, ${sets.length} sets, ${dungeons.length} donjons`);

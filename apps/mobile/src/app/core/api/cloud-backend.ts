@@ -229,6 +229,24 @@ export function createCloudBackend(): Backend {
     trackStart: (trackId) => cmd('track-start', { trackId }),
     trackPause: (trackId, paused) => cmd('track-pause', { trackId, paused }),
     trackStop: (trackId) => cmd('track-stop', { trackId }),
+    adventureState: () => cmd('adventure-state'),
+    expeditionClaim: () => cmd('expedition-claim'),
+    chestOpen: (chestId) => cmd('chest-open', { chestId }),
+    chestMerge: (rarity) => cmd('chest-merge', { rarity }),
+    itemEquip: (itemId) => cmd('item-equip', { itemId }),
+    itemUnequip: (slot) => cmd('item-unequip', { slot }),
+    itemUpgrade: (itemId) => cmd('item-upgrade', { itemId }),
+    itemMerge: (itemIds) => cmd('item-merge', { itemIds }),
+    itemDismantle: (itemId) => cmd('item-dismantle', { itemId }),
+    dungeonList: () => cmd('dungeon-list'),
+    dungeonRun: (dungeonId) => cmd('dungeon-run', { dungeonId }),
+    raidState: () => cmd('raid-state'),
+    raidCreate: () => cmd('raid-create'),
+    raidInvite: (profileId) => cmd('raid-invite', { profileId }),
+    raidJoin: (teamId) => cmd('raid-join', { teamId }),
+    raidLeave: (teamId) => cmd('raid-leave', teamId ? { teamId } : {}),
+    raidEncourage: (profileId) => cmd('raid-encourage', { profileId }),
+    seasonState: () => cmd('season-state'),
     async achievementProgress() {
       const r = await call<any>('achievements');
       return r.progress ?? [];
@@ -446,9 +464,10 @@ export function createCloudBackend(): Backend {
       const card = await social.profileCard(username);
       if (!card) return null;
       if (!card.isFriend || !card.profileId) return { card, character: null, trophies: [] };
-      const [{ data: ch }, { data: tr }] = await Promise.all([
+      const [{ data: ch }, { data: tr }, gear] = await Promise.all([
         sb.from('characters').select('*').eq('profile_id', card.profileId).maybeSingle(),
         sb.from('unlocked_achievements').select('achievement_id').eq('profile_id', card.profileId),
+        social.profileGear(username).catch(() => null),
       ]);
       return {
         card,
@@ -460,6 +479,7 @@ export function createCloudBackend(): Backend {
             }
           : null,
         trophies: (tr ?? []).map((t: any) => t.achievement_id),
+        gear,
       };
     },
     async companionPosts(profileId) {
@@ -563,6 +583,19 @@ export function createCloudBackend(): Backend {
         profileId: r.profile_id, username: r.username, name: r.name ?? r.username, level: r.level ?? 1, classId: r.class_id ?? 'explorateur',
         portraitId: r.portrait_id ?? 'p01', frameColor: r.frame_color ?? '#2f5a47', xp: Number(r.xp ?? 0),
       }));
+    },
+    async seasonLeaderboard(season) {
+      const { data, error } = await sb.rpc('season_leaderboard', { p_season: season });
+      if (error) throw error;
+      return (data ?? []).map((r: any) => ({
+        profileId: r.profile_id, username: r.username, name: r.name ?? r.username, level: r.level ?? 1, classId: r.class_id ?? 'explorateur',
+        portraitId: r.portrait_id ?? 'p01', frameColor: r.frame_color ?? '#2f5a47', frameStyle: r.frame_style ?? null, power: Number(r.power ?? 0),
+      }));
+    },
+    async profileGear(username) {
+      const { data, error } = await sb.rpc('get_profile_gear', { p_username: username });
+      if (error) throw error;
+      return data ? { power: Number(data.power ?? 0), frameStyle: data.frameStyle ?? null, items: data.items ?? [] } : null;
     },
     subscribe(h) {
       const ch = sb.channel('levelup-' + Math.random().toString(36).slice(2));

@@ -69,6 +69,9 @@ beforeAll(async () => {
   await db.exec(read('migrations/20261010000001_quest_runs.sql'));
   await db.exec(read('migrations/20261011000001_tracks.sql'));
   await db.exec(read('migrations/20261011000002_free_quest_default.sql'));
+  await db.exec(read('migrations/20261012000001_adventure.sql'));
+  await db.exec(read('migrations/20261013000001_raids.sql'));
+  await db.exec(read('migrations/20261014000001_seasons.sql'));
   await db.exec(read('seed.sql'));
   await mkUser(ids.alice, 'alice');
   await mkUser(ids.bob, 'bob');
@@ -578,5 +581,620 @@ describe('suggestions « Pour aller plus loin » par jour (daily_quest_count)', 
     expect(await count(legacy)).toBe(2);
     expect(await count(custom)).toBe(4);
     expect((await admin(`select column_default d from information_schema.columns where table_schema = 'public' and table_name = 'settings' and column_name = 'daily_quest_count'`))[0].d).toBe('2');
+  });
+});
+
+describe('aventure : ressources, équipement, coffres, donjons', () => {
+  const file = 'migrations/20261012000001_adventure.sql';
+  const item = (profile: string, slot: string, equipped: boolean, rarity = 'rare', ability = 'FOR') =>
+    admin(`insert into inventory_items (profile_id, template_id, rarity, slot, ability, equipped) values ($1, 'epee-du-sentier', $2, $3, $4, $5)`, [profile, rarity, slot, ability, equipped]);
+  const chest = (profile: string, source: string, key: string, rarity = 'bois') =>
+    admin(`insert into chests (profile_id, rarity, source, source_key) values ($1, $2, $3, $4)`, [profile, rarity, source, key]);
+  const adv = '00000000-0000-0000-0000-0000000000d1';
+  const other = '00000000-0000-0000-0000-0000000000d2';
+  beforeAll(async () => {
+    await mkUser(adv, 'eclaireur-adv');
+    await mkUser(other, 'compagnon-adv');
+  });
+
+  it('ajoute les ressources au personnage avec des valeurs par défaut sûres', async () => {
+    const [c] = await admin(`select gold, fragments, keys, chest_pity, chest_opens_today, chest_opens_date, expedition_started_at is not null as exp from characters where profile_id = $1`, [adv]);
+    expect(c).toEqual({ gold: 0, fragments: 0, keys: 0, chest_pity: {}, chest_opens_today: 0, chest_opens_date: null, exp: true });
+    await expect(admin(`update characters set gold = -1 where profile_id = $1`, [adv])).rejects.toThrow();
+    await expect(admin(`update characters set fragments = -1 where profile_id = $1`, [adv])).rejects.toThrow();
+    await expect(admin(`update characters set keys = 4 where profile_id = $1`, [adv])).rejects.toThrow();
+    await expect(admin(`update characters set keys = -1 where profile_id = $1`, [adv])).rejects.toThrow();
+    await expect(admin(`update characters set chest_opens_today = -1 where profile_id = $1`, [adv])).rejects.toThrow();
+    await admin(`update characters set keys = 3, gold = 10, chest_pity = '{"bronze":4,"or:legendaire":2}' where profile_id = $1`, [adv]);
+    expect((await admin(`select chest_pity->>'bronze' b from characters where profile_id = $1`, [adv]))[0].b).toBe('4');
+    await admin(`update characters set keys = 0, gold = 0, chest_pity = '{}' where profile_id = $1`, [adv]);
+  });
+
+  it('objets : raretés, emplacements, caractéristiques et niveaux contrôlés', async () => {
+    await expect(item(adv, 'arme', false, 'mythique')).rejects.toThrow();
+    await expect(item(adv, 'dos', false)).rejects.toThrow();
+    await expect(item(adv, 'arme', false, 'rare', 'LUK')).rejects.toThrow();
+    await expect(admin(`insert into inventory_items (profile_id, template_id, rarity, slot, ability, level) values ($1, 'x', 'rare', 'arme', 'FOR', 11)`, [adv])).rejects.toThrow();
+    await expect(admin(`insert into inventory_items (profile_id, template_id, rarity, slot, ability, level) values ($1, 'x', 'rare', 'arme', 'FOR', -1)`, [adv])).rejects.toThrow();
+    await expect(item('00000000-0000-0000-0000-0000000000ff', 'arme', false)).rejects.toThrow(); // profil inconnu
+    await item(adv, 'arme', false);
+    const [it] = await admin(`select level, equipped, id is not null as has_id, created_at is not null as has_date from inventory_items where profile_id = $1`, [adv]);
+    expect(it).toEqual({ level: 0, equipped: false, has_id: true, has_date: true });
+    await admin(`delete from inventory_items where profile_id = $1`, [adv]);
+  });
+
+  it('un seul objet équipé par emplacement et par joueur', async () => {
+    await item(adv, 'arme', true);
+    await expect(item(adv, 'arme', true)).rejects.toThrow(); // second équipé, même emplacement
+    await item(adv, 'arme', false); // plusieurs objets non équipés dans l’emplacement : autorisé
+    await item(adv, 'arme', false);
+    await item(adv, 'tete', true); // un autre emplacement : autorisé
+    await item(other, 'arme', true); // un autre joueur : autorisé
+    const [spare] = await admin(`select id from inventory_items where profile_id = $1 and slot = 'arme' and not equipped limit 1`, [adv]);
+    await expect(admin(`update inventory_items set equipped = true where id = $1`, [spare.id])).rejects.toThrow();
+    // remplacement : on retire d’abord l’ancien, puis on équipe le nouveau (ordre suivi par le moteur)
+    await admin(`update inventory_items set equipped = false where profile_id = $1 and slot = 'arme'`, [adv]);
+    await admin(`update inventory_items set equipped = true where id = $1`, [spare.id]);
+    expect((await admin(`select count(*)::int n from inventory_items where profile_id = $1 and slot = 'arme' and equipped`, [adv]))[0].n).toBe(1);
+    await admin(`delete from inventory_items where profile_id in ($1, $2)`, [adv, other]);
+  });
+
+  it('coffres : idempotence par (joueur, source, clé), sources et raretés contrôlées', async () => {
+    await chest(adv, 'quest', '2026-10-12');
+    await expect(chest(adv, 'quest', '2026-10-12', 'or')).rejects.toThrow(); // même jour, même source : un seul coffre
+    await chest(adv, 'rung', '2026-10-12'); // autre source, même clé
+    await chest(adv, 'quest', '2026-10-13'); // autre jour
+    await chest(other, 'quest', '2026-10-12'); // autre joueur
+    await expect(chest(adv, 'quest', '2026-10-14', 'diamant')).rejects.toThrow();
+    await expect(chest(adv, 'cadeau', '1')).rejects.toThrow();
+    const [c] = await admin(`select opened_at, instance_id, created_at is not null as has_date from chests where profile_id = $1 and source_key = '2026-10-13'`, [adv]);
+    expect(c).toEqual({ opened_at: null, instance_id: null, has_date: true });
+    // un coffre ouvert garde sa clé : aucun nouveau coffre pour la même source et la même clé
+    await admin(`update chests set opened_at = now() where profile_id = $1 and source_key = '2026-10-13'`, [adv]);
+    await expect(chest(adv, 'quest', '2026-10-13')).rejects.toThrow();
+    await admin(`delete from chests where profile_id in ($1, $2)`, [adv, other]);
+  });
+
+  it('progression des donjons : une ligne par joueur et donjon, bornes de salle', async () => {
+    await admin(`insert into dungeon_progress (profile_id, dungeon_id) values ($1, 'dj-yoga')`, [adv]);
+    expect((await admin(`select best_room, boss_defeated_tier, last_run_date from dungeon_progress where profile_id = $1`, [adv]))[0]).toEqual({ best_room: 0, boss_defeated_tier: 0, last_run_date: null });
+    await expect(admin(`insert into dungeon_progress (profile_id, dungeon_id) values ($1, 'dj-yoga')`, [adv])).rejects.toThrow();
+    await expect(admin(`update dungeon_progress set best_room = 7 where profile_id = $1`, [adv])).rejects.toThrow();
+    await expect(admin(`update dungeon_progress set best_room = -1 where profile_id = $1`, [adv])).rejects.toThrow();
+    await expect(admin(`update dungeon_progress set boss_defeated_tier = -1 where profile_id = $1`, [adv])).rejects.toThrow();
+    await admin(`update dungeon_progress set best_room = 6, boss_defeated_tier = 1 where profile_id = $1`, [adv]);
+    await admin(`delete from dungeon_progress where profile_id = $1`, [adv]);
+  });
+
+  it('RLS : chacun lit ses lignes seulement ; aucune écriture côté client', async () => {
+    await item(ids.alice, 'arme', true);
+    await chest(ids.alice, 'quest', 'rls');
+    await admin(`insert into dungeon_progress (profile_id, dungeon_id, best_room) values ($1, 'dj-yoga', 3)`, [ids.alice]);
+    for (const t of ['inventory_items', 'chests', 'dungeon_progress']) {
+      expect((await admin(`select relrowsecurity r from pg_class where oid = 'public.${t}'::regclass`))[0].r).toBe(true);
+      expect((await as(ids.alice, `select * from ${t}`)).length).toBe(1);
+      expect(await as(ids.bob, `select * from ${t}`)).toEqual([]);
+      expect(await as(ids.bob, `select * from ${t} where profile_id = $1`, [ids.alice])).toEqual([]);
+      expect(await as(null, `select * from ${t}`)).toEqual([]);
+      await expect(as(ids.alice, `delete from ${t}`)).rejects.toThrow();
+    }
+    await expect(as(ids.alice, `insert into inventory_items (profile_id, template_id, rarity, slot, ability) values ($1, 'x', 'legendaire', 'arme', 'FOR')`, [ids.alice])).rejects.toThrow();
+    await expect(as(ids.alice, `update inventory_items set level = 10, rarity = 'legendaire' where profile_id = $1`, [ids.alice])).rejects.toThrow();
+    await expect(as(ids.alice, `insert into chests (profile_id, rarity, source, source_key) values ($1, 'mythique', 'quest', 'triche')`, [ids.alice])).rejects.toThrow();
+    await expect(as(ids.alice, `update chests set opened_at = null where profile_id = $1`, [ids.alice])).rejects.toThrow();
+    await expect(as(ids.alice, `insert into dungeon_progress (profile_id, dungeon_id, best_room) values ($1, 'dj-danse', 6)`, [ids.alice])).rejects.toThrow();
+    await expect(as(ids.alice, `update dungeon_progress set best_room = 6 where profile_id = $1`, [ids.alice])).rejects.toThrow();
+    await expect(as(null, `insert into chests (profile_id, rarity, source, source_key) values ($1, 'bois', 'quest', 'anon')`, [ids.alice])).rejects.toThrow();
+  });
+
+  it('RLS : les ressources du personnage ne sont modifiables que par le serveur', async () => {
+    await expect(as(ids.alice, `update characters set gold = 99999 where profile_id = $1`, [ids.alice])).rejects.toThrow();
+    await expect(as(ids.alice, `update characters set keys = 3 where profile_id = $1`, [ids.alice])).rejects.toThrow();
+    await expect(as(ids.alice, `update characters set fragments = 999, chest_opens_today = 0 where profile_id = $1`, [ids.alice])).rejects.toThrow();
+    await expect(as(ids.alice, `update characters set chest_pity = '{"or":99}' where profile_id = $1`, [ids.alice])).rejects.toThrow();
+    // l’apparence reste modifiable
+    await as(ids.alice, `update characters set motto = 'Toujours plus loin' where profile_id = $1`, [ids.alice]);
+    expect((await as(ids.alice, `select gold, keys from characters where profile_id = $1`, [ids.alice]))[0]).toEqual({ gold: 0, keys: 0 });
+  });
+
+  it('la migration est rejouable sans perdre de données ni de contraintes', async () => {
+    const counts = async () => ({
+      items: (await admin(`select count(*)::int n from inventory_items`))[0].n,
+      chests: (await admin(`select count(*)::int n from chests`))[0].n,
+      dungeons: (await admin(`select count(*)::int n from dungeon_progress`))[0].n,
+      policies: (await admin(`select count(*)::int n from pg_policies where tablename in ('inventory_items', 'chests', 'dungeon_progress')`))[0].n,
+    });
+    const before = await counts();
+    expect(before).toMatchObject({ items: 1, chests: 1, dungeons: 1, policies: 3 });
+    await db.exec(read(file));
+    await db.exec(read(file));
+    expect(await counts()).toEqual(before);
+    await expect(item(ids.alice, 'arme', true)).rejects.toThrow(); // l’index d’unicité est conservé
+    await expect(chest(ids.alice, 'quest', 'rls')).rejects.toThrow();
+    await expect(as(ids.alice, `delete from chests`)).rejects.toThrow();
+    await expect(as(ids.alice, `update characters set gold = 5 where profile_id = $1`, [ids.alice])).rejects.toThrow();
+  });
+
+  it('le contenu du joueur disparaît avec le compte (cascade à la purge)', async () => {
+    const gone = '00000000-0000-0000-0000-0000000000e8';
+    await mkUser(gone, 'aventurier');
+    await item(gone, 'arme', true);
+    await chest(gone, 'quest', 'purge');
+    await admin(`insert into dungeon_progress (profile_id, dungeon_id) values ($1, 'dj-yoga')`, [gone]);
+    await admin(`update profiles set deleted_at = now() - interval '31 days' where id = $1`, [gone]);
+    expect((await admin(`select purge_deleted_accounts() n`))[0].n).toBe(1);
+    for (const t of ['inventory_items', 'chests', 'dungeon_progress']) {
+      expect((await admin(`select count(*)::int n from ${t} where profile_id = $1`, [gone]))[0].n).toBe(0);
+      expect((await admin(`select count(*)::int n from ${t}`))[0].n).toBe(1); // ceux d’alice restent
+    }
+  });
+});
+
+describe('raids d’amis : équipes, plafond de 6, amis uniquement, RLS', () => {
+  const file = 'migrations/20261013000001_raids.sql';
+  const R = Array.from({ length: 8 }, (_, i) => `00000000-0000-0000-0000-00001300000${i + 1}`);
+  const [r1, r2, r3, r4, r5, r6, r7, r8] = R;
+  const MON = '2026-10-12';
+  const NEXT_MON = '2026-10-19';
+  const befriend = (a: string, b: string) =>
+    admin(`insert into friendships (requester_id, addressee_id, status, accepted_at) values ($1, $2, 'accepted', now()) on conflict do nothing`, [a, b]);
+  const mkTeam = async (leader: string, week = MON) => {
+    const [t] = await admin(`insert into raid_teams (week_start, leader_id) values ($1, $2) returning id`, [week, leader]);
+    await admin(`insert into raid_members (team_id, profile_id, week_start, status, invited_by, joined_at) values ($1, $2, $3, 'joined', $2, now())`, [t.id, leader, week]);
+    return t.id as string;
+  };
+  const member = (team: string, profile: string, by: string, status = 'joined', week = MON) =>
+    admin(`insert into raid_members (team_id, profile_id, week_start, status, invited_by, joined_at) values ($1, $2, $3, $4, $5, ${status === 'joined' ? 'now()' : 'null'})`, [team, profile, week, status, by]);
+  const wipe = async () => {
+    await admin(`delete from raid_teams`);
+  };
+
+  beforeAll(async () => {
+    for (const [i, id] of R.entries()) await mkUser(id, `raider${i + 1}`);
+    for (const id of [r2, r3, r4, r5, r6, r7]) await befriend(r1, id);
+  });
+
+  it('crée les quatre tables, avec la RLS activée', async () => {
+    for (const t of ['raid_teams', 'raid_members', 'raid_damage', 'raid_encouragements']) {
+      expect((await admin(`select relrowsecurity r from pg_class where oid = 'public.${t}'::regclass`))[0].r).toBe(true);
+    }
+    expect((await admin(`select count(*)::int n from pg_policies where tablename like 'raid_%'`))[0].n).toBe(4);
+  });
+
+  it('une équipe vit une semaine ISO : le lundi seulement, l’issue est cohérente', async () => {
+    await expect(admin(`insert into raid_teams (week_start, leader_id) values ('2026-10-13', $1)`, [r1])).rejects.toThrow(); // un mardi
+    const id = await mkTeam(r1);
+    await expect(admin(`update raid_teams set resolved_at = now() where id = $1`, [id])).rejects.toThrow(); // clôture sans issue
+    await expect(admin(`update raid_teams set outcome = 'victory' where id = $1`, [id])).rejects.toThrow(); // issue sans clôture
+    await expect(admin(`update raid_teams set resolved_at = now(), outcome = 'triomphe' where id = $1`, [id])).rejects.toThrow();
+    await expect(admin(`update raid_teams set resolved_at = now(), outcome = 'victory', max_hp = 0 where id = $1`, [id])).rejects.toThrow();
+    await admin(`update raid_teams set resolved_at = now(), outcome = 'victory', max_hp = 11500, total_damage = 12000, victory_day = '2026-10-13' where id = $1`, [id]);
+    await expect(member(id, r2, r1, 'joined', NEXT_MON)).rejects.toThrow(); // la semaine du membre est celle de l'équipe
+    await wipe();
+  });
+
+  it('seuls les amis du chef peuvent entrer dans l’équipe (invitation comprise)', async () => {
+    const id = await mkTeam(r1);
+    await expect(member(id, r8, r1, 'invited')).rejects.toThrow(/raid_not_friend/); // inconnu
+    await expect(member(id, r8, r1, 'joined')).rejects.toThrow(/raid_not_friend/);
+    await member(id, r2, r1, 'invited');
+    await admin(`insert into friendships (requester_id, addressee_id, status) values ($1, $2, 'pending')`, [r1, r8]);
+    await expect(member(id, r8, r1, 'invited')).rejects.toThrow(/raid_not_friend/); // demande en attente seulement
+    await admin(`insert into blocks (blocker_id, blocked_id) values ($1, $2)`, [r3, r1]);
+    await expect(member(id, r3, r1, 'invited')).rejects.toThrow(/raid_not_friend/); // ami bloqué
+    await admin(`delete from blocks where blocker_id = $1`, [r3]);
+    await member(id, r3, r1, 'invited');
+    await admin(`delete from friendships where requester_id = $1 and addressee_id = $2`, [r1, r8]);
+    await wipe();
+  });
+
+  it('6 membres joints au plus', async () => {
+    const id = await mkTeam(r1);
+    for (const p of [r2, r3, r4, r5, r6]) await member(id, p, r1);
+    expect((await admin(`select count(*)::int n from raid_members where team_id = $1 and status = 'joined'`, [id]))[0].n).toBe(6);
+    await expect(member(id, r7, r1)).rejects.toThrow(/raid_full/);
+    // Les invitations ne comptent pas : on peut inviter, mais pas faire entrer
+    await member(id, r7, r1, 'invited');
+    await expect(admin(`update raid_members set status = 'joined', joined_at = now() where team_id = $1 and profile_id = $2`, [id, r7])).rejects.toThrow(/raid_full/);
+    // Une place se libère : le 7e entre
+    await admin(`delete from raid_members where team_id = $1 and profile_id = $2`, [id, r6]);
+    await admin(`update raid_members set status = 'joined', joined_at = now() where team_id = $1 and profile_id = $2`, [id, r7]);
+    expect((await admin(`select count(*)::int n from raid_members where team_id = $1 and status = 'joined'`, [id]))[0].n).toBe(6);
+    await expect(admin(`update raid_members set joined_at = null where team_id = $1 and profile_id = $2`, [id, r7])).rejects.toThrow(); // joint sans date
+    await wipe();
+  });
+
+  it('un joueur est joint dans une seule équipe par semaine', async () => {
+    const a = await mkTeam(r1);
+    const b = await mkTeam(r2);
+    await member(a, r4, r1);
+    await befriend(r2, r4);
+    await expect(member(b, r4, r2)).rejects.toThrow(/one_team_per_week/);
+    await member(b, r4, r2, 'invited'); // invité dans plusieurs équipes : autorisé
+    await expect(admin(`update raid_members set status = 'joined', joined_at = now() where team_id = $1 and profile_id = $2`, [b, r4])).rejects.toThrow(/one_team_per_week/);
+    // La semaine suivante, le même joueur peut former une nouvelle équipe
+    await mkTeam(r4, NEXT_MON);
+    // Un doublon dans la même équipe est refusé
+    await expect(member(a, r4, r1)).rejects.toThrow();
+    await wipe();
+  });
+
+  it('dégâts : un coup par joueur et par jour (toutes équipes), bornes, cascade au départ du membre', async () => {
+    const a = await mkTeam(r1);
+    await member(a, r2, r1);
+    const hit = (team: string, p: string, day: string, dmg = 100, enc = 0) =>
+      admin(`insert into raid_damage (team_id, profile_id, game_date, damage, base_damage, encouragements) values ($1, $2, $3, $4, $4, $5)`, [team, p, day, dmg, enc]);
+    await hit(a, r1, MON);
+    await expect(hit(a, r1, MON)).rejects.toThrow();
+    await hit(a, r1, '2026-10-13');
+    await hit(a, r2, MON, 250, 2);
+    await expect(hit(a, r1, '2026-10-14', -1)).rejects.toThrow();
+    await expect(hit(a, r1, '2026-10-14', 10, 6)).rejects.toThrow();
+    await expect(hit(a, r3, MON)).rejects.toThrow(); // r3 n'est pas membre
+    // r2 part : ses dégâts partent avec lui, et son coup du jour est de nouveau libre dans une autre équipe
+    await befriend(r4, r5);
+    const b = await mkTeam(r4);
+    await admin(`delete from raid_members where team_id = $1 and profile_id = $2`, [a, r2]);
+    expect((await admin(`select count(*)::int n from raid_damage where profile_id = $1`, [r2]))[0].n).toBe(0);
+    await befriend(r4, r2);
+    await member(b, r2, r4);
+    await hit(b, r2, MON);
+    await expect(hit(b, r2, MON)).rejects.toThrow();
+    await wipe();
+  });
+
+  it('encouragements : un par ami et par jour, entre membres, pas à soi-même', async () => {
+    const a = await mkTeam(r1);
+    await member(a, r2, r1);
+    const enc = (from: string, to: string, day = MON) => admin(`insert into raid_encouragements (team_id, from_id, to_id, game_date) values ($1, $2, $3, $4)`, [a, from, to, day]);
+    await enc(r1, r2);
+    await expect(enc(r1, r2)).rejects.toThrow();
+    await enc(r2, r1);
+    await enc(r1, r2, '2026-10-13');
+    await expect(enc(r1, r1)).rejects.toThrow();
+    await expect(enc(r1, r3)).rejects.toThrow(); // r3 n'est pas dans l'équipe
+    await admin(`delete from raid_members where team_id = $1 and profile_id = $2`, [a, r2]);
+    expect((await admin(`select count(*)::int n from raid_encouragements where team_id = $1`, [a]))[0].n).toBe(0);
+    await wipe();
+  });
+
+  it('RLS : les membres lisent leur équipe ; un invité voit son invitation ; les autres ne voient rien', async () => {
+    const a = await mkTeam(r1);
+    await member(a, r2, r1);
+    await member(a, r3, r1, 'invited');
+    await admin(`insert into raid_damage (team_id, profile_id, game_date, damage, base_damage) values ($1, $2, $3, 500, 500)`, [a, r1, MON]);
+    await admin(`insert into raid_encouragements (team_id, from_id, to_id, game_date) values ($1, $2, $3, $4)`, [a, r2, r1, MON]);
+    // Membre joint : tout
+    expect((await as(r2, `select * from raid_teams`)).length).toBe(1);
+    expect((await as(r2, `select * from raid_members`)).length).toBe(3);
+    expect((await as(r2, `select * from raid_damage`)).length).toBe(1);
+    expect((await as(r2, `select * from raid_encouragements`)).length).toBe(1);
+    // Invité : l'équipe et sa propre ligne seulement, ni les autres membres, ni les dégâts
+    expect((await as(r3, `select * from raid_teams`)).length).toBe(1);
+    expect(await as(r3, `select profile_id from raid_members`)).toEqual([{ profile_id: r3 }]);
+    expect(await as(r3, `select * from raid_damage`)).toEqual([]);
+    expect(await as(r3, `select * from raid_encouragements`)).toEqual([]);
+    // Étranger et anonyme : rien
+    for (const who of [r8, null]) {
+      for (const t of ['raid_teams', 'raid_members', 'raid_damage', 'raid_encouragements']) expect(await as(who, `select * from ${t}`)).toEqual([]);
+    }
+    await wipe();
+  });
+
+  it('RLS : aucune écriture côté client, sur aucune table de raid', async () => {
+    const a = await mkTeam(r1);
+    await member(a, r2, r1);
+    await admin(`insert into raid_damage (team_id, profile_id, game_date, damage, base_damage) values ($1, $2, $3, 500, 500)`, [a, r1, MON]);
+    await admin(`insert into raid_encouragements (team_id, from_id, to_id, game_date) values ($1, $2, $3, $4)`, [a, r2, r1, MON]);
+    const attempts = [
+      `insert into raid_teams (week_start, leader_id) values ('${MON}', '${r1}')`,
+      `update raid_teams set max_hp = 1`,
+      `delete from raid_teams`,
+      `insert into raid_members (team_id, profile_id, week_start, status, invited_by) values ('${a}', '${r4}', '${MON}', 'invited', '${r1}')`,
+      `update raid_members set status = 'joined', joined_at = now()`,
+      `delete from raid_members`,
+      `insert into raid_damage (team_id, profile_id, game_date, damage, base_damage) values ('${a}', '${r2}', '${MON}', 999999, 999999)`,
+      `update raid_damage set damage = 999999`,
+      `delete from raid_damage`,
+      `insert into raid_encouragements (team_id, from_id, to_id, game_date) values ('${a}', '${r1}', '${r2}', '${MON}')`,
+      `delete from raid_encouragements`,
+    ];
+    for (const who of [r1, r2, null]) for (const sql of attempts) await expect(as(who, sql)).rejects.toThrow();
+    expect(await admin(`select damage from raid_damage`)).toEqual([{ damage: 500 }]);
+    // Les fonctions serveur ne sont pas appelables par un joueur
+    await expect(as(r1, `select raid_detach_profile($1)`, [r2])).rejects.toThrow();
+    await expect(as(r1, `select notify_user($1, 'raid_invite', '{}')`, [r2])).rejects.toThrow();
+    await wipe();
+  });
+
+  it('notify_user accepte les types de raid (le serveur seul les crée)', async () => {
+    for (const type of ['raid_invite', 'raid_encouraged', 'raid_victory']) {
+      await admin(`select notify_user($1, $2, $3::jsonb)`, [r1, type, JSON.stringify({ username: 'x', team: 't' })]);
+    }
+    const rows = await as(r1, `select type from notifications where type like 'raid_%' order by type`);
+    expect(rows.map((n: any) => n.type)).toEqual(['raid_encouraged', 'raid_invite', 'raid_victory']);
+    await admin(`delete from notifications where type like 'raid_%'`);
+  });
+
+  it('can_view_owner : seul un ami accepté non bloqué est joignable', async () => {
+    expect((await admin(`select can_view_owner($1, $2) ok`, [r1, r2]))[0].ok).toBe(true);
+    expect((await admin(`select can_view_owner($1, $2) ok`, [r1, r8]))[0].ok).toBe(false);
+  });
+
+  it('raid_detach_profile : passe la main au plus ancien membre, supprime les équipes vides et les invitations du chef', async () => {
+    const a = await mkTeam(r1);
+    await admin(`update raid_members set joined_at = now() - interval '2 days' where team_id = $1 and profile_id = $2`, [a, r1]);
+    await member(a, r2, r1);
+    await admin(`update raid_members set joined_at = now() - interval '1 day' where team_id = $1 and profile_id = $2`, [a, r2]);
+    await member(a, r3, r1);
+    await member(a, r4, r1, 'invited');
+    await admin(`insert into raid_damage (team_id, profile_id, game_date, damage, base_damage) values ($1, $2, $3, 10, 10)`, [a, r1, MON]);
+    await admin(`select raid_detach_profile($1)`, [r1]);
+    expect((await admin(`select leader_id from raid_teams where id = $1`, [a]))[0].leader_id).toBe(r2);
+    expect((await admin(`select profile_id from raid_members where team_id = $1 order by profile_id`, [a])).map((m: any) => m.profile_id)).toEqual([r2, r3]);
+    expect((await admin(`select count(*)::int n from raid_damage where team_id = $1`, [a]))[0].n).toBe(0);
+    await admin(`select raid_detach_profile($1)`, [r2]);
+    await admin(`select raid_detach_profile($1)`, [r3]);
+    expect((await admin(`select count(*)::int n from raid_teams`))[0].n).toBe(0);
+    await wipe();
+  });
+
+  it('un raid clos garde son historique quand un membre part, mais passe la main du chef', async () => {
+    const a = await mkTeam(r1);
+    await member(a, r2, r1);
+    await admin(`update raid_teams set resolved_at = now(), outcome = 'defeat', max_hp = 11500, total_damage = 10 where id = $1`, [a]);
+    await admin(`select raid_detach_profile($1)`, [r1]);
+    expect((await admin(`select count(*)::int n from raid_members where team_id = $1`, [a]))[0].n).toBe(2);
+    expect((await admin(`select leader_id from raid_teams where id = $1`, [a]))[0].leader_id).toBe(r2);
+    await wipe();
+  });
+
+  it('la demande de suppression de compte retire le joueur de ses raids en cours', async () => {
+    const gone = '00000000-0000-0000-0000-000013000009';
+    await mkUser(gone, 'raideur-sorti');
+    await befriend(gone, r2);
+    const a = await mkTeam(gone);
+    await member(a, r2, gone);
+    await as(gone, `select request_account_deletion()`);
+    expect((await admin(`select leader_id from raid_teams where id = $1`, [a]))[0].leader_id).toBe(r2);
+    expect((await admin(`select count(*)::int n from raid_members where team_id = $1 and profile_id = $2`, [a, gone]))[0].n).toBe(0);
+    // Purge à 30 jours : plus aucune trace du compte
+    await admin(`update profiles set deleted_at = now() - interval '31 days' where id = $1`, [gone]);
+    await admin(`select purge_deleted_accounts()`);
+    expect((await admin(`select count(*)::int n from raid_members where profile_id = $1`, [gone]))[0].n).toBe(0);
+    expect((await admin(`select count(*)::int n from raid_teams where id = $1`, [a]))[0].n).toBe(1);
+    await wipe();
+  });
+
+  it('la purge d’un chef de raid clos ne détruit pas l’historique des autres', async () => {
+    const lead = '00000000-0000-0000-0000-00001300000a';
+    await mkUser(lead, 'chef-parti');
+    await befriend(lead, r2);
+    const a = await mkTeam(lead);
+    await member(a, r2, lead);
+    await admin(`insert into raid_damage (team_id, profile_id, game_date, damage, base_damage) values ($1, $2, $3, 77, 77)`, [a, r2, MON]);
+    await admin(`update raid_teams set resolved_at = now(), outcome = 'defeat', max_hp = 11500, total_damage = 77 where id = $1`, [a]);
+    await as(lead, `select request_account_deletion()`); // le chef passe la main à r2
+    await admin(`update profiles set deleted_at = now() - interval '31 days' where id = $1`, [lead]);
+    await admin(`select purge_deleted_accounts()`);
+    expect((await admin(`select leader_id from raid_teams where id = $1`, [a]))[0].leader_id).toBe(r2);
+    expect(await admin(`select damage from raid_damage where team_id = $1`, [a])).toEqual([{ damage: 77 }]);
+    await wipe();
+  });
+
+  it('la migration est rejouable sans perdre de données ni de contraintes', async () => {
+    const a = await mkTeam(r1);
+    await member(a, r2, r1);
+    await admin(`insert into raid_damage (team_id, profile_id, game_date, damage, base_damage) values ($1, $2, $3, 10, 10)`, [a, r1, MON]);
+    const counts = async () => ({
+      teams: (await admin(`select count(*)::int n from raid_teams`))[0].n,
+      members: (await admin(`select count(*)::int n from raid_members`))[0].n,
+      damage: (await admin(`select count(*)::int n from raid_damage`))[0].n,
+      policies: (await admin(`select count(*)::int n from pg_policies where tablename like 'raid_%'`))[0].n,
+      triggers: (await admin(`select count(*)::int n from pg_trigger where tgname = 'raid_members_guard'`))[0].n,
+    });
+    const before = await counts();
+    expect(before).toEqual({ teams: 1, members: 2, damage: 1, policies: 4, triggers: 1 });
+    await db.exec(read(file));
+    await db.exec(read(file));
+    expect(await counts()).toEqual(before);
+    await expect(member(a, r8, r1)).rejects.toThrow(/raid_not_friend/); // le garde-fou est conservé
+    await expect(as(r1, `delete from raid_members`)).rejects.toThrow();
+    await wipe();
+  });
+});
+
+describe('saisons : classement de puissance entre amis, cadre de portrait, équipement visible', () => {
+  const file = 'migrations/20261014000001_seasons.sql';
+  const S = Array.from({ length: 5 }, (_, i) => `00000000-0000-0000-0000-00001400000${i + 1}`);
+  const [s1, s2, s3, s4, s5] = S;
+  const befriend = (a: string, b: string) =>
+    admin(`insert into friendships (requester_id, addressee_id, status, accepted_at) values ($1, $2, 'accepted', now()) on conflict do nothing`, [a, b]);
+  const score = async (p: string, season: string, power: number, first = '2026-10-05', last = '2026-10-12') => {
+    await admin(`select record_season_power($1, $2, $3, $4::date)`, [p, season, power, first]);
+    if (last !== first) await admin(`select record_season_power($1, $2, $3, $4::date)`, [p, season, power, last]);
+  };
+  const wipe = async () => {
+    await admin(`delete from season_scores`);
+    await admin(`delete from season_results`);
+  };
+
+  beforeAll(async () => {
+    for (const [i, id] of S.entries()) await mkUser(id, `saisonnier${i + 1}`);
+    await befriend(s1, s2);
+    await befriend(s1, s3);
+    await befriend(s2, s3);
+  });
+
+  it('ajoute la puissance et le cadre au personnage, avec des valeurs par défaut sûres et contrôlées', async () => {
+    const [c] = await admin(`select power, frame_style from characters where profile_id = $1`, [s1]);
+    expect(c).toEqual({ power: 0, frame_style: null });
+    await expect(admin(`update characters set power = -1 where profile_id = $1`, [s1])).rejects.toThrow();
+    await expect(admin(`update characters set frame_style = 'platine' where profile_id = $1`, [s1])).rejects.toThrow();
+    await expect(admin(`update characters set frame_style = 'S1:platine' where profile_id = $1`, [s1])).rejects.toThrow();
+    await admin(`update characters set frame_style = 'S1:or', power = 120 where profile_id = $1`, [s1]);
+    expect((await admin(`select frame_style from characters where profile_id = $1`, [s1]))[0].frame_style).toBe('S1:or');
+    await admin(`update characters set frame_style = null, power = 0 where profile_id = $1`, [s1]);
+  });
+
+  it('le coffre de fin de saison a la source « season », unique par saison', async () => {
+    await admin(`insert into chests (profile_id, rarity, source, source_key) values ($1, 'or', 'season', 'S1')`, [s1]);
+    await expect(admin(`insert into chests (profile_id, rarity, source, source_key) values ($1, 'or', 'season', 'S1')`, [s1])).rejects.toThrow();
+    await admin(`insert into chests (profile_id, rarity, source, source_key) values ($1, 'or', 'season', 'S2')`, [s1]);
+    await expect(admin(`insert into chests (profile_id, rarity, source, source_key) values ($1, 'or', 'hasard', 'S1')`, [s1])).rejects.toThrow();
+    await admin(`delete from chests where profile_id = $1 and source = 'season'`, [s1]);
+  });
+
+  it('les tables ont la RLS activée, une lecture propriétaire et aucune écriture client', async () => {
+    for (const t of ['season_scores', 'season_results']) {
+      expect((await admin(`select relrowsecurity r from pg_class where oid = 'public.${t}'::regclass`))[0].r).toBe(true);
+    }
+    await score(s1, 'S1', 100);
+    await admin(`insert into season_results (profile_id, season_key, rank, participants, power, frame) values ($1, 'S1', 1, 3, 100, 'or')`, [s1]);
+    expect(await as(s1, `select season_key from season_scores`)).toEqual([{ season_key: 'S1' }]);
+    // un ami ne lit ni la puissance brute ni les résultats d'un autre
+    expect(await as(s2, `select * from season_scores`)).toEqual([]);
+    expect(await as(s2, `select * from season_results`)).toEqual([]);
+    await expect(as(s1, `insert into season_scores (profile_id, season_key, power, first_day, last_day) values ($1, 'S1', 999999, '2026-10-05', '2026-10-05')`, [s1])).rejects.toThrow();
+    await expect(as(s1, `update season_scores set power = 999999`)).rejects.toThrow();
+    await expect(as(s1, `delete from season_scores`)).rejects.toThrow();
+    await expect(as(s1, `insert into season_results (profile_id, season_key, power) values ($1, 'S9', 1)`, [s1])).rejects.toThrow();
+    // colonnes réservées au serveur
+    await expect(as(s1, `update characters set power = 99999 where profile_id = $1`, [s1])).rejects.toThrow();
+    await expect(as(s1, `update characters set frame_style = 'S1:or' where profile_id = $1`, [s1])).rejects.toThrow();
+    await wipe();
+  });
+
+  it('record_season_power : premier jour conservé, dernier jour et puissance mis à jour, jamais accessible au client', async () => {
+    await admin(`select record_season_power($1, 'S1', 50, '2026-10-05'::date)`, [s1]);
+    await admin(`select record_season_power($1, 'S1', 80, '2026-10-12'::date)`, [s1]);
+    await admin(`select record_season_power($1, 'S1', 70, '2026-10-08'::date)`, [s1]); // date intermédiaire : bornes inchangées
+    const [r] = await admin(`select power, first_day::text f, last_day::text l from season_scores where profile_id = $1`, [s1]);
+    expect(r).toEqual({ power: 70, f: '2026-10-05', l: '2026-10-12' });
+    expect((await admin(`select count(*)::int n from season_scores`))[0].n).toBe(1);
+    await expect(admin(`select record_season_power($1, 'saison-un', 5, '2026-10-05'::date)`, [s1])).rejects.toThrow(); // clé invalide
+    await expect(as(s1, `select record_season_power($1, 'S1', 999, '2026-10-05'::date)`, [s1])).rejects.toThrow();
+    await expect(as(s1, `select season_ranking($1, 'S1')`, [s1])).rejects.toThrow();
+    await expect(as(s1, `select * from _season_rows($1, 'S1')`, [s1])).rejects.toThrow();
+    await wipe();
+  });
+
+  it('season_leaderboard : soi et les amis qui acceptent, par puissance décroissante', async () => {
+    await score(s1, 'S1', 100);
+    await score(s2, 'S1', 250);
+    await score(s3, 'S1', 180);
+    await score(s4, 'S1', 999); // inconnu de s1 : n'apparaît pas
+    const rows = await as(s1, `select username, power from season_leaderboard('S1')`);
+    expect(rows).toEqual([
+      { username: 'saisonnier2', power: 250 },
+      { username: 'saisonnier3', power: 180 },
+      { username: 'saisonnier1', power: 100 },
+    ]);
+    const full = await as(s1, `select * from season_leaderboard('S1') limit 1`);
+    expect(Object.keys(full[0])).toEqual(['profile_id', 'username', 'name', 'level', 'class_id', 'portrait_id', 'frame_color', 'frame_style', 'power']);
+    // une autre saison est vide, sauf soi-même (à 0)
+    expect(await as(s1, `select username, power from season_leaderboard('S2')`)).toEqual([{ username: 'saisonnier1', power: 0 }]);
+  });
+
+  it('season_leaderboard : respecte l’opt-in, le blocage, la suppression de compte et les clés invalides', async () => {
+    await admin(`update settings set leaderboard_opt_in = false where profile_id = $1`, [s2]);
+    expect((await as(s1, `select username from season_leaderboard('S1')`)).map((r) => r.username)).toEqual(['saisonnier3', 'saisonnier1']);
+    expect(await as(s2, `select * from season_leaderboard('S1')`)).toEqual([]); // qui refuse n'en voit aucun
+    await admin(`update settings set leaderboard_opt_in = true where profile_id = $1`, [s2]);
+
+    await admin(`insert into blocks (blocker_id, blocked_id) values ($1, $2)`, [s3, s1]);
+    expect((await as(s1, `select username from season_leaderboard('S1')`)).map((r) => r.username)).toEqual(['saisonnier2', 'saisonnier1']);
+    expect((await as(s3, `select username from season_leaderboard('S1')`)).map((r) => r.username)).toEqual(['saisonnier2', 'saisonnier3']);
+    await admin(`delete from blocks`);
+
+    expect(await as(s1, `select * from season_leaderboard('n''importe quoi')`)).toEqual([]);
+    expect(await as(s1, `select * from season_leaderboard(null)`)).toEqual([]);
+    await expect(as(null, `select * from season_leaderboard('S1')`)).rejects.toThrow(); // réservé aux comptes connectés
+
+    await admin(`update profiles set deleted_at = now() where id = $1`, [s3]);
+    expect((await as(s1, `select username from season_leaderboard('S1')`)).map((r) => r.username)).toEqual(['saisonnier2', 'saisonnier1']);
+    await admin(`update profiles set deleted_at = null where id = $1`, [s3]);
+  });
+
+  it('season_ranking (serveur) : même classement en jsonb pour le joueur désigné', async () => {
+    const r = (await admin(`select season_ranking($1, 'S1') r`, [s1]))[0].r as { profile_id: string; power: number }[];
+    expect(r.map((x) => [x.profile_id, x.power])).toEqual([[s2, 250], [s3, 180], [s1, 100]]);
+    expect((await admin(`select season_ranking($1, 'S7') r`, [s5]))[0].r).toEqual([{ profile_id: s5, power: 0 }]);
+    await admin(`update settings set leaderboard_opt_in = false where profile_id = $1`, [s1]);
+    expect((await admin(`select season_ranking($1, 'S1') r`, [s1]))[0].r).toEqual([]);
+    await admin(`update settings set leaderboard_opt_in = true where profile_id = $1`, [s1]);
+  });
+
+  it('résultat de saison : une seule ligne par joueur et par saison (idempotence), cadre contrôlé', async () => {
+    await admin(`insert into season_results (profile_id, season_key, rank, participants, power, frame) values ($1, 'S1', 2, 3, 100, 'argent')`, [s1]);
+    await expect(admin(`insert into season_results (profile_id, season_key, rank, participants, power, frame) values ($1, 'S1', 1, 3, 100, 'or')`, [s1])).rejects.toThrow();
+    await expect(admin(`insert into season_results (profile_id, season_key, rank, participants, power, frame) values ($1, 'S2', 0, 3, 100, 'or')`, [s1])).rejects.toThrow(); // rang >= 1
+    await expect(admin(`insert into season_results (profile_id, season_key, rank, participants, power, frame) values ($1, 'S2', 1, 3, 100, 'platine')`, [s1])).rejects.toThrow();
+    await admin(`insert into season_results (profile_id, season_key, rank, participants, power, frame) values ($1, 'S2', null, 0, 100, null)`, [s1]); // non classé, sans récompense
+    await admin(`delete from season_results`);
+  });
+
+  it('get_profile_gear : le joueur et ses amis voient les objets équipés et la puissance, personne d’autre', async () => {
+    await admin(`update characters set power = 321, frame_style = 'S1:argent' where profile_id = $1`, [s2]);
+    await admin(`insert into inventory_items (profile_id, template_id, rarity, slot, ability, level, equipped) values
+      ($1, 'epee-du-sentier', 'epique', 'arme', 'FOR', 3, true),
+      ($1, 'casque-de-fer', 'rare', 'tete', 'CON', 0, true),
+      ($1, 'hache-du-forgeron', 'legendaire', 'arme', 'FOR', 0, false)`, [s2]);
+    const mine = (await as(s2, `select get_profile_gear('saisonnier2') g`))[0].g;
+    expect(mine).toEqual({
+      power: 321,
+      frameStyle: 'S1:argent',
+      items: [
+        { slot: 'arme', templateId: 'epee-du-sentier', rarity: 'epique', level: 3 },
+        { slot: 'tete', templateId: 'casque-de-fer', rarity: 'rare', level: 0 },
+      ],
+    });
+    // un ami voit la même chose ; l'objet du sac (non équipé) reste privé
+    expect((await as(s1, `select get_profile_gear('saisonnier2') g`))[0].g).toEqual(mine);
+    // un inconnu, un ami bloqué, un profil supprimé ou inexistant : rien
+    expect((await as(s4, `select get_profile_gear('saisonnier2') g`))[0].g).toBeNull();
+    await admin(`insert into blocks (blocker_id, blocked_id) values ($1, $2)`, [s2, s1]);
+    expect((await as(s1, `select get_profile_gear('saisonnier2') g`))[0].g).toBeNull();
+    await admin(`delete from blocks`);
+    expect((await as(s1, `select get_profile_gear('personne') g`))[0]?.g ?? null).toBeNull();
+    await admin(`update profiles set deleted_at = now() where id = $1`, [s2]);
+    expect((await as(s1, `select get_profile_gear('saisonnier2') g`))[0]?.g ?? null).toBeNull();
+    await admin(`update profiles set deleted_at = null where id = $1`, [s2]);
+    await expect(as(null, `select get_profile_gear('saisonnier2')`)).rejects.toThrow();
+    await admin(`delete from inventory_items where profile_id = $1`, [s2]);
+    expect((await as(s2, `select get_profile_gear('saisonnier2') g`))[0].g.items).toEqual([]);
+  });
+
+  it('la suppression de compte retire le joueur du classement, la purge efface ses données de saison', async () => {
+    await admin(`insert into season_results (profile_id, season_key, rank, participants, power, frame) values ($1, 'S1', 1, 3, 250, 'or')`, [s2]);
+    await as(s2, `select request_account_deletion()`);
+    expect((await as(s1, `select username from season_leaderboard('S1')`)).map((r) => r.username)).not.toContain('saisonnier2');
+    await admin(`update profiles set deleted_at = now() - interval '31 days' where id = $1`, [s2]);
+    await admin(`select purge_deleted_accounts()`);
+    expect((await admin(`select count(*)::int n from season_scores where profile_id = $1`, [s2]))[0].n).toBe(0);
+    expect((await admin(`select count(*)::int n from season_results where profile_id = $1`, [s2]))[0].n).toBe(0);
+  });
+
+  it('la migration est rejouable sans perdre de données ni de contraintes', async () => {
+    await wipe();
+    await score(s1, 'S1', 100);
+    await admin(`insert into season_results (profile_id, season_key, rank, participants, power, frame) values ($1, 'S1', 1, 2, 100, 'or')`, [s1]);
+    await admin(`insert into chests (profile_id, rarity, source, source_key) values ($1, 'or', 'season', 'S1')`, [s1]);
+    const counts = async () => ({
+      scores: (await admin(`select count(*)::int n from season_scores`))[0].n,
+      results: (await admin(`select count(*)::int n from season_results`))[0].n,
+      policies: (await admin(`select count(*)::int n from pg_policies where tablename like 'season_%'`))[0].n,
+      chests: (await admin(`select count(*)::int n from chests where source = 'season'`))[0].n,
+    });
+    const before = await counts();
+    expect(before).toEqual({ scores: 1, results: 1, policies: 2, chests: 1 });
+    await db.exec(read(file));
+    await db.exec(read(file));
+    expect(await counts()).toEqual(before);
+    await expect(admin(`insert into chests (profile_id, rarity, source, source_key) values ($1, 'or', 'season', 'S1')`, [s1])).rejects.toThrow(); // unicité conservée
+    await expect(admin(`insert into chests (profile_id, rarity, source, source_key) values ($1, 'or', 'hasard', 'x')`, [s1])).rejects.toThrow(); // contrainte de source conservée
+    expect((await as(s1, `select count(*)::int n from season_leaderboard('S1')`))[0].n).toBe(1);
+    await wipe();
+    await admin(`delete from chests where source = 'season'`);
   });
 });

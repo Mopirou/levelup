@@ -27,6 +27,7 @@ export const routes: Routes = [
       { path: 'tavern', loadComponent: () => import('./features/tavern/tavern.page').then((m) => m.TavernPage) },
       { path: 'quests', loadComponent: () => import('./features/quest/quest-board.page').then((m) => m.QuestBoardPage) },
       { path: 'village', loadComponent: () => import('./features/village/village.page').then((m) => m.VillagePage) },
+      { path: 'adventure', loadComponent: () => import('./features/adventure/adventure.page').then((m) => m.AdventurePage) },
       { path: 'hero', loadComponent: () => import('./features/hero/hero.page').then((m) => m.HeroPage) },
       { path: 'chronicle', loadComponent: () => import('./features/chronicle/chronicle.page').then((m) => m.ChroniclePage) },
     ],

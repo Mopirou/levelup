@@ -92,6 +92,13 @@ const wrap = async <T extends object>(fn: () => Promise<any>): Promise<CommandRe
   }
 };
 
+/** Les raids se jouent entre amis : sans compte (mode local), les commandes sont refusées avec un message clair. */
+const raidOnline = async (): Promise<CommandResult<{ state: engine.RaidState }>> => ({
+  ok: false,
+  error: 'forbidden',
+  message: 'Les raids se jouent entre amis : crée un compte pour y participer.',
+});
+
 export interface LocalAccount {
   email: string;
   passwordHash: string;
@@ -238,6 +245,29 @@ export async function createLocalBackend(): Promise<Backend> {
     trackStart: (trackId) => wrap(() => engine.startTrack(ctx, LOCAL_ID, { trackId })),
     trackPause: (trackId, paused) => wrap(() => engine.setTrackPaused(ctx, LOCAL_ID, { trackId, paused })),
     trackStop: (trackId) => wrap(() => engine.stopTrack(ctx, LOCAL_ID, { trackId })),
+    adventureState: () => wrap(() => engine.getAdventureState(ctx, LOCAL_ID)),
+    expeditionClaim: () => wrap(() => engine.claimExpedition(ctx, LOCAL_ID)),
+    chestOpen: (chestId) => wrap(() => engine.openChest(ctx, LOCAL_ID, { chestId })),
+    chestMerge: (rarity) => wrap(() => engine.mergeChests(ctx, LOCAL_ID, { rarity })),
+    itemEquip: (itemId) => wrap(() => engine.equipItem(ctx, LOCAL_ID, { itemId })),
+    itemUnequip: (slot) => wrap(() => engine.unequipSlot(ctx, LOCAL_ID, { slot })),
+    itemUpgrade: (itemId) => wrap(() => engine.upgradeItem(ctx, LOCAL_ID, { itemId })),
+    itemMerge: (itemIds) => wrap(() => engine.mergeItems(ctx, LOCAL_ID, { itemIds })),
+    itemDismantle: (itemId) => wrap(() => engine.dismantleItem(ctx, LOCAL_ID, { itemId })),
+    dungeonList: () => wrap(() => engine.listDungeons(ctx, LOCAL_ID)),
+    dungeonRun: (dungeonId) => wrap(() => engine.runDungeon(ctx, LOCAL_ID, { dungeonId })),
+    // Raids d'amis : pas d'équipes sans compte. L'état est vide (boss de la semaine seulement), les commandes sont refusées poliment.
+    raidState: () =>
+      wrap(async () => {
+        const r = await engine.getRaidState(ctx, LOCAL_ID);
+        return r.ok ? { ...r, state: { ...r.state, available: false } } : r;
+      }),
+    seasonState: () => wrap(() => engine.getSeasonState(ctx, LOCAL_ID)),
+    raidCreate: () => raidOnline(),
+    raidInvite: () => raidOnline(),
+    raidJoin: () => raidOnline(),
+    raidLeave: () => raidOnline(),
+    raidEncourage: () => raidOnline(),
     achievementProgress: () => engine.achievementProgress(ctx, LOCAL_ID),
     async resetAdventure() {
       store.users.delete(LOCAL_ID);

@@ -44,6 +44,10 @@ function message(n: any): { title: string; body: string; pref: string } | null {
     case 'reaction': return { title: 'Un encouragement', body: `${who} : « ${REACTION[n.payload?.kind] ?? 'Bravo'} ».`, pref: 'reactions' };
     case 'comment': return { title: 'Un commentaire', body: `${who} a commenté ta publication.`, pref: 'comments' };
     case 'friend_level': return { title: 'Une montée en niveau', body: `${who} atteint le niveau ${n.payload?.level}.`, pref: 'reactions' };
+    case 'raid_invite': return { title: 'Un raid se prépare', body: `${who} t’invite à combattre le boss de la semaine.`, pref: 'raid' };
+    case 'raid_encouraged': return { title: 'Un coup de pouce', body: `${who} t’encourage : +5 % de dégâts aujourd’hui.`, pref: 'raid' };
+    case 'raid_victory': return { title: 'Boss vaincu !', body: n.payload?.chest === 'mythique' ? 'Votre équipe a terrassé le boss en un temps record : un coffre mythique vous attend.' : 'Votre équipe a terrassé le boss de la semaine : un coffre vous attend.', pref: 'raid' };
+    case 'season_end': return { title: n.payload?.name ? `${n.payload.name} terminée` : 'Saison terminée', body: 'Ta récompense de saison est arrivée : un cadre de portrait et un coffre d’or t’attendent.', pref: 'season' };
     default: return null;
   }
 }

@@ -21,6 +21,29 @@ async function pageAll(build: (from: number, to: number) => any, ctx: string): P
   return out;
 }
 
+/** Écriture de membre : traduit les violations de contraintes de la base (voir 20261013000001_raids.sql). */
+function memberWrite(error: any, ctx: string): 'ok' | 'duplicate' | 'full' | 'not-friend' | 'conflict' {
+  if (!error) return 'ok';
+  const msg = String(error.message ?? '');
+  if (/raid_full/.test(msg)) return 'full';
+  if (/raid_not_friend/.test(msg)) return 'not-friend';
+  if (/one_team_per_week/.test(msg)) return 'conflict';
+  if (error.code === '23505' || /duplicate key|unique/i.test(msg)) return 'duplicate';
+  if (error.code === '23503') return 'conflict';
+  throw new Error(`${ctx}: ${msg}`);
+}
+
+const toTeam = (r: any) => ({
+  id: r.id, weekStart: r.week_start, leaderId: r.leader_id, createdAt: r.created_at, resolvedAt: r.resolved_at ?? null, outcome: r.outcome ?? null,
+  maxHp: r.max_hp ?? null, totalDamage: r.total_damage ?? null, victoryDay: r.victory_day ?? null,
+});
+const toMember = (r: any) => ({
+  teamId: r.team_id, profileId: r.profile_id, weekStart: r.week_start, status: r.status, invitedBy: r.invited_by ?? '', createdAt: r.created_at, joinedAt: r.joined_at ?? null,
+});
+const fromMember = (m: any) => ({
+  team_id: m.teamId, profile_id: m.profileId, week_start: m.weekStart, status: m.status, invited_by: m.invitedBy, created_at: m.createdAt, joined_at: m.joinedAt ?? null,
+});
+
 export class SupabaseStore {
   constructor(private db: Client) {}
 
@@ -53,6 +76,15 @@ export class SupabaseStore {
       rerollsDate: data.rerolls_date,
       rerollsUsed: data.rerolls_used,
       createdAt: data.created_at,
+      gold: data.gold ?? 0,
+      fragments: data.fragments ?? 0,
+      keys: data.keys ?? 0,
+      chestPity: data.chest_pity ?? {},
+      expeditionStartedAt: data.expedition_started_at ?? null,
+      chestOpensDate: data.chest_opens_date ?? null,
+      chestOpensToday: data.chest_opens_today ?? 0,
+      power: data.power ?? 0,
+      frameStyle: data.frame_style ?? null,
     };
   }
 
@@ -79,6 +111,15 @@ export class SupabaseStore {
         inspiration: c.inspiration,
         rerolls_date: c.rerollsDate ?? null,
         rerolls_used: c.rerollsUsed,
+        gold: c.gold ?? 0,
+        fragments: c.fragments ?? 0,
+        keys: c.keys ?? 0,
+        chest_pity: c.chestPity ?? {},
+        expedition_started_at: c.expeditionStartedAt ?? null,
+        chest_opens_date: c.chestOpensDate ?? null,
+        chest_opens_today: c.chestOpensToday ?? 0,
+        power: c.power ?? 0,
+        frame_style: c.frameStyle ?? null,
       },
       { onConflict: 'profile_id' },
     );
@@ -268,6 +309,242 @@ export class SupabaseStore {
   async deleteTrack(userId: string, trackId: string): Promise<void> {
     const { error } = await this.db.from('tracks').delete().eq('profile_id', userId).eq('track_id', trackId);
     fail(error, 'tracks.delete');
+  }
+
+  // ───── Aventure : équipement, coffres, donjons
+  async listItems(userId: string): Promise<any[]> {
+    const rows = await pageAll((a, b) => this.db.from('inventory_items').select('*').eq('profile_id', userId).order('created_at', { ascending: true }).order('id', { ascending: true }).range(a, b), 'items.select');
+    return rows.map((r: any) => ({
+      id: r.id, templateId: r.template_id, rarity: r.rarity, slot: r.slot, ability: r.ability, level: r.level, equipped: r.equipped, createdAt: r.created_at,
+    }));
+  }
+
+  async insertItems(userId: string, items: any[]): Promise<void> {
+    if (!items.length) return;
+    const { error } = await this.db.from('inventory_items').insert(
+      items.map((i) => ({
+        id: i.id, profile_id: userId, template_id: i.templateId, rarity: i.rarity, slot: i.slot, ability: i.ability, level: i.level ?? 0,
+        equipped: !!i.equipped, created_at: i.createdAt,
+      })),
+    );
+    fail(error, 'items.insert');
+  }
+
+  async updateItem(userId: string, id: string, patch: any): Promise<void> {
+    const row: any = {};
+    if ('level' in patch) row.level = patch.level;
+    if ('equipped' in patch) row.equipped = !!patch.equipped;
+    if (!Object.keys(row).length) return;
+    const { error } = await this.db.from('inventory_items').update(row).eq('profile_id', userId).eq('id', id);
+    fail(error, 'items.update');
+  }
+
+  async deleteItems(userId: string, ids: string[]): Promise<void> {
+    if (!ids.length) return;
+    const { error } = await this.db.from('inventory_items').delete().eq('profile_id', userId).in('id', ids);
+    fail(error, 'items.delete');
+  }
+
+  async listChests(userId: string, filter: { opened?: boolean } = {}): Promise<any[]> {
+    let q = this.db.from('chests').select('*').eq('profile_id', userId);
+    if (filter.opened === true) q = q.not('opened_at', 'is', null);
+    if (filter.opened === false) q = q.is('opened_at', null);
+    const rows = await pageAll((a, b) => q.order('created_at', { ascending: true }).order('id', { ascending: true }).range(a, b), 'chests.select');
+    return rows.map((r: any) => ({
+      id: r.id, rarity: r.rarity, source: r.source, sourceKey: r.source_key, instanceId: r.instance_id ?? null, createdAt: r.created_at, openedAt: r.opened_at ?? null,
+    }));
+  }
+
+  async insertChest(userId: string, c: any): Promise<boolean> {
+    const { error } = await this.db.from('chests').insert({
+      id: c.id, profile_id: userId, rarity: c.rarity, source: c.source, source_key: c.sourceKey, instance_id: c.instanceId ?? null,
+      created_at: c.createdAt, opened_at: c.openedAt ?? null,
+    });
+    // 23505 : (profil, source, clé) existe déjà, le coffre a déjà été attribué.
+    if (error && (error.code === '23505' || /duplicate key|unique/i.test(error.message ?? ''))) return false;
+    fail(error, 'chests.insert');
+    return true;
+  }
+
+  async markChestOpened(userId: string, id: string, at: string): Promise<boolean> {
+    const { data, error } = await this.db.from('chests').update({ opened_at: at }).eq('profile_id', userId).eq('id', id).is('opened_at', null).select('id');
+    fail(error, 'chests.open');
+    return (data?.length ?? 0) > 0;
+  }
+
+  async deleteChests(userId: string, ids: string[]): Promise<void> {
+    if (!ids.length) return;
+    const { error } = await this.db.from('chests').delete().eq('profile_id', userId).in('id', ids);
+    fail(error, 'chests.delete');
+  }
+
+  async listDungeonProgress(userId: string): Promise<any[]> {
+    const { data, error } = await this.db.from('dungeon_progress').select('*').eq('profile_id', userId).order('dungeon_id', { ascending: true });
+    fail(error, 'dungeon_progress.select');
+    return (data ?? []).map((r: any) => ({ dungeonId: r.dungeon_id, bestRoom: r.best_room, bossDefeatedTier: r.boss_defeated_tier, lastRunDate: r.last_run_date ?? null }));
+  }
+
+  async saveDungeonProgress(userId: string, p: any): Promise<void> {
+    const { error } = await this.db.from('dungeon_progress').upsert(
+      { profile_id: userId, dungeon_id: p.dungeonId, best_room: p.bestRoom, boss_defeated_tier: p.bossDefeatedTier, last_run_date: p.lastRunDate ?? null },
+      { onConflict: 'profile_id,dungeon_id' },
+    );
+    fail(error, 'dungeon_progress.upsert');
+  }
+
+  // ───── Raids d'amis
+  async areFriends(a: string, b: string): Promise<boolean> {
+    if (a === b) return false;
+    const { data, error } = await this.db.rpc('can_view_owner', { viewer: a, owner: b });
+    fail(error, 'can_view_owner');
+    return data === true;
+  }
+
+  async getRaidTeam(teamId: string): Promise<any | null> {
+    const { data, error } = await this.db.from('raid_teams').select('*').eq('id', teamId).maybeSingle();
+    fail(error, 'raid_teams.select');
+    return data ? toTeam(data) : null;
+  }
+
+  async listRaidMemberships(userId: string, since: string): Promise<any[]> {
+    const { data, error } = await this.db.from('raid_members').select('*').eq('profile_id', userId).gte('week_start', since).order('week_start', { ascending: true }).order('team_id', { ascending: true });
+    fail(error, 'raid_members.select');
+    return (data ?? []).map(toMember);
+  }
+
+  async listRaidMembers(teamId: string): Promise<any[]> {
+    const { data, error } = await this.db.from('raid_members').select('*').eq('team_id', teamId).order('created_at', { ascending: true }).order('profile_id', { ascending: true });
+    fail(error, 'raid_members.list');
+    return (data ?? []).map(toMember);
+  }
+
+  async insertRaidTeam(team: any, leader: any): Promise<boolean> {
+    const { error } = await this.db.from('raid_teams').insert({ id: team.id, week_start: team.weekStart, leader_id: team.leaderId, created_at: team.createdAt });
+    fail(error, 'raid_teams.insert');
+    const r = memberWrite((await this.db.from('raid_members').insert(fromMember(leader))).error, 'raid_members.insert');
+    if (r === 'ok') return true;
+    await this.db.from('raid_teams').delete().eq('id', team.id);
+    if (r === 'conflict' || r === 'duplicate') return false;
+    throw new Error(`raid_members.insert: ${r}`);
+  }
+
+  async insertRaidMember(m: any): Promise<'ok' | 'duplicate' | 'full' | 'not-friend' | 'conflict'> {
+    return memberWrite((await this.db.from('raid_members').insert(fromMember(m))).error, 'raid_members.insert');
+  }
+
+  async joinRaidMember(teamId: string, profileId: string, at: string): Promise<'ok' | 'duplicate' | 'full' | 'not-friend' | 'conflict'> {
+    const { data, error } = await this.db.from('raid_members').update({ status: 'joined', joined_at: at }).eq('team_id', teamId).eq('profile_id', profileId).eq('status', 'invited').select('profile_id');
+    const r = memberWrite(error, 'raid_members.join');
+    if (r !== 'ok') return r;
+    return (data?.length ?? 0) > 0 ? 'ok' : 'conflict';
+  }
+
+  async deleteRaidMember(teamId: string, profileId: string): Promise<void> {
+    // Les dégâts et les encouragements du membre partent avec lui (clés étrangères en cascade).
+    const { error } = await this.db.from('raid_members').delete().eq('team_id', teamId).eq('profile_id', profileId);
+    fail(error, 'raid_members.delete');
+  }
+
+  async deleteRaidInvites(profileId: string, weekStart: string): Promise<void> {
+    const { error } = await this.db.from('raid_members').delete().eq('profile_id', profileId).eq('week_start', weekStart).eq('status', 'invited');
+    fail(error, 'raid_members.invites');
+  }
+
+  async setRaidLeader(teamId: string, leaderId: string): Promise<void> {
+    const { error } = await this.db.from('raid_teams').update({ leader_id: leaderId }).eq('id', teamId);
+    fail(error, 'raid_teams.leader');
+  }
+
+  async deleteRaidTeam(teamId: string): Promise<void> {
+    const { error } = await this.db.from('raid_teams').delete().eq('id', teamId);
+    fail(error, 'raid_teams.delete');
+  }
+
+  async resolveRaidTeam(teamId: string, r: any): Promise<boolean> {
+    const { data, error } = await this.db
+      .from('raid_teams')
+      .update({ resolved_at: r.at, outcome: r.outcome, max_hp: r.maxHp, total_damage: r.totalDamage, victory_day: r.victoryDay })
+      .eq('id', teamId)
+      .is('resolved_at', null)
+      .select('id');
+    fail(error, 'raid_teams.resolve');
+    return (data?.length ?? 0) > 0;
+  }
+
+  async listRaidDamage(teamId: string): Promise<any[]> {
+    const { data, error } = await this.db.from('raid_damage').select('*').eq('team_id', teamId).order('game_date', { ascending: true }).order('profile_id', { ascending: true });
+    fail(error, 'raid_damage.select');
+    return (data ?? []).map((r: any) => ({
+      teamId: r.team_id, profileId: r.profile_id, gameDate: r.game_date, damage: r.damage, baseDamage: r.base_damage, encouragements: r.encouragements,
+    }));
+  }
+
+  async insertRaidDamage(d: any): Promise<boolean> {
+    const { error } = await this.db.from('raid_damage').insert({
+      team_id: d.teamId, profile_id: d.profileId, game_date: d.gameDate, damage: d.damage, base_damage: d.baseDamage, encouragements: d.encouragements,
+    });
+    if (error && (error.code === '23505' || /duplicate key|unique/i.test(error.message ?? ''))) return false;
+    fail(error, 'raid_damage.insert');
+    return true;
+  }
+
+  async updateRaidDamage(teamId: string, profileId: string, gameDate: string, patch: any): Promise<void> {
+    const { error } = await this.db.from('raid_damage').update({ damage: patch.damage, encouragements: patch.encouragements }).eq('team_id', teamId).eq('profile_id', profileId).eq('game_date', gameDate);
+    fail(error, 'raid_damage.update');
+  }
+
+  async listRaidEncouragements(teamId: string, gameDate: string): Promise<any[]> {
+    const { data, error } = await this.db.from('raid_encouragements').select('*').eq('team_id', teamId).eq('game_date', gameDate);
+    fail(error, 'raid_encouragements.select');
+    return (data ?? []).map((r: any) => ({ teamId: r.team_id, fromId: r.from_id, toId: r.to_id, gameDate: r.game_date, createdAt: r.created_at }));
+  }
+
+  async insertRaidEncouragement(e: any): Promise<boolean> {
+    const { error } = await this.db.from('raid_encouragements').insert({ team_id: e.teamId, from_id: e.fromId, to_id: e.toId, game_date: e.gameDate, created_at: e.createdAt });
+    if (error && (error.code === '23505' || /duplicate key|unique/i.test(error.message ?? ''))) return false;
+    fail(error, 'raid_encouragements.insert');
+    return true;
+  }
+
+  async notify(userId: string, type: string, payload: Record<string, unknown>): Promise<void> {
+    const { error } = await this.db.rpc('notify_user', { p_to: userId, p_type: type, p_payload: payload });
+    fail(error, 'notify_user');
+  }
+
+  // ───── Saisons
+  async upsertSeasonScore(userId: string, seasonKey: string, power: number, day: string): Promise<void> {
+    const { error } = await this.db.rpc('record_season_power', { p_profile: userId, p_season: seasonKey, p_power: power, p_day: day });
+    fail(error, 'record_season_power');
+  }
+
+  async listSeasonScores(userId: string): Promise<any[]> {
+    const { data, error } = await this.db.from('season_scores').select('*').eq('profile_id', userId).order('season_key', { ascending: true });
+    fail(error, 'season_scores.select');
+    return (data ?? []).map((r: any) => ({ seasonKey: r.season_key, power: r.power, firstDay: r.first_day, lastDay: r.last_day }));
+  }
+
+  async seasonRanking(userId: string, seasonKey: string): Promise<any[]> {
+    const { data, error } = await this.db.rpc('season_ranking', { p_viewer: userId, p_season: seasonKey });
+    fail(error, 'season_ranking');
+    return ((data ?? []) as any[]).map((r) => ({ profileId: r.profile_id, power: Number(r.power) }));
+  }
+
+  async listSeasonResults(userId: string): Promise<any[]> {
+    const { data, error } = await this.db.from('season_results').select('*').eq('profile_id', userId).order('season_key', { ascending: true });
+    fail(error, 'season_results.select');
+    return (data ?? []).map((r: any) => ({
+      seasonKey: r.season_key, rank: r.rank ?? null, participants: r.participants, power: r.power, frame: r.frame ?? null, createdAt: r.created_at,
+    }));
+  }
+
+  async insertSeasonResult(userId: string, r: any): Promise<boolean> {
+    const { error } = await this.db.from('season_results').insert({
+      profile_id: userId, season_key: r.seasonKey, rank: r.rank ?? null, participants: r.participants, power: r.power, frame: r.frame ?? null, created_at: r.createdAt,
+    });
+    // 23505 : le résultat de cette saison existe déjà (un autre appel l'a écrit avant).
+    if (error && (error.code === '23505' || /duplicate key|unique/i.test(error.message ?? ''))) return false;
+    fail(error, 'season_results.insert');
+    return true;
   }
 
   // ───── Registre d'XP

@@ -94,6 +94,8 @@ const FRAMES = ['#2f5a47', '#4a82b8', '#8a6bb8', '#c8553d', '#e0893d', '#d9ae3a'
             <div class="lu-row"><div class="grow"><span class="label">Demandes d’ami</span></div><lu-switch [checked]="flag('friendRequests')" label="Demandes d’ami" (changed)="setPref('friendRequests', $event)" /></div>
             <div class="lu-row"><div class="grow"><span class="label">Réactions</span></div><lu-switch [checked]="flag('reactions')" label="Réactions" (changed)="setPref('reactions', $event)" /></div>
             <div class="lu-row"><div class="grow"><span class="label">Commentaires</span></div><lu-switch [checked]="flag('comments')" label="Commentaires" (changed)="setPref('comments', $event)" /></div>
+            <div class="lu-row"><div class="grow"><span class="label">Raids</span><div class="sub">Invitations, encouragements et victoires de ton équipe.</div></div><lu-switch [checked]="flag('raid')" label="Raids" (changed)="setPref('raid', $event)" /></div>
+            <div class="lu-row"><div class="grow"><span class="label">Fin de saison</span><div class="sub">Ta récompense de saison : cadre de portrait et coffre d’or.</div></div><lu-switch [checked]="flag('season')" label="Fin de saison" (changed)="setPref('season', $event)" /></div>
             <button type="button" class="lu-btn small ghost inline" (click)="askPermission()"><lu-icon name="bell" [size]="15" /> Autoriser les notifications</button>
           </section>
 

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { NavController } from '@ionic/angular';
-import { ABILITY_COLOR, ABILITY_LABEL, type AbilityId } from '@levelup/engine';
+import { ABILITY_COLOR, ABILITY_LABEL, EQUIP_SLOTS, SEASON_FRAME_DEFS, parseFrameStyle, type AbilityId, type EquipSlot, type ItemRarity } from '@levelup/engine';
 import { IconComponent } from './icon.component';
 import { ABILITY_ICON, initials } from './format';
 
@@ -102,18 +102,50 @@ const PALETTES: [string, string, string][] = [
 
 export const PORTRAIT_IDS = Array.from({ length: 24 }, (_, i) => `p${String(i + 1).padStart(2, '0')}`);
 
+/** Pièce d'équipement affichée sur l'anneau du portrait : un emoji et la couleur de sa rareté, jamais d'illustration. */
+export interface PortraitGear {
+  slot: EquipSlot;
+  glyph: string;
+  rarity: ItemRarity;
+  /** Texte pour les lecteurs d'écran (« Arme : Épée du sentier, rare ») */
+  label?: string;
+}
+
+/** Couleurs de rareté des objets (anneau du portrait et onglet Aventure) */
+export const RARITY_COLOR: Record<ItemRarity, string> = {
+  commun: '#8b8f8c',
+  peu_commun: '#3f9a5c',
+  rare: '#3f7fc4',
+  epique: '#9a5fcf',
+  legendaire: '#d9822b',
+};
+
 @Component({
   selector: 'lu-portrait',
   imports: [IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <span class="portrait" [style.width.px]="size()" [style.height.px]="size()" [style.background]="bg()" [style.borderColor]="frame()">
-      <span class="glow"></span>
-      <lu-icon [name]="glyph()" [size]="size() * 0.46" [stroke]="1.6" />
+    <span class="wrap" [style.width.px]="box()" [style.height.px]="box()" [attr.role]="gearLabel() ? 'img' : null" [attr.aria-label]="gearLabel()">
+      <span class="portrait" [style.width.px]="size()" [style.height.px]="size()" [style.background]="bg()" [style.borderColor]="frame()" [style.--season]="season()?.color ?? null" [class.seasoned]="!!season()">
+        <span class="glow"></span>
+        <lu-icon [name]="glyph()" [size]="size() * 0.46" [stroke]="1.6" />
+      </span>
+      @for (g of ring(); track g.slot) {
+        <span class="gear" [class.empty]="!g.item" aria-hidden="true" [style.left.px]="g.x" [style.top.px]="g.y" [style.width.px]="pastille()" [style.height.px]="pastille()"
+          [style.fontSize.px]="pastille() * 0.62" [style.borderColor]="g.item ? rarityColor[g.item.rarity] : null" [attr.data-slot]="g.slot" [attr.data-rarity]="g.item?.rarity ?? null">{{ g.item?.glyph ?? '' }}</span>
+      }
+      @if (season(); as sf) {
+        <span class="medal" aria-hidden="true" [style.width.px]="pastille()" [style.height.px]="pastille()" [style.fontSize.px]="pastille() * 0.62" [attr.title]="sf.label">{{ sf.glyph }}</span>
+      }
     </span>
   `,
   styles: `
     :host { display: inline-flex; }
+    .wrap { position: relative; display: grid; place-items: center; flex: none; }
+    .gear { position: absolute; transform: translate(-50%, -50%); display: grid; place-items: center; border-radius: 50%; background: var(--lu-surface, #fff); border: 2px solid var(--lu-border-strong, #888); line-height: 1; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .gear.empty { background: transparent; border-style: dashed; opacity: .45; box-shadow: none; }
+    .medal { position: absolute; right: 0; bottom: 0; display: grid; place-items: center; border-radius: 50%; background: var(--lu-surface, #fff); box-shadow: 0 1px 3px rgba(0,0,0,.35); line-height: 1; }
+    .portrait.seasoned { box-shadow: inset 0 0 0 2px rgba(255,255,255,.06), 0 0 0 3px var(--lu-surface, #fff), 0 0 0 5px var(--season); }
     .portrait { position: relative; display: grid; place-items: center; border-radius: 50%; border: 3px solid; overflow: hidden; color: var(--ink); box-shadow: inset 0 0 0 2px rgba(255,255,255,.06); }
     .glow { position: absolute; inset: 0; background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.28), transparent 55%); }
     lu-icon { position: relative; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
@@ -124,6 +156,31 @@ export class PortraitComponent {
   readonly id = input('p01');
   readonly size = input(64);
   readonly frame = input('#2f5a47');
+  /** Équipement porté (au plus un objet par emplacement) : 6 pastilles sur l'anneau quand la liste n'est pas vide */
+  readonly gear = input<readonly PortraitGear[]>([]);
+  /** Cadre cosmétique de fin de saison, `S1:or` */
+  readonly frameStyle = input<string | null | undefined>(null);
+  readonly rarityColor = RARITY_COLOR;
+  readonly season = computed(() => {
+    const f = parseFrameStyle(this.frameStyle());
+    return f ? SEASON_FRAME_DEFS[f.frame] : null;
+  });
+  readonly hasGear = computed(() => this.gear().length > 0);
+  /** Diamètre d'une pastille : un tiers du portrait, de 18 à 30 px */
+  readonly pastille = computed(() => (this.hasGear() || this.season() ? Math.min(30, Math.max(18, Math.round(this.size() * 0.3))) : 0));
+  /** Côté du cadre englobant : le portrait plus la moitié d'une pastille de chaque côté */
+  readonly box = computed(() => this.size() + (this.hasGear() || this.season() ? this.pastille() : 0));
+  /** Position (px) des 6 emplacements sur l'anneau, en partant du haut, dans l'ordre des emplacements */
+  readonly ring = computed(() => {
+    if (!this.hasGear()) return [];
+    const half = this.box() / 2;
+    const r = this.size() / 2;
+    return EQUIP_SLOTS.map((slot, i) => {
+      const a = ((-90 + i * 60) * Math.PI) / 180;
+      return { slot, x: half + r * Math.cos(a), y: half + r * Math.sin(a), item: this.gear().find((g) => g.slot === slot) };
+    });
+  });
+  readonly gearLabel = computed(() => (this.hasGear() ? 'Équipement : ' + this.gear().map((g) => g.label ?? g.glyph).join(', ') : null));
   private idx = computed(() => Math.max(PORTRAIT_IDS.indexOf(this.id()), 0));
   readonly glyph = computed(() => GLYPHS[this.idx() % 8]);
   private pal = computed(() => PALETTES[Math.floor(this.idx() / 8) % 3]);
