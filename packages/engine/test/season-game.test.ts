@@ -142,7 +142,7 @@ describe('évaluation de fin de saison', () => {
     w.at('2026-11-22'); // dernier jour de la saison 1
     const during = await getSeasonState(w.ctx, A);
     expect(during.ok && during.state.evaluated).toEqual([]);
-    expect(await w.store.listChests(A)).toHaveLength(0);
+    expect(await w.store.listChests(A).then((l) => l.filter((c) => c.source === 'season'))).toHaveLength(0);
 
     w.at('2026-11-24'); // saison 2
     const r = await getSeasonState(w.ctx, A);
@@ -152,7 +152,7 @@ describe('évaluation de fin de saison', () => {
     expect(r.state.evaluated[0]).toMatchObject({ seasonKey: 'S1', name: 'Saison 1', rank: 1, participants: 1, frame: 'laurier', chest: true });
     expect(r.character.frameStyle).toBe('S1:laurier');
     expect(r.state.frame).toMatchObject({ season: 'S1', frame: 'laurier', label: 'Cadre de laurier' });
-    const chests = await w.store.listChests(A);
+    const chests = await w.store.listChests(A).then((l) => l.filter((c) => c.source === 'season'));
     expect(chests).toEqual([expect.objectContaining({ rarity: 'or', source: 'season', sourceKey: 'S1', openedAt: null })]);
     expect(w.store.notifications.filter((x) => x.type === 'season_end')).toEqual([
       { userId: A, type: 'season_end', payload: { season: 'S1', name: 'Saison 1', rank: 1, participants: 1, frame: 'laurier' } },
@@ -170,14 +170,14 @@ describe('évaluation de fin de saison', () => {
     const c = (await w.store.getCharacter(A))!;
     const again = await evaluateSeasons(w.ctx, A, c, '2026-11-24', await w.store.getSettings(A));
     expect(again.evaluated).toEqual([]);
-    expect(await w.store.listChests(A)).toHaveLength(1);
+    expect(await w.store.listChests(A).then((l) => l.filter((c) => c.source === 'season'))).toHaveLength(1);
     expect(w.store.notifications.filter((x) => x.type === 'season_end')).toHaveLength(1);
     expect(await w.store.listSeasonResults(A)).toHaveLength(1);
     // un coffre déjà ouvert n'est jamais redonné
-    const chest = (await w.store.listChests(A))[0];
+    const chest = (await w.store.listChests(A).then((l) => l.filter((c) => c.source === 'season')))[0];
     await w.store.markChestOpened(A, chest.id, '2026-11-24T10:00:00Z');
     await getSeasonState(w.ctx, A);
-    expect(await w.store.listChests(A)).toHaveLength(1);
+    expect(await w.store.listChests(A).then((l) => l.filter((c) => c.source === 'season'))).toHaveLength(1);
   });
 
   it('classement entre amis : podium, cadres et rangs', async () => {
@@ -240,7 +240,7 @@ describe('évaluation de fin de saison', () => {
     const r = await getSeasonState(w.ctx, A);
     if (!r.ok) throw new Error('état');
     expect(r.state.evaluated[0]).toMatchObject({ seasonKey: 'S1', frame: null, chest: false, rank: null });
-    expect(await w.store.listChests(A)).toHaveLength(0);
+    expect(await w.store.listChests(A).then((l) => l.filter((c) => c.source === 'season'))).toHaveLength(0);
     expect(w.store.notifications.filter((x) => x.type === 'season_end')).toEqual([]);
     expect(r.character.frameStyle).toBeNull();
     // et il ne sera pas réévalué
@@ -259,7 +259,7 @@ describe('évaluation de fin de saison', () => {
     expect(r.state.evaluated.map((e) => e.seasonKey)).toEqual(['S2']);
     expect(r.character.frameStyle).toBe('S2:laurier');
     expect(r.state.results.map((e) => e.seasonKey)).toEqual(['S2', 'S1']);
-    expect((await w.store.listChests(A)).map((c) => c.sourceKey)).toEqual(['S1', 'S2']);
+    expect((await w.store.listChests(A).then((l) => l.filter((c) => c.source === 'season'))).map((c) => c.sourceKey)).toEqual(['S1', 'S2']);
   });
 
   it('une notification manquée ne bloque pas la lecture', async () => {

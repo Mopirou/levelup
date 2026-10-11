@@ -8,6 +8,7 @@ import {
   ITEM_MAX_LEVEL,
   MAX_KEYS,
   MERGE_COUNT,
+  DAILY_FREE_CHEST,
   dailyChestRarity,
   dismantleValue,
   drawChest,
@@ -230,6 +231,8 @@ export async function getAdventureState(ctx: ServerContext, userId: string): Pro
   // Fin de saison : récompense versée à la première lecture après la clôture (idempotent), puis puissance publiée.
   const season = await evaluateSeasons(ctx, userId, env.character, env.today, env.settings);
   env.character = season.character;
+  // Coffre quotidien offert : un coffre de bois par jour de jeu, à la première lecture (idempotent : clé = jour).
+  await ctx.store.insertChest(userId, newChest(env, DAILY_FREE_CHEST, 'daily', env.today));
   const state: AdventureState = { ...(await stateOf(env)), seasonEvaluated: season.evaluated };
   env.character = await recordPower(ctx, userId, env.character, state.power, env.today);
   return { ok: true, state, character: env.character };

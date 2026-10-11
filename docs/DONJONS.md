@@ -53,6 +53,7 @@ PP = niveau × 10 + Σ(scores des 6 caractéristiques) + Σ(PP des objets équip
 ### 5.2 Sources (volontairement rares)
 | Événement | Coffre |
 |---|---|
+| Chaque jour de jeu, à la première lecture de l'aventure (source `daily`, clé = jour, aucune quête requise) | `bois` offert |
 | 1re quête `origin='track'` validée du jour (1/jour max) | `bois`, ou `bronze` si série >= 7, `argent` si série >= 30 |
 | Promotion d'échelon d'un parcours | `bronze` (échelons 1-4), `argent` (5-7), `or` (8-9), `mythique` (10) |
 | Jalon de série 7 / 30 / 100 jours | `argent` / `or` / `mythique` |
@@ -119,7 +120,7 @@ Implémentés dans `packages/engine/src/raid.ts` (règles pures) et `packages/en
 - **Récompense** : coffre `or` pour tous les membres joints si le boss tombe, **`mythique` s'il tombe en moins de 4 jours** (jours de jeu écoulés depuis le lundi, aujourd'hui compris : victoire lundi, mardi ou mercredi). Clé d'idempotence du coffre : `source='raid'`, `source_key='{semaine}:{équipe}'` (ex. `2026-W42:<uuid>`).
 - **Clôture paresseuse, idempotente** (pas de cron) : à chaque lecture (`raid-state`, `complete`, `raid-*`) le serveur (1) clôt les raids des semaines passées encore ouverts (défaite, ou `void` si l'équipe n'a jamais compté 2 membres : ni récompense ni notification), (2) constate la **victoire dès que les dégâts cumulés atteignent les PV** avec 2 membres au moins (avant de frapper un boss déjà mort), (3) applique le coup du jour. La clôture est atomique (`resolved_at is null`) : les coffres sont versés avant, de façon idempotente, et seul l'appel qui clôt envoie les notifications. PV et dégâts sont figés à la clôture.
 - **Notifications** (`notify_user`, une par événement) : `raid_invite` (à l'invité, une fois même si on le ré-invite), `raid_encouraged` (à la cible), `raid_victory` (à chaque membre, à la clôture victorieuse). Préférence `notifPrefs.raid` (activée par défaut ; `false` coupe les trois). Rien d'autre : pas de rappel, pas de notification de défaite.
-- **Mode local** : pas d'équipes. `raid-state` renvoie le boss de la semaine avec `available: false` ; les commandes répondent `forbidden` avec un message.
+- **Mode local** : pas d'équipes ; `raid-state` renvoie `available: false` et l'interface n'affiche pas la carte Raid. Les commandes répondent `forbidden`.
 
 ## 9. Habillage (V3)
 

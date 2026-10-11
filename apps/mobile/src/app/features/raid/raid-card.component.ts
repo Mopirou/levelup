@@ -16,7 +16,7 @@ const CHEST_NAME: Record<string, string> = { bois: 'de bois', bronze: 'de bronze
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (r(); as st) {
-      <section class="lu-card" [class.off]="!st.available" aria-labelledby="h-raid" data-testid="raid-card">
+      <section class="lu-card" aria-labelledby="h-raid" data-testid="raid-card">
         <div class="row">
           <h2 id="h-raid" class="sh"><span aria-hidden="true">⚔️</span> Raid d’amis</h2>
           <span class="lu-chip" data-testid="raid-week">{{ st.week }}</span>
@@ -30,9 +30,6 @@ const CHEST_NAME: Record<string, string> = { bois: 'de bois', bronze: 'de bronze
           </div>
         </div>
 
-        @if (!st.available) {
-          <p class="small" data-testid="raid-local">Les raids se jouent entre amis : crée un compte et ajoute des amis pour affronter le boss de la semaine ensemble. En mode local, tu peux seulement voir le boss.</p>
-        } @else {
           @if (st.hit; as hit) {
             <p class="hit" role="status" data-testid="raid-hit">
               ⚔️ Ton coup du jour : <strong>{{ fmt(hit.damage) }}</strong> dégâts{{ hit.encouragements > 0 ? ' (encouragements compris)' : '' }}.
@@ -125,7 +122,6 @@ const CHEST_NAME: Record<string, string> = { bois: 'de bois', bronze: 'de bronze
               }
             </p>
           }
-        }
       </section>
 
       @if (inviting()) {
@@ -178,7 +174,11 @@ export class RaidCardComponent {
   private be = inject(BackendService);
   private ui = inject(UiService);
   readonly fmt = fmt;
-  readonly r = this.game.raid;
+  /** Les raids se jouent entre amis : sans compte (mode local), la carte n'est pas affichée. */
+  readonly r = computed(() => {
+    const s = this.game.raid();
+    return s?.available ? s : null;
+  });
   readonly busy = signal(false);
   readonly inviting = signal(false);
   readonly friends = signal<FriendRow[]>([]);

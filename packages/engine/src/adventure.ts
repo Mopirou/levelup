@@ -242,6 +242,9 @@ export function rollExpeditionKey(seed: string, chance: number): boolean {
 
 // ───────────────────────── Coffres ─────────────────────────
 
+/** Coffre offert chaque jour de jeu à la première lecture de l'aventure, quelles que soient les quêtes validées. */
+export const DAILY_FREE_CHEST: ChestRarity = 'bois';
+
 /** Coffre donné par la 1re quête de parcours du jour : bois, bronze dès 7 jours de série, argent dès 30. */
 export function dailyChestRarity(streak: number): ChestRarity {
   return streak >= 30 ? 'argent' : streak >= 7 ? 'bronze' : 'bois';

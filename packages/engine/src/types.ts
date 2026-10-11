@@ -262,7 +262,7 @@ export interface InventoryItem {
 }
 
 /** D'où vient un coffre : quête du jour, promotion d'échelon, jalon de série, boss de donjon, fusion, raid (V2). */
-export type ChestSource = 'quest' | 'rung' | 'streak' | 'dungeon' | 'merge' | 'raid' | 'season';
+export type ChestSource = 'quest' | 'rung' | 'streak' | 'dungeon' | 'merge' | 'raid' | 'season' | 'daily';
 
 export interface Chest {
   id: string;

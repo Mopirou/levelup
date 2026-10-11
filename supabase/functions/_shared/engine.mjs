@@ -1152,6 +1152,7 @@ function expeditionYield(input) {
 function rollExpeditionKey(seed, chance) {
   return createRng(`${seed}|key`)() < chance;
 }
+var DAILY_FREE_CHEST = "bois";
 function dailyChestRarity(streak) {
   return streak >= 30 ? "argent" : streak >= 7 ? "bronze" : "bois";
 }
@@ -4372,6 +4373,7 @@ async function getAdventureState(ctx, userId) {
   }
   const season = await evaluateSeasons(ctx, userId, env.character, env.today, env.settings);
   env.character = season.character;
+  await ctx.store.insertChest(userId, newChest(env, DAILY_FREE_CHEST, "daily", env.today));
   const state = { ...await stateOf(env), seasonEvaluated: season.evaluated };
   env.character = await recordPower(ctx, userId, env.character, state.power, env.today);
   return { ok: true, state, character: env.character };
@@ -6954,6 +6956,7 @@ export {
   CHEST_RARITIES,
   CHEST_TABLE,
   CLASSES3 as CLASSES,
+  DAILY_FREE_CHEST,
   DIFFICULTIES,
   DIFFICULTY_LABEL,
   DIFFICULTY_SWORDS,

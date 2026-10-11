@@ -129,11 +129,24 @@ describe('personnage et état de l’aventure', () => {
     const st = r.state;
     expect(st.power).toBe(st.powerBreakdown.level + st.powerBreakdown.scores + st.powerBreakdown.items + st.powerBreakdown.sets);
     expect(st.powerBreakdown.level).toBe(10);
-    expect(st).toMatchObject({ gold: 0, fragments: 0, keys: 0, maxKeys: MAX_KEYS, items: [], chests: [], opens: { today: 0, max: CHEST_OPENS_PER_DAY, remaining: 2 } });
-    expect(st.chestCounts).toEqual({ bois: 0, bronze: 0, argent: 0, or: 0, mythique: 0 });
+    expect(st).toMatchObject({ gold: 0, fragments: 0, keys: 0, maxKeys: MAX_KEYS, items: [], opens: { today: 0, max: CHEST_OPENS_PER_DAY, remaining: 2 } });
+    // Coffre de bois offert chaque jour, sans aucune quête validée
+    expect(st.chests).toHaveLength(1);
+    expect(st.chests[0]).toMatchObject({ rarity: 'bois', source: 'daily', sourceKey: date(5) });
+    expect(st.chestCounts).toEqual({ bois: 1, bronze: 0, argent: 0, or: 0, mythique: 0 });
     expect(st.expedition).toMatchObject({ hours: 5, capped: false, capHours: 24, claimable: true });
     expect(st.expedition.gold).toBeGreaterThan(0);
     expect(st.today).toBe(date(5));
+  });
+
+  it('coffre quotidien offert : un seul par jour de jeu, un nouveau le lendemain', async () => {
+    const s = await hero();
+    await getAdventureState(s.ctx, U);
+    const again = await getAdventureState(s.ctx, U);
+    expect(again.ok && again.state.chests.filter((c) => c.source === 'daily')).toHaveLength(1);
+    s.advanceHours(24);
+    const next = await getAdventureState(s.ctx, U);
+    expect(next.ok && next.state.chests.filter((c) => c.source === 'daily')).toHaveLength(2);
   });
 
   it('sans personnage : no-character partout', async () => {
