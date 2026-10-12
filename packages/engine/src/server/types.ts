@@ -14,6 +14,7 @@ import type {
   QuestTemplate,
   SettingsCore,
   SpellKnown,
+  CardOwned,
   TrackState,
 } from '../types';
 
@@ -179,6 +180,10 @@ export interface GameStore {
   listSpells(userId: string): Promise<SpellKnown[]>;
   /** Crée ou met à jour une capacité connue (clé : joueur + capacité). */
   saveSpell(userId: string, spell: SpellKnown): Promise<void>;
+  /** Cartes de la collection du joueur (docs/COLLECTION.md) : une ligne par carte, `copies` ≥ 1 */
+  listCards(userId: string): Promise<CardOwned[]>;
+  /** Crée ou met à jour une carte possédée (clé : joueur + carte). */
+  saveCard(userId: string, card: CardOwned): Promise<void>;
 
   // ───── Raids d'amis (V2). Données partagées entre joueurs : les méthodes prennent des identifiants explicites.
   /** Amis acceptés et non bloqués (même règle que `can_view_owner`) */

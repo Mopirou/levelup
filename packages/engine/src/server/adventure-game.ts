@@ -34,13 +34,16 @@ import {
   type DungeonRunResult,
   type ExpeditionYield,
 } from '../adventure';
+import { cardDuplicateFragments, collectionProgress, type CollectionProgress } from '../cards';
 import { gameDate } from '../dates';
+import { SHOP_OFFERS, shopPrice, type ShopOffer } from '../shop';
 import { ClassDef, masteriesOf } from '../content-types';
 import { setsProgress, type SetProgress } from '../sets';
 import { freeSpellSlot, nextSpellLevel, spellEffectLabel, spellEffectPoints, type SpellBonuses } from '../spells';
 import {
   AbilityId,
   CHEST_RARITIES,
+  CardOwned,
   Chest,
   ChestPity,
   ChestRarity,
@@ -58,7 +61,7 @@ import {
   SpellKnown,
 } from '../types';
 import type { GameError, Result } from './game';
-import { SETS, SPELL_BY_ID, SPELL_DEFS, buildSnapshot, withItemClass, type HeroSnapshot } from './hero-stats';
+import { CARD_BY_ID, CARD_DEFS, SETS, SPELL_BY_ID, SPELL_DEFS, buildSnapshot, withItemClass, type HeroSnapshot } from './hero-stats';
 import { evaluateSeasons, recordPower, type SeasonResultView } from './season-game';
 import type { CharacterRecord, GameStore, ServerContext, SettingsRecord } from './types';
 
@@ -194,10 +197,20 @@ export interface AdventureState {
   setBonus: { pp: number; abilities: Partial<Record<AbilityId, number>> };
   /** Grimoire (V4) : capacités connues, emplacements (3) et bonus actifs (plafonnés) */
   grimoire: GrimoireState;
+  /** Boutique : coffres en vente contre des fragments */
+  shop: ShopOffer[];
+  /** Collection « Bestiaire & Reliques » : cartes possédées et avancement */
+  collection: CollectionState;
   /** Classe du héros : l'affinité donne +20 % de PP aux objets de sa classe, +25 % d'effet à ses capacités */
   heroClass: string;
   /** Saisons terminées évaluées par cette lecture (récompense versée une seule fois : à annoncer) */
   seasonEvaluated: SeasonResultView[];
+}
+
+/** Collection de cartes : possédées (id et exemplaires) et avancement par rareté et par type. */
+export interface CollectionState {
+  cards: CardOwned[];
+  progress: CollectionProgress;
 }
 
 /** Capacité connue, avec ses valeurs calculées pour l'affichage. */
@@ -274,7 +287,7 @@ function expeditionOf(env: AdvEnv, snap: Snapshot): ExpeditionState {
 }
 
 async function stateOf(env: AdvEnv): Promise<AdventureState> {
-  const [snap, chests] = await Promise.all([snapshot(env), env.ctx.store.listChests(env.userId, { opened: false })]);
+  const [snap, chests, cards] = await Promise.all([snapshot(env), env.ctx.store.listChests(env.userId, { opened: false }), env.ctx.store.listCards(env.userId)]);
   const counts = Object.fromEntries(CHEST_RARITIES.map((r) => [r, 0])) as Record<ChestRarity, number>;
   for (const c of chests) counts[c.rarity]++;
   const used = opensToday(env.character, env.today);
@@ -299,6 +312,8 @@ async function stateOf(env: AdvEnv): Promise<AdventureState> {
     sets: setsProgress(SETS, snap.items),
     setBonus: { pp: snap.setBonus.pp, abilities: snap.setBonus.abilities },
     grimoire: grimoireOf(snap, env.classId),
+    shop: [...SHOP_OFFERS],
+    collection: { cards, progress: collectionProgress(CARD_DEFS, cards) },
     heroClass: env.classId,
     seasonEvaluated: [],
   };
@@ -377,12 +392,25 @@ export interface SpellGain {
   fragments: number;
 }
 
+/** Carte obtenue dans un coffre : nouvelle, ou doublon (qui rend des fragments). */
+export interface CardGain {
+  cardId: string;
+  rarity: ItemRarity;
+  isNew: boolean;
+  /** Exemplaires possédés après l'ouverture */
+  copies: number;
+  /** Fragments rendus par un doublon (0 pour une nouvelle carte) */
+  fragments: number;
+}
+
 export interface ChestOpening {
   chest: Chest;
   /** Objet obtenu (null quand le coffre donne une capacité) */
   item: ItemView | null;
-  /** Capacité obtenue (null quand le coffre donne un objet) */
+  /** Capacité obtenue (null quand le coffre donne un objet ou une carte) */
   spell: SpellGain | null;
+  /** Carte de la collection obtenue (null quand le coffre donne un objet ou une capacité) */
+  card: CardGain | null;
   gold: number;
   fragments: number;
   /** La pitié a imposé la rareté de l'objet */
@@ -400,7 +428,7 @@ export async function openChest(ctx: ServerContext, userId: string, input: { che
   if (chest.openedAt) return fail('not-found', 'Ce coffre est déjà ouvert.');
   const used = opensToday(env.character, env.today);
   if (used >= CHEST_OPENS_PER_DAY) return fail('daily-cap', `Tu as déjà ouvert ${CHEST_OPENS_PER_DAY} coffres aujourd’hui : reviens demain.`);
-  const snap = await snapshot(env);
+  const [snap, ownedCards] = await Promise.all([snapshot(env), ctx.store.listCards(userId)]);
   const draw = drawChest({
     chest: chest.rarity,
     sag: snap.scores.SAG,
@@ -411,11 +439,14 @@ export async function openChest(ctx: ServerContext, userId: string, input: { che
     spells: SPELL_DEFS,
     classId: env.classId,
     chestShift: snap.spellBonus.chest,
+    cards: CARD_DEFS,
+    ownedCards: new Set(ownedCards.map((c) => c.cardId)),
   });
   // Ouverture atomique : un double appel ne donne qu'un seul objet.
   if (!(await ctx.store.markChestOpened(userId, chest.id, env.nowIso))) return fail('not-found', 'Ce coffre est déjà ouvert.');
   let item: InventoryItem | null = null;
   let spell: SpellGain | null = null;
+  let card: CardGain | null = null;
   let extraFragments = 0;
   if (draw.template) {
     item = {
@@ -438,6 +469,13 @@ export async function openChest(ctx: ServerContext, userId: string, input: { che
     const after: SpellKnown = { spellId: draw.spell.id, level: next ?? SPELL_MAX_LEVEL, equippedSlot: known?.equippedSlot ?? null };
     if (next !== null) await ctx.store.saveSpell(userId, after);
     spell = { spell: spellViewOf(after, env.classId)!, isNew: !known, levelBefore: before, fragments: extraFragments };
+  } else if (draw.card) {
+    // Carte déjà possédée : un exemplaire de plus et quelques fragments. Nouvelle : elle entre dans la collection.
+    const have = ownedCards.find((c) => c.cardId === draw.card!.id);
+    const copies = (have?.copies ?? 0) + 1;
+    if (have) extraFragments = cardDuplicateFragments(draw.card.rarity);
+    await ctx.store.saveCard(userId, { cardId: draw.card.id, copies });
+    card = { cardId: draw.card.id, rarity: draw.card.rarity, isNew: !have, copies, fragments: extraFragments };
   }
   const character: CharacterRecord = {
     ...env.character,
@@ -455,6 +493,7 @@ export async function openChest(ctx: ServerContext, userId: string, input: { che
       chest: { ...chest, openedAt: env.nowIso },
       item: item ? viewOf(item, env.classId) : null,
       spell,
+      card,
       gold: draw.gold,
       fragments: draw.fragments + extraFragments,
       guaranteed: draw.guaranteed,
@@ -462,6 +501,20 @@ export async function openChest(ctx: ServerContext, userId: string, input: { che
     },
     character: synced,
   };
+}
+
+/** Achète un coffre en boutique (bois, bronze ou argent) contre des fragments. Il rejoint les coffres fermés : l'ouverture reste limitée par jour. */
+export async function buyChest(ctx: ServerContext, userId: string, input: { rarity: ChestRarity }): Promise<Result<{ chest: Chest; price: number; character: CharacterRecord }>> {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail('no-character');
+  const price = shopPrice(input.rarity);
+  if (price === null) return fail('invalid', 'Ce coffre n’est pas en vente.');
+  if (env.character.fragments < price) return fail('insufficient', 'Il te faut ' + price + ' fragments pour ce coffre.');
+  const chest = newChest(env, input.rarity, 'shop', ctx.uuid());
+  if (!(await ctx.store.insertChest(userId, chest))) return fail('invalid', 'Achat impossible : réessaie.');
+  const character: CharacterRecord = { ...env.character, fragments: env.character.fragments - price };
+  await ctx.store.saveCharacter(userId, character);
+  return { ok: true, chest, price, character };
 }
 
 /** Fusion : 3 coffres fermés de même rareté donnent 1 coffre de rareté supérieure (instantané, hors plafond d'ouverture). */

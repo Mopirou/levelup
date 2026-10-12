@@ -819,6 +819,9 @@ export class GameService {
   async openChest(chestId: string): Promise<ChestOpening | null> {
     return (await this.adventureCmd(() => this.be.game.chestOpen(chestId)))?.opening ?? null;
   }
+  async buyChest(rarity: ChestRarity): Promise<{ chest: Chest; price: number } | null> {
+    return this.adventureCmd(() => this.be.game.shopBuy(rarity));
+  }
   async mergeChests(rarity: ChestRarity): Promise<Chest | null> {
     return (await this.adventureCmd(() => this.be.game.chestMerge(rarity)))?.chest ?? null;
   }

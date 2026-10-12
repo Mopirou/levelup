@@ -40,6 +40,7 @@ export const routes: Routes = [
   guarded('companions/:username', () => import('./features/companions/companion-profile.page').then((m) => m.CompanionProfilePage)),
   guarded('messenger', () => import('./features/messenger/messenger.page').then((m) => m.MessengerPage)),
   guarded('grimoire', () => import('./features/grimoire/grimoire.page').then((m) => m.GrimoirePage)),
+  guarded('collection', () => import('./features/collection/collection.page').then((m) => m.CollectionPage)),
   guarded('forge', () => import('./features/forge/forge.page').then((m) => m.ForgePage)),
   guarded('forge/:id', () => import('./features/forge/forge.page').then((m) => m.ForgePage)),
   guarded('tracks', () => import('./features/tracks/tracks.page').then((m) => m.TracksPage)),

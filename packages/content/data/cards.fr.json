@@ -1,0 +1,482 @@
+[
+  {
+    "id": "gobelin",
+    "kind": "bestiaire",
+    "rarity": "commun",
+    "name": "Gobelin",
+    "glyph": "👺",
+    "blurb": "Petit, vif, jamais seul. Il adore tout ce qui brille, surtout ce qui n’est pas à lui."
+  },
+  {
+    "id": "kobold",
+    "kind": "bestiaire",
+    "rarity": "commun",
+    "name": "Kobold",
+    "glyph": "🦎",
+    "blurb": "Il pose des pièges partout et s’en sort toujours avec un grand sourire."
+  },
+  {
+    "id": "squelette",
+    "kind": "bestiaire",
+    "rarity": "commun",
+    "name": "Squelette",
+    "glyph": "💀",
+    "blurb": "Il marche au pas, obéit sans discuter et n’a plus rien à perdre."
+  },
+  {
+    "id": "zombie",
+    "kind": "bestiaire",
+    "rarity": "commun",
+    "name": "Zombie",
+    "glyph": "🧟",
+    "blurb": "Lent mais obstiné : il finit toujours par arriver."
+  },
+  {
+    "id": "rat-geant",
+    "kind": "bestiaire",
+    "rarity": "commun",
+    "name": "Rat géant",
+    "glyph": "🐀",
+    "blurb": "Les caves de toutes les auberges en abritent au moins un."
+  },
+  {
+    "id": "loup",
+    "kind": "bestiaire",
+    "rarity": "commun",
+    "name": "Loup",
+    "glyph": "🐺",
+    "blurb": "Il chasse en meute et déteste être pris de haut."
+  },
+  {
+    "id": "araignee-geante",
+    "kind": "bestiaire",
+    "rarity": "commun",
+    "name": "Araignée géante",
+    "glyph": "🕷️",
+    "blurb": "Elle tisse sa toile entre deux arbres et attend patiemment."
+  },
+  {
+    "id": "strige",
+    "kind": "bestiaire",
+    "rarity": "commun",
+    "name": "Strige",
+    "glyph": "🦟",
+    "blurb": "Un moustique grand comme un chat, avec beaucoup trop d’appétit."
+  },
+  {
+    "id": "potion-de-soins",
+    "kind": "relique",
+    "rarity": "commun",
+    "name": "Potion de soins",
+    "glyph": "🧪",
+    "blurb": "Le goût est horrible, l’effet est parfait. L’aventurier prudent en garde toujours une."
+  },
+  {
+    "id": "corde-de-chanvre",
+    "kind": "relique",
+    "rarity": "commun",
+    "name": "Corde de chanvre",
+    "glyph": "🪢",
+    "blurb": "Quinze mètres de corde : la solution à un nombre étonnant de problèmes."
+  },
+  {
+    "id": "torche",
+    "kind": "relique",
+    "rarity": "commun",
+    "name": "Torche",
+    "glyph": "🔥",
+    "blurb": "Éclaire le couloir, effraie les rats et enflamme parfois les rideaux."
+  },
+  {
+    "id": "rations-de-voyage",
+    "kind": "relique",
+    "rarity": "commun",
+    "name": "Rations de voyage",
+    "glyph": "🍖",
+    "blurb": "Dures, salées, et pourtant on les attend avec impatience."
+  },
+  {
+    "id": "des-pipes",
+    "kind": "relique",
+    "rarity": "commun",
+    "name": "Dés pipés",
+    "glyph": "🎲",
+    "blurb": "Ils tombent toujours du bon côté. Mieux vaut ne pas se faire prendre."
+  },
+  {
+    "id": "sac-a-dos",
+    "kind": "relique",
+    "rarity": "commun",
+    "name": "Sac à dos",
+    "glyph": "🎒",
+    "blurb": "On y met tout, on y retrouve rien, et on le porte fièrement."
+  },
+  {
+    "id": "pied-de-biche",
+    "kind": "relique",
+    "rarity": "commun",
+    "name": "Pied-de-biche",
+    "glyph": "🔧",
+    "blurb": "Plus fiable qu’un sort pour ouvrir une porte coincée."
+  },
+  {
+    "id": "dague",
+    "kind": "relique",
+    "rarity": "commun",
+    "name": "Dague",
+    "glyph": "🗡️",
+    "blurb": "Discrète, légère, toujours à portée de main."
+  },
+  {
+    "id": "ours-hibou",
+    "kind": "bestiaire",
+    "rarity": "peu_commun",
+    "name": "Ours-hibou",
+    "glyph": "🦉",
+    "blurb": "Mi-ours, mi-hibou, entièrement mauvais caractère."
+  },
+  {
+    "id": "cube-gelatineux",
+    "kind": "bestiaire",
+    "rarity": "peu_commun",
+    "name": "Cube gélatineux",
+    "glyph": "🟦",
+    "blurb": "Il nettoie les couloirs du donjon en avalant tout sur son passage, aventuriers compris."
+  },
+  {
+    "id": "harpie",
+    "kind": "bestiaire",
+    "rarity": "peu_commun",
+    "name": "Harpie",
+    "glyph": "🦅",
+    "blurb": "Son chant est si beau qu’on oublie de regarder où l’on met les pieds."
+  },
+  {
+    "id": "gnoll",
+    "kind": "bestiaire",
+    "rarity": "peu_commun",
+    "name": "Gnoll",
+    "glyph": "🐕",
+    "blurb": "Un rire qui glace le sang, et une faim qui ne s’arrête jamais."
+  },
+  {
+    "id": "ombre",
+    "kind": "bestiaire",
+    "rarity": "peu_commun",
+    "name": "Ombre",
+    "glyph": "👥",
+    "blurb": "On la prend pour la sienne jusqu’au moment où elle bouge toute seule."
+  },
+  {
+    "id": "rouilleur",
+    "kind": "bestiaire",
+    "rarity": "peu_commun",
+    "name": "Rouilleur",
+    "glyph": "🪲",
+    "blurb": "Il dévore le métal. Les guerriers en armure le redoutent plus qu’un dragon."
+  },
+  {
+    "id": "ogre",
+    "kind": "bestiaire",
+    "rarity": "peu_commun",
+    "name": "Ogre",
+    "glyph": "👹",
+    "blurb": "Pas très malin, mais le gourdin fait le reste."
+  },
+  {
+    "id": "sac-sans-fond",
+    "kind": "relique",
+    "rarity": "peu_commun",
+    "name": "Sac sans fond",
+    "glyph": "👝",
+    "blurb": "Il contient bien plus qu’il n’en a l’air. Ne jamais y mettre un autre sac sans fond."
+  },
+  {
+    "id": "cape-elfique",
+    "kind": "relique",
+    "rarity": "peu_commun",
+    "name": "Cape elfique",
+    "glyph": "🧥",
+    "blurb": "Elle se fond dans le décor, et son porteur avec."
+  },
+  {
+    "id": "baguette-de-detection-de-la-magie",
+    "kind": "relique",
+    "rarity": "peu_commun",
+    "name": "Baguette de détection de la magie",
+    "glyph": "🪄",
+    "blurb": "Elle brille dès qu’un objet enchanté se trouve à proximité. Très pratique chez un brocanteur."
+  },
+  {
+    "id": "anneau-de-saut",
+    "kind": "relique",
+    "rarity": "peu_commun",
+    "name": "Anneau de saut",
+    "glyph": "💍",
+    "blurb": "Franchir un ravin devient une simple formalité."
+  },
+  {
+    "id": "potion-de-croissance",
+    "kind": "relique",
+    "rarity": "peu_commun",
+    "name": "Potion de croissance",
+    "glyph": "🍄",
+    "blurb": "Une gorgée, et la porte semble soudain bien basse."
+  },
+  {
+    "id": "carquois-d-ehlonna",
+    "kind": "relique",
+    "rarity": "peu_commun",
+    "name": "Carquois d’Ehlonna",
+    "glyph": "🏹",
+    "blurb": "Trois compartiments, et toujours la bonne flèche au bon moment."
+  },
+  {
+    "id": "lanterne-a-capote",
+    "kind": "relique",
+    "rarity": "peu_commun",
+    "name": "Lanterne à capote",
+    "glyph": "🏮",
+    "blurb": "Une lueur chaude pour traverser les couloirs les plus sombres."
+  },
+  {
+    "id": "mimique",
+    "kind": "bestiaire",
+    "rarity": "rare",
+    "name": "Mimique",
+    "glyph": "🧰",
+    "blurb": "Ce coffre a l’air magnifique. Ne l’ouvre surtout pas… ou fais-le quand même."
+  },
+  {
+    "id": "basilic",
+    "kind": "bestiaire",
+    "rarity": "rare",
+    "name": "Basilic",
+    "glyph": "🐍",
+    "blurb": "Son regard pétrifie : l’aventurier avisé avance à reculons."
+  },
+  {
+    "id": "minotaure",
+    "kind": "bestiaire",
+    "rarity": "rare",
+    "name": "Minotaure",
+    "glyph": "🐂",
+    "blurb": "Il garde son labyrinthe et connaît chaque couloir par cœur."
+  },
+  {
+    "id": "manticore",
+    "kind": "bestiaire",
+    "rarity": "rare",
+    "name": "Manticore",
+    "glyph": "🦂",
+    "blurb": "Un visage d’homme, un corps de lion, une queue pleine de pointes. Un mauvais voisin."
+  },
+  {
+    "id": "golem-de-pierre",
+    "kind": "bestiaire",
+    "rarity": "rare",
+    "name": "Golem de pierre",
+    "glyph": "🗿",
+    "blurb": "Il ne dort jamais, ne mange jamais, et ne discute jamais non plus."
+  },
+  {
+    "id": "troll",
+    "kind": "bestiaire",
+    "rarity": "rare",
+    "name": "Troll",
+    "glyph": "🧌",
+    "blurb": "Coupe-lui un bras : il en repousse un autre. Le feu règle souvent le problème."
+  },
+  {
+    "id": "griffon",
+    "kind": "bestiaire",
+    "rarity": "rare",
+    "name": "Griffon",
+    "glyph": "🦁",
+    "blurb": "Fier, rapide, fidèle : une monture de rêve pour qui sait s’en faire respecter."
+  },
+  {
+    "id": "boule-de-cristal",
+    "kind": "relique",
+    "rarity": "rare",
+    "name": "Boule de cristal",
+    "glyph": "🔮",
+    "blurb": "On y voit tout, sauf ce qu’on cherchait vraiment."
+  },
+  {
+    "id": "trou-portatif",
+    "kind": "relique",
+    "rarity": "rare",
+    "name": "Trou portatif",
+    "glyph": "🕳️",
+    "blurb": "Un trou noir qu’on pose par terre et qu’on range ensuite dans sa poche."
+  },
+  {
+    "id": "bottes-de-vitesse",
+    "kind": "relique",
+    "rarity": "rare",
+    "name": "Bottes de vitesse",
+    "glyph": "🥾",
+    "blurb": "Un claquement de talons, et le monde ralentit autour de toi."
+  },
+  {
+    "id": "baguette-de-projectiles-magiques",
+    "kind": "relique",
+    "rarity": "rare",
+    "name": "Baguette de projectiles magiques",
+    "glyph": "✨",
+    "blurb": "Trois traits lumineux qui ne ratent jamais leur cible."
+  },
+  {
+    "id": "lame-de-flamme",
+    "kind": "relique",
+    "rarity": "rare",
+    "name": "Lame de flamme",
+    "glyph": "🔥",
+    "blurb": "Une épée qui s’embrase au mot de commande. Les marchands de bois la détestent."
+  },
+  {
+    "id": "vampire",
+    "kind": "bestiaire",
+    "rarity": "epique",
+    "name": "Vampire",
+    "glyph": "🧛",
+    "blurb": "Élégant, patient, et toujours à la recherche d’une invitation."
+  },
+  {
+    "id": "hydre",
+    "kind": "bestiaire",
+    "rarity": "epique",
+    "name": "Hydre",
+    "glyph": "🐉",
+    "blurb": "Trancher une tête n’a jamais été une bonne idée."
+  },
+  {
+    "id": "golem-de-fer",
+    "kind": "bestiaire",
+    "rarity": "epique",
+    "name": "Golem de fer",
+    "glyph": "🤖",
+    "blurb": "Un colosse forgé pour obéir, et pour ne jamais s’arrêter."
+  },
+  {
+    "id": "geant-du-givre",
+    "kind": "bestiaire",
+    "rarity": "epique",
+    "name": "Géant du givre",
+    "glyph": "🧊",
+    "blurb": "Il vit dans un palais de glace et trouve la chaleur de la taverne insupportable."
+  },
+  {
+    "id": "jeune-dragon-rouge",
+    "kind": "bestiaire",
+    "rarity": "epique",
+    "name": "Jeune dragon rouge",
+    "glyph": "🐲",
+    "blurb": "Encore petit pour un dragon, mais déjà largement assez grand pour toi."
+  },
+  {
+    "id": "flagelleur-mental",
+    "kind": "bestiaire",
+    "rarity": "epique",
+    "name": "Flagelleur mental",
+    "glyph": "🦑",
+    "blurb": "Ses tentacules cherchent des idées à dévorer. Il aime surtout les plus brillantes."
+  },
+  {
+    "id": "baton-du-pouvoir",
+    "kind": "relique",
+    "rarity": "epique",
+    "name": "Bâton du pouvoir",
+    "glyph": "🔱",
+    "blurb": "Un bâton d’archimage : chaque sort qui en sort frappe plus fort."
+  },
+  {
+    "id": "cor-de-valhalla",
+    "kind": "relique",
+    "rarity": "epique",
+    "name": "Cor de Valhalla",
+    "glyph": "🎺",
+    "blurb": "Une sonnerie suffit à convoquer des guerriers venus d’un autre monde."
+  },
+  {
+    "id": "bouteille-d-efrit",
+    "kind": "relique",
+    "rarity": "epique",
+    "name": "Bouteille d’éfrit",
+    "glyph": "🍾",
+    "blurb": "Bouchon fermé, un génie de feu s’impatiente à l’intérieur. Vaut mieux qu’il soit de bonne humeur."
+  },
+  {
+    "id": "lame-de-chance",
+    "kind": "relique",
+    "rarity": "epique",
+    "name": "Lame de chance",
+    "glyph": "🍀",
+    "blurb": "On dit qu’elle porte bonheur à celui qui la tient. Elle exauce même un souhait, parfois."
+  },
+  {
+    "id": "tarasque",
+    "kind": "bestiaire",
+    "rarity": "legendaire",
+    "name": "Tarasque",
+    "glyph": "🦖",
+    "blurb": "Une montagne de griffes et de rage. Les villages l’appellent un cataclysme."
+  },
+  {
+    "id": "tyrannoeil",
+    "kind": "bestiaire",
+    "rarity": "legendaire",
+    "name": "Tyrannœil",
+    "glyph": "👁️",
+    "blurb": "Dix yeux, dix rayons, et une fierté démesurée : il se croit toujours le plus grand."
+  },
+  {
+    "id": "liche",
+    "kind": "bestiaire",
+    "rarity": "legendaire",
+    "name": "Liche",
+    "glyph": "☠️",
+    "blurb": "Un mage si attaché à la vie qu’il a refusé d’en sortir. Son phylactère est bien caché."
+  },
+  {
+    "id": "dragon-rouge-ancien",
+    "kind": "bestiaire",
+    "rarity": "legendaire",
+    "name": "Dragon rouge ancien",
+    "glyph": "🔴",
+    "blurb": "Il dort sur une montagne d’or et n’a rien oublié, jamais, de personne."
+  },
+  {
+    "id": "jeu-du-destin",
+    "kind": "relique",
+    "rarity": "legendaire",
+    "name": "Jeu du destin",
+    "glyph": "🃏",
+    "blurb": "Tire une carte, change ta vie. Tire-en une deuxième si tu es téméraire."
+  },
+  {
+    "id": "epee-vorpale",
+    "kind": "relique",
+    "rarity": "legendaire",
+    "name": "Épée vorpale",
+    "glyph": "⚔️",
+    "blurb": "Elle tranche tout ce qui est trop sûr de sa tête."
+  },
+  {
+    "id": "sphere-d-annihilation",
+    "kind": "relique",
+    "rarity": "legendaire",
+    "name": "Sphère d’annihilation",
+    "glyph": "⚫",
+    "blurb": "Une boule de néant parfaite. Ne la touche pas. Vraiment."
+  },
+  {
+    "id": "anneau-de-souhaits",
+    "kind": "relique",
+    "rarity": "legendaire",
+    "name": "Anneau de souhaits",
+    "glyph": "💫",
+    "blurb": "Ton vœu le plus fou, exaucé. Formule-le avec soin : les génies adorent les détails."
+  }
+]

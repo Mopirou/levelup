@@ -27,6 +27,7 @@ import {
   listDungeons,
   mergeChests,
   mergeItems,
+  buyChest,
   equipSpell,
   openChest,
   unequipSpell,
@@ -122,7 +123,7 @@ const complete = (s: ReturnType<typeof setup>, q: QuestInstance, extra: Record<s
 beforeAll(async () => {
   pg = await PGlite.create({ extensions: { citext, pgcrypto } });
   await pg.exec(PLATFORM);
-  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql', '20261009000002_interests_and_tuning.sql', '20261009000003_rescale_base_scores.sql', '20261010000001_quest_runs.sql', '20261011000001_tracks.sql', '20261011000002_free_quest_default.sql', '20261012000001_adventure.sql', '20261013000001_raids.sql', '20261014000001_seasons.sql', '20261015000001_daily_chest.sql', '20261016000001_classes.sql', '20261017000001_spells.sql']) await pg.exec(read(`migrations/${f}`));
+  for (const f of ['20261008000001_schema.sql', '20261008000002_security.sql', '20261008000003_cron.sql', '20261008000004_friend_code.sql', '20261009000001_quest_themes.sql', '20261009000002_interests_and_tuning.sql', '20261009000003_rescale_base_scores.sql', '20261010000001_quest_runs.sql', '20261011000001_tracks.sql', '20261011000002_free_quest_default.sql', '20261012000001_adventure.sql', '20261013000001_raids.sql', '20261014000001_seasons.sql', '20261015000001_daily_chest.sql', '20261016000001_classes.sql', '20261017000001_spells.sql', '20261018000001_collection_shop.sql']) await pg.exec(read(`migrations/${f}`));
   await pg.exec(read('seed.sql'));
   await pg.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'a@ex.fr', '{"username":"aldric","birth_year":1994}')`, [U]);
 }, 120_000);
@@ -552,6 +553,28 @@ describe('aventure sur le vrai schéma (coffres, équipement, donjons, expéditi
     await rows(`delete from spells_known where profile_id = $1`, [V]);
   });
 
+  it('boutique et collection : achat de coffre en base (source shop), cartes écrites et lues, accès direct refusé', async () => {
+    const s = mk();
+    await pg.query(`update characters set fragments = 100 where profile_id = $1`, [V]);
+    const bought = await buyChest(s.ctx, V, { rarity: 'bronze' });
+    expect(bought.ok).toBe(true);
+    expect((await rows(`select fragments from characters where profile_id = $1`, [V]))[0].fragments).toBe(25);
+    expect((await rows(`select rarity, source from chests where profile_id = $1 and source = 'shop'`, [V]))).toEqual([{ rarity: 'bronze', source: 'shop' }]);
+    expect(await buyChest(s.ctx, V, { rarity: 'bronze' })).toMatchObject({ ok: false, error: 'insufficient' });
+    await s.store.saveCard(V, { cardId: 'mimique', copies: 1 });
+    await s.store.saveCard(V, { cardId: 'mimique', copies: 2 });
+    await s.store.saveCard(V, { cardId: 'gobelin', copies: 1 });
+    expect(await s.store.listCards(V)).toEqual([
+      { cardId: 'gobelin', copies: 1 },
+      { cardId: 'mimique', copies: 2 },
+    ]);
+    const state = await getAdventureState(s.ctx, V);
+    expect(state.ok && state.state.collection.progress.owned).toBe(2);
+    await expect(pg.query(`insert into cards_owned (profile_id, card_id, copies) values ($1, 'x', 0)`, [V])).rejects.toThrow();
+    await rows(`delete from cards_owned where profile_id = $1`, [V]);
+    await rows(`delete from chests where profile_id = $1 and source = 'shop'`, [V]);
+  });
+
   it('ouvre au plus 2 coffres par jour de jeu (plafond écrit en base), repart le lendemain', async () => {
     const s = mk();
     const cs = [chestOf('bois', 'a'), chestOf('bronze', 'b'), chestOf('argent', 'c')];
@@ -560,8 +583,11 @@ describe('aventure sur le vrai schéma (coffres, équipement, donjons, expéditi
     expect((await openChest(s.ctx, V, { chestId: cs[1].id })).ok).toBe(true);
     expect(await openChest(s.ctx, V, { chestId: cs[2].id })).toMatchObject({ ok: false, error: 'daily-cap' });
     const [c] = await rows(`select gold, fragments, chest_opens_today, chest_opens_date::text d, chest_pity from characters where profile_id = $1`, [V]);
-    expect(c).toMatchObject({ gold: 200, fragments: 20, chest_opens_today: 2, d: '2026-10-12' });
-    expect((await rows(`select count(*)::int n from inventory_items where profile_id = $1`, [V]))[0].n).toBe(2);
+    expect(c).toMatchObject({ gold: 200, chest_opens_today: 2, d: '2026-10-12' });
+    expect(c.fragments).toBeGreaterThanOrEqual(20);
+    // chaque ouverture donne un objet, une capacité ou une carte
+    const got = (await rows(`select (select count(*) from inventory_items where profile_id = $1) + (select count(*) from spells_known where profile_id = $1) + (select count(*) from cards_owned where profile_id = $1) as n`, [V]))[0].n;
+    expect(Number(got)).toBe(2);
     expect((await rows(`select count(*)::int n from chests where profile_id = $1 and opened_at is not null`, [V]))[0].n).toBe(2);
     // un coffre ouvert ne se rouvre pas
     expect(await s.store.markChestOpened(V, cs[0].id, new Date().toISOString())).toBe(false);
@@ -569,6 +595,7 @@ describe('aventure sur le vrai schéma (coffres, équipement, donjons, expéditi
     expect((await openChest(s.ctx, V, { chestId: cs[2].id })).ok).toBe(true);
     expect((await rows(`select chest_opens_today n from characters where profile_id = $1`, [V]))[0].n).toBe(1);
     await pg.query(`delete from inventory_items where profile_id = $1`, [V]);
+    await pg.query(`delete from cards_owned where profile_id = $1`, [V]);
   });
 
   it('fusion de coffres : les 3 sont consommés (clé gardée), 1 coffre supérieur est créé', async () => {

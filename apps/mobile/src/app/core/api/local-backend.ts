@@ -253,6 +253,7 @@ export async function createLocalBackend(): Promise<Backend> {
     adventureState: () => wrap(() => engine.getAdventureState(ctx, LOCAL_ID)),
     expeditionClaim: () => wrap(() => engine.claimExpedition(ctx, LOCAL_ID)),
     chestOpen: (chestId) => wrap(() => engine.openChest(ctx, LOCAL_ID, { chestId })),
+    shopBuy: (rarity) => wrap(() => engine.buyChest(ctx, LOCAL_ID, { rarity })),
     chestMerge: (rarity) => wrap(() => engine.mergeChests(ctx, LOCAL_ID, { rarity })),
     itemEquip: (itemId) => wrap(() => engine.equipItem(ctx, LOCAL_ID, { itemId })),
     itemUnequip: (slot) => wrap(() => engine.unequipSlot(ctx, LOCAL_ID, { slot })),

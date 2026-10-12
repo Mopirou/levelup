@@ -99,6 +99,8 @@ Deno.serve(async (req: Request) => {
         return json(await engine.claimExpedition(ctx, userId));
       case 'chest-open':
         return json(await engine.openChest(ctx, userId, { chestId: p.chestId }));
+      case 'shop-buy':
+        return json(await engine.buyChest(ctx, userId, { rarity: p.rarity }));
       case 'chest-merge':
         return json(await engine.mergeChests(ctx, userId, { rarity: p.rarity }));
       case 'item-equip':
@@ -150,7 +152,7 @@ Deno.serve(async (req: Request) => {
         // « Recommencer une nouvelle aventure » : remet le personnage à zéro, garde le compte et les compagnons.
         // Les raids en cours sont quittés d'abord (passage de relais du chef, équipes vides supprimées).
         await admin.rpc('raid_detach_profile', { p_profile: userId });
-        const tables = ['posts', 'journal_entries', 'rest_days', 'unlocked_achievements', 'xp_events', 'quest_preferences', 'quest_instances', 'tracks', 'inventory_items', 'spells_known', 'chests', 'dungeon_progress', 'characters'];
+        const tables = ['posts', 'journal_entries', 'rest_days', 'unlocked_achievements', 'xp_events', 'quest_preferences', 'quest_instances', 'tracks', 'inventory_items', 'spells_known', 'cards_owned', 'chests', 'dungeon_progress', 'characters'];
         for (const t of tables) {
           const col = t === 'posts' ? 'author_id' : 'profile_id';
           const { error } = await admin.from(t).delete().eq(col, userId);

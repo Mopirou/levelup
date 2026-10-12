@@ -9,6 +9,8 @@ export * from './tracks';
 export * from './adventure';
 export * from './sets';
 export * from './spells';
+export * from './cards';
+export * from './shop';
 export * from './seasons';
 export * from './raid';
 export * from './achievements';

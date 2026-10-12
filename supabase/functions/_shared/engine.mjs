@@ -21,6 +21,7 @@ var EQUIP_SLOTS = ["arme", "tete", "torse", "mains", "bottes", "amulette"];
 var SPELL_FAMILIES = ["xp", "stat", "raid", "gold", "chest", "dungeon"];
 var SPELL_SLOTS = 3;
 var SPELL_MAX_LEVEL = 5;
+var CARD_KINDS = ["bestiaire", "relique"];
 var emptyAdventureFields = () => ({
   gold: 0,
   fragments: 0,
@@ -1212,6 +1213,37 @@ function revertCompletion(state, day, previousDoneDate = null) {
   return { ...state, rung, hits, bestRung, lastDoneDate: state.lastDoneDate === day ? previousDoneDate : state.lastDoneDate };
 }
 
+// packages/engine/src/cards.ts
+var CARD_CHANCE = { bois: 20, bronze: 20, argent: 18, or: 15, mythique: 12 };
+var CARD_NEW_BIAS = 50;
+var CARD_DUPLICATE_FRAGMENTS = { commun: 1, peu_commun: 3, rare: 8, epique: 20, legendaire: 50 };
+function cardDuplicateFragments(rarity) {
+  return CARD_DUPLICATE_FRAGMENTS[rarity];
+}
+function pickCard(pool, rng, owned = /* @__PURE__ */ new Set()) {
+  if (!pool.length) return null;
+  const fresh = pool.filter((c) => !owned.has(c.id));
+  const preferFresh = rng() * 100 < CARD_NEW_BIAS && fresh.length > 0;
+  const list = preferFresh ? fresh : pool;
+  return list[Math.min(Math.floor(rng() * list.length), list.length - 1)];
+}
+function collectionProgress(defs, owned) {
+  const have = new Set(owned.map((o) => o.cardId));
+  const byRarity = Object.fromEntries(ITEM_RARITIES.map((r) => [r, { owned: 0, total: 0 }]));
+  const byKind = Object.fromEntries(CARD_KINDS.map((k) => [k, { owned: 0, total: 0 }]));
+  let count = 0;
+  for (const c of defs) {
+    byRarity[c.rarity].total++;
+    byKind[c.kind].total++;
+    if (have.has(c.id)) {
+      byRarity[c.rarity].owned++;
+      byKind[c.kind].owned++;
+      count++;
+    }
+  }
+  return { owned: count, total: defs.length, byRarity, byKind };
+}
+
 // packages/engine/src/sets.ts
 var NO_SET_BONUS = { pp: 0, abilities: {}, active: [] };
 function setTier(bonuses, pieces) {
@@ -1439,10 +1471,15 @@ function drawChest(input) {
   const spellPool = (input.spells ?? []).filter((x) => x.rarity === rarity);
   if (spellPool.length && typeRoll < SPELL_CHANCE[chest]) {
     const spell = pickByClass(spellPool, rng, input.classId, SPELL_CLASS_SHARE, 0);
-    if (spell) return { rarity, template: null, spell, fragments, gold, pity, guaranteed };
+    if (spell) return { rarity, template: null, spell, card: null, fragments, gold, pity, guaranteed };
+  }
+  const cardPool = (input.cards ?? []).filter((c) => c.rarity === rarity);
+  if (cardPool.length && typeRoll >= SPELL_CHANCE[chest] && typeRoll < SPELL_CHANCE[chest] + CARD_CHANCE[chest]) {
+    const card = pickCard(cardPool, rng, input.ownedCards);
+    if (card) return { rarity, template: null, spell: null, card, fragments, gold, pity, guaranteed };
   }
   const template = pickByClass(input.templates, rng, input.classId, LOOT_CLASS_SHARE, LOOT_UNIVERSAL_SHARE) ?? input.templates[0];
-  return { rarity, template, spell: null, fragments, gold, pity, guaranteed };
+  return { rarity, template, spell: null, card: null, fragments, gold, pity, guaranteed };
 }
 function pickTemplateForSlot(templates, slot, seed, classId) {
   const pool = templates.filter((t) => t.slot === slot);
@@ -1539,6 +1576,16 @@ function resolveDungeon(input) {
     bossPower,
     heroPower: pp
   };
+}
+
+// packages/engine/src/shop.ts
+var SHOP_OFFERS = [
+  { rarity: "bois", price: 25 },
+  { rarity: "bronze", price: 75 },
+  { rarity: "argent", price: 225 }
+];
+function shopPrice(rarity) {
+  return SHOP_OFFERS.find((o) => o.rarity === rarity)?.price ?? null;
 }
 
 // packages/engine/src/seasons.ts
@@ -3473,6 +3520,490 @@ var achievements_fr_default = [
   }
 ];
 
+// packages/content/data/cards.fr.json
+var cards_fr_default = [
+  {
+    id: "gobelin",
+    kind: "bestiaire",
+    rarity: "commun",
+    name: "Gobelin",
+    glyph: "\u{1F47A}",
+    blurb: "Petit, vif, jamais seul. Il adore tout ce qui brille, surtout ce qui n\u2019est pas \xE0 lui."
+  },
+  {
+    id: "kobold",
+    kind: "bestiaire",
+    rarity: "commun",
+    name: "Kobold",
+    glyph: "\u{1F98E}",
+    blurb: "Il pose des pi\xE8ges partout et s\u2019en sort toujours avec un grand sourire."
+  },
+  {
+    id: "squelette",
+    kind: "bestiaire",
+    rarity: "commun",
+    name: "Squelette",
+    glyph: "\u{1F480}",
+    blurb: "Il marche au pas, ob\xE9it sans discuter et n\u2019a plus rien \xE0 perdre."
+  },
+  {
+    id: "zombie",
+    kind: "bestiaire",
+    rarity: "commun",
+    name: "Zombie",
+    glyph: "\u{1F9DF}",
+    blurb: "Lent mais obstin\xE9 : il finit toujours par arriver."
+  },
+  {
+    id: "rat-geant",
+    kind: "bestiaire",
+    rarity: "commun",
+    name: "Rat g\xE9ant",
+    glyph: "\u{1F400}",
+    blurb: "Les caves de toutes les auberges en abritent au moins un."
+  },
+  {
+    id: "loup",
+    kind: "bestiaire",
+    rarity: "commun",
+    name: "Loup",
+    glyph: "\u{1F43A}",
+    blurb: "Il chasse en meute et d\xE9teste \xEAtre pris de haut."
+  },
+  {
+    id: "araignee-geante",
+    kind: "bestiaire",
+    rarity: "commun",
+    name: "Araign\xE9e g\xE9ante",
+    glyph: "\u{1F577}\uFE0F",
+    blurb: "Elle tisse sa toile entre deux arbres et attend patiemment."
+  },
+  {
+    id: "strige",
+    kind: "bestiaire",
+    rarity: "commun",
+    name: "Strige",
+    glyph: "\u{1F99F}",
+    blurb: "Un moustique grand comme un chat, avec beaucoup trop d\u2019app\xE9tit."
+  },
+  {
+    id: "potion-de-soins",
+    kind: "relique",
+    rarity: "commun",
+    name: "Potion de soins",
+    glyph: "\u{1F9EA}",
+    blurb: "Le go\xFBt est horrible, l\u2019effet est parfait. L\u2019aventurier prudent en garde toujours une."
+  },
+  {
+    id: "corde-de-chanvre",
+    kind: "relique",
+    rarity: "commun",
+    name: "Corde de chanvre",
+    glyph: "\u{1FAA2}",
+    blurb: "Quinze m\xE8tres de corde : la solution \xE0 un nombre \xE9tonnant de probl\xE8mes."
+  },
+  {
+    id: "torche",
+    kind: "relique",
+    rarity: "commun",
+    name: "Torche",
+    glyph: "\u{1F525}",
+    blurb: "\xC9claire le couloir, effraie les rats et enflamme parfois les rideaux."
+  },
+  {
+    id: "rations-de-voyage",
+    kind: "relique",
+    rarity: "commun",
+    name: "Rations de voyage",
+    glyph: "\u{1F356}",
+    blurb: "Dures, sal\xE9es, et pourtant on les attend avec impatience."
+  },
+  {
+    id: "des-pipes",
+    kind: "relique",
+    rarity: "commun",
+    name: "D\xE9s pip\xE9s",
+    glyph: "\u{1F3B2}",
+    blurb: "Ils tombent toujours du bon c\xF4t\xE9. Mieux vaut ne pas se faire prendre."
+  },
+  {
+    id: "sac-a-dos",
+    kind: "relique",
+    rarity: "commun",
+    name: "Sac \xE0 dos",
+    glyph: "\u{1F392}",
+    blurb: "On y met tout, on y retrouve rien, et on le porte fi\xE8rement."
+  },
+  {
+    id: "pied-de-biche",
+    kind: "relique",
+    rarity: "commun",
+    name: "Pied-de-biche",
+    glyph: "\u{1F527}",
+    blurb: "Plus fiable qu\u2019un sort pour ouvrir une porte coinc\xE9e."
+  },
+  {
+    id: "dague",
+    kind: "relique",
+    rarity: "commun",
+    name: "Dague",
+    glyph: "\u{1F5E1}\uFE0F",
+    blurb: "Discr\xE8te, l\xE9g\xE8re, toujours \xE0 port\xE9e de main."
+  },
+  {
+    id: "ours-hibou",
+    kind: "bestiaire",
+    rarity: "peu_commun",
+    name: "Ours-hibou",
+    glyph: "\u{1F989}",
+    blurb: "Mi-ours, mi-hibou, enti\xE8rement mauvais caract\xE8re."
+  },
+  {
+    id: "cube-gelatineux",
+    kind: "bestiaire",
+    rarity: "peu_commun",
+    name: "Cube g\xE9latineux",
+    glyph: "\u{1F7E6}",
+    blurb: "Il nettoie les couloirs du donjon en avalant tout sur son passage, aventuriers compris."
+  },
+  {
+    id: "harpie",
+    kind: "bestiaire",
+    rarity: "peu_commun",
+    name: "Harpie",
+    glyph: "\u{1F985}",
+    blurb: "Son chant est si beau qu\u2019on oublie de regarder o\xF9 l\u2019on met les pieds."
+  },
+  {
+    id: "gnoll",
+    kind: "bestiaire",
+    rarity: "peu_commun",
+    name: "Gnoll",
+    glyph: "\u{1F415}",
+    blurb: "Un rire qui glace le sang, et une faim qui ne s\u2019arr\xEAte jamais."
+  },
+  {
+    id: "ombre",
+    kind: "bestiaire",
+    rarity: "peu_commun",
+    name: "Ombre",
+    glyph: "\u{1F465}",
+    blurb: "On la prend pour la sienne jusqu\u2019au moment o\xF9 elle bouge toute seule."
+  },
+  {
+    id: "rouilleur",
+    kind: "bestiaire",
+    rarity: "peu_commun",
+    name: "Rouilleur",
+    glyph: "\u{1FAB2}",
+    blurb: "Il d\xE9vore le m\xE9tal. Les guerriers en armure le redoutent plus qu\u2019un dragon."
+  },
+  {
+    id: "ogre",
+    kind: "bestiaire",
+    rarity: "peu_commun",
+    name: "Ogre",
+    glyph: "\u{1F479}",
+    blurb: "Pas tr\xE8s malin, mais le gourdin fait le reste."
+  },
+  {
+    id: "sac-sans-fond",
+    kind: "relique",
+    rarity: "peu_commun",
+    name: "Sac sans fond",
+    glyph: "\u{1F45D}",
+    blurb: "Il contient bien plus qu\u2019il n\u2019en a l\u2019air. Ne jamais y mettre un autre sac sans fond."
+  },
+  {
+    id: "cape-elfique",
+    kind: "relique",
+    rarity: "peu_commun",
+    name: "Cape elfique",
+    glyph: "\u{1F9E5}",
+    blurb: "Elle se fond dans le d\xE9cor, et son porteur avec."
+  },
+  {
+    id: "baguette-de-detection-de-la-magie",
+    kind: "relique",
+    rarity: "peu_commun",
+    name: "Baguette de d\xE9tection de la magie",
+    glyph: "\u{1FA84}",
+    blurb: "Elle brille d\xE8s qu\u2019un objet enchant\xE9 se trouve \xE0 proximit\xE9. Tr\xE8s pratique chez un brocanteur."
+  },
+  {
+    id: "anneau-de-saut",
+    kind: "relique",
+    rarity: "peu_commun",
+    name: "Anneau de saut",
+    glyph: "\u{1F48D}",
+    blurb: "Franchir un ravin devient une simple formalit\xE9."
+  },
+  {
+    id: "potion-de-croissance",
+    kind: "relique",
+    rarity: "peu_commun",
+    name: "Potion de croissance",
+    glyph: "\u{1F344}",
+    blurb: "Une gorg\xE9e, et la porte semble soudain bien basse."
+  },
+  {
+    id: "carquois-d-ehlonna",
+    kind: "relique",
+    rarity: "peu_commun",
+    name: "Carquois d\u2019Ehlonna",
+    glyph: "\u{1F3F9}",
+    blurb: "Trois compartiments, et toujours la bonne fl\xE8che au bon moment."
+  },
+  {
+    id: "lanterne-a-capote",
+    kind: "relique",
+    rarity: "peu_commun",
+    name: "Lanterne \xE0 capote",
+    glyph: "\u{1F3EE}",
+    blurb: "Une lueur chaude pour traverser les couloirs les plus sombres."
+  },
+  {
+    id: "mimique",
+    kind: "bestiaire",
+    rarity: "rare",
+    name: "Mimique",
+    glyph: "\u{1F9F0}",
+    blurb: "Ce coffre a l\u2019air magnifique. Ne l\u2019ouvre surtout pas\u2026 ou fais-le quand m\xEAme."
+  },
+  {
+    id: "basilic",
+    kind: "bestiaire",
+    rarity: "rare",
+    name: "Basilic",
+    glyph: "\u{1F40D}",
+    blurb: "Son regard p\xE9trifie : l\u2019aventurier avis\xE9 avance \xE0 reculons."
+  },
+  {
+    id: "minotaure",
+    kind: "bestiaire",
+    rarity: "rare",
+    name: "Minotaure",
+    glyph: "\u{1F402}",
+    blurb: "Il garde son labyrinthe et conna\xEEt chaque couloir par c\u0153ur."
+  },
+  {
+    id: "manticore",
+    kind: "bestiaire",
+    rarity: "rare",
+    name: "Manticore",
+    glyph: "\u{1F982}",
+    blurb: "Un visage d\u2019homme, un corps de lion, une queue pleine de pointes. Un mauvais voisin."
+  },
+  {
+    id: "golem-de-pierre",
+    kind: "bestiaire",
+    rarity: "rare",
+    name: "Golem de pierre",
+    glyph: "\u{1F5FF}",
+    blurb: "Il ne dort jamais, ne mange jamais, et ne discute jamais non plus."
+  },
+  {
+    id: "troll",
+    kind: "bestiaire",
+    rarity: "rare",
+    name: "Troll",
+    glyph: "\u{1F9CC}",
+    blurb: "Coupe-lui un bras : il en repousse un autre. Le feu r\xE8gle souvent le probl\xE8me."
+  },
+  {
+    id: "griffon",
+    kind: "bestiaire",
+    rarity: "rare",
+    name: "Griffon",
+    glyph: "\u{1F981}",
+    blurb: "Fier, rapide, fid\xE8le : une monture de r\xEAve pour qui sait s\u2019en faire respecter."
+  },
+  {
+    id: "boule-de-cristal",
+    kind: "relique",
+    rarity: "rare",
+    name: "Boule de cristal",
+    glyph: "\u{1F52E}",
+    blurb: "On y voit tout, sauf ce qu\u2019on cherchait vraiment."
+  },
+  {
+    id: "trou-portatif",
+    kind: "relique",
+    rarity: "rare",
+    name: "Trou portatif",
+    glyph: "\u{1F573}\uFE0F",
+    blurb: "Un trou noir qu\u2019on pose par terre et qu\u2019on range ensuite dans sa poche."
+  },
+  {
+    id: "bottes-de-vitesse",
+    kind: "relique",
+    rarity: "rare",
+    name: "Bottes de vitesse",
+    glyph: "\u{1F97E}",
+    blurb: "Un claquement de talons, et le monde ralentit autour de toi."
+  },
+  {
+    id: "baguette-de-projectiles-magiques",
+    kind: "relique",
+    rarity: "rare",
+    name: "Baguette de projectiles magiques",
+    glyph: "\u2728",
+    blurb: "Trois traits lumineux qui ne ratent jamais leur cible."
+  },
+  {
+    id: "lame-de-flamme",
+    kind: "relique",
+    rarity: "rare",
+    name: "Lame de flamme",
+    glyph: "\u{1F525}",
+    blurb: "Une \xE9p\xE9e qui s\u2019embrase au mot de commande. Les marchands de bois la d\xE9testent."
+  },
+  {
+    id: "vampire",
+    kind: "bestiaire",
+    rarity: "epique",
+    name: "Vampire",
+    glyph: "\u{1F9DB}",
+    blurb: "\xC9l\xE9gant, patient, et toujours \xE0 la recherche d\u2019une invitation."
+  },
+  {
+    id: "hydre",
+    kind: "bestiaire",
+    rarity: "epique",
+    name: "Hydre",
+    glyph: "\u{1F409}",
+    blurb: "Trancher une t\xEAte n\u2019a jamais \xE9t\xE9 une bonne id\xE9e."
+  },
+  {
+    id: "golem-de-fer",
+    kind: "bestiaire",
+    rarity: "epique",
+    name: "Golem de fer",
+    glyph: "\u{1F916}",
+    blurb: "Un colosse forg\xE9 pour ob\xE9ir, et pour ne jamais s\u2019arr\xEAter."
+  },
+  {
+    id: "geant-du-givre",
+    kind: "bestiaire",
+    rarity: "epique",
+    name: "G\xE9ant du givre",
+    glyph: "\u{1F9CA}",
+    blurb: "Il vit dans un palais de glace et trouve la chaleur de la taverne insupportable."
+  },
+  {
+    id: "jeune-dragon-rouge",
+    kind: "bestiaire",
+    rarity: "epique",
+    name: "Jeune dragon rouge",
+    glyph: "\u{1F432}",
+    blurb: "Encore petit pour un dragon, mais d\xE9j\xE0 largement assez grand pour toi."
+  },
+  {
+    id: "flagelleur-mental",
+    kind: "bestiaire",
+    rarity: "epique",
+    name: "Flagelleur mental",
+    glyph: "\u{1F991}",
+    blurb: "Ses tentacules cherchent des id\xE9es \xE0 d\xE9vorer. Il aime surtout les plus brillantes."
+  },
+  {
+    id: "baton-du-pouvoir",
+    kind: "relique",
+    rarity: "epique",
+    name: "B\xE2ton du pouvoir",
+    glyph: "\u{1F531}",
+    blurb: "Un b\xE2ton d\u2019archimage : chaque sort qui en sort frappe plus fort."
+  },
+  {
+    id: "cor-de-valhalla",
+    kind: "relique",
+    rarity: "epique",
+    name: "Cor de Valhalla",
+    glyph: "\u{1F3BA}",
+    blurb: "Une sonnerie suffit \xE0 convoquer des guerriers venus d\u2019un autre monde."
+  },
+  {
+    id: "bouteille-d-efrit",
+    kind: "relique",
+    rarity: "epique",
+    name: "Bouteille d\u2019\xE9frit",
+    glyph: "\u{1F37E}",
+    blurb: "Bouchon ferm\xE9, un g\xE9nie de feu s\u2019impatiente \xE0 l\u2019int\xE9rieur. Vaut mieux qu\u2019il soit de bonne humeur."
+  },
+  {
+    id: "lame-de-chance",
+    kind: "relique",
+    rarity: "epique",
+    name: "Lame de chance",
+    glyph: "\u{1F340}",
+    blurb: "On dit qu\u2019elle porte bonheur \xE0 celui qui la tient. Elle exauce m\xEAme un souhait, parfois."
+  },
+  {
+    id: "tarasque",
+    kind: "bestiaire",
+    rarity: "legendaire",
+    name: "Tarasque",
+    glyph: "\u{1F996}",
+    blurb: "Une montagne de griffes et de rage. Les villages l\u2019appellent un cataclysme."
+  },
+  {
+    id: "tyrannoeil",
+    kind: "bestiaire",
+    rarity: "legendaire",
+    name: "Tyrann\u0153il",
+    glyph: "\u{1F441}\uFE0F",
+    blurb: "Dix yeux, dix rayons, et une fiert\xE9 d\xE9mesur\xE9e : il se croit toujours le plus grand."
+  },
+  {
+    id: "liche",
+    kind: "bestiaire",
+    rarity: "legendaire",
+    name: "Liche",
+    glyph: "\u2620\uFE0F",
+    blurb: "Un mage si attach\xE9 \xE0 la vie qu\u2019il a refus\xE9 d\u2019en sortir. Son phylact\xE8re est bien cach\xE9."
+  },
+  {
+    id: "dragon-rouge-ancien",
+    kind: "bestiaire",
+    rarity: "legendaire",
+    name: "Dragon rouge ancien",
+    glyph: "\u{1F534}",
+    blurb: "Il dort sur une montagne d\u2019or et n\u2019a rien oubli\xE9, jamais, de personne."
+  },
+  {
+    id: "jeu-du-destin",
+    kind: "relique",
+    rarity: "legendaire",
+    name: "Jeu du destin",
+    glyph: "\u{1F0CF}",
+    blurb: "Tire une carte, change ta vie. Tire-en une deuxi\xE8me si tu es t\xE9m\xE9raire."
+  },
+  {
+    id: "epee-vorpale",
+    kind: "relique",
+    rarity: "legendaire",
+    name: "\xC9p\xE9e vorpale",
+    glyph: "\u2694\uFE0F",
+    blurb: "Elle tranche tout ce qui est trop s\xFBr de sa t\xEAte."
+  },
+  {
+    id: "sphere-d-annihilation",
+    kind: "relique",
+    rarity: "legendaire",
+    name: "Sph\xE8re d\u2019annihilation",
+    glyph: "\u26AB",
+    blurb: "Une boule de n\xE9ant parfaite. Ne la touche pas. Vraiment."
+  },
+  {
+    id: "anneau-de-souhaits",
+    kind: "relique",
+    rarity: "legendaire",
+    name: "Anneau de souhaits",
+    glyph: "\u{1F4AB}",
+    blurb: "Ton v\u0153u le plus fou, exauc\xE9. Formule-le avec soin : les g\xE9nies adorent les d\xE9tails."
+  }
+];
+
 // packages/content/data/items.fr.json
 var items_fr_default = [
   {
@@ -4814,6 +5345,8 @@ var SETS = sets_fr_default;
 var ITEM_DEFS = items_fr_default;
 var SPELL_DEFS = spells_fr_default;
 var SPELL_BY_ID = new Map(SPELL_DEFS.map((s) => [s.id, s]));
+var CARD_DEFS = cards_fr_default;
+var CARD_BY_ID = new Map(CARD_DEFS.map((c) => [c.id, c]));
 var CLASSES = classes_fr_default;
 var CLASS_OF_ITEM = new Map(ITEM_DEFS.map((i) => [i.id, i.classId ?? null]));
 function withItemClass(items) {
@@ -5487,7 +6020,7 @@ function expeditionOf(env, snap) {
   };
 }
 async function stateOf(env) {
-  const [snap, chests] = await Promise.all([snapshot(env), env.ctx.store.listChests(env.userId, { opened: false })]);
+  const [snap, chests, cards] = await Promise.all([snapshot(env), env.ctx.store.listChests(env.userId, { opened: false }), env.ctx.store.listCards(env.userId)]);
   const counts = Object.fromEntries(CHEST_RARITIES.map((r) => [r, 0]));
   for (const c of chests) counts[c.rarity]++;
   const used = opensToday(env.character, env.today);
@@ -5512,6 +6045,8 @@ async function stateOf(env) {
     sets: setsProgress(SETS, snap.items),
     setBonus: { pp: snap.setBonus.pp, abilities: snap.setBonus.abilities },
     grimoire: grimoireOf(snap, env.classId),
+    shop: [...SHOP_OFFERS],
+    collection: { cards, progress: collectionProgress(CARD_DEFS, cards) },
     heroClass: env.classId,
     seasonEvaluated: []
   };
@@ -5566,7 +6101,7 @@ async function openChest(ctx, userId, input) {
   if (chest.openedAt) return fail2("not-found", "Ce coffre est d\xE9j\xE0 ouvert.");
   const used = opensToday(env.character, env.today);
   if (used >= CHEST_OPENS_PER_DAY) return fail2("daily-cap", `Tu as d\xE9j\xE0 ouvert ${CHEST_OPENS_PER_DAY} coffres aujourd\u2019hui : reviens demain.`);
-  const snap = await snapshot(env);
+  const [snap, ownedCards] = await Promise.all([snapshot(env), ctx.store.listCards(userId)]);
   const draw = drawChest({
     chest: chest.rarity,
     sag: snap.scores.SAG,
@@ -5576,11 +6111,14 @@ async function openChest(ctx, userId, input) {
     templates: ITEMS,
     spells: SPELL_DEFS,
     classId: env.classId,
-    chestShift: snap.spellBonus.chest
+    chestShift: snap.spellBonus.chest,
+    cards: CARD_DEFS,
+    ownedCards: new Set(ownedCards.map((c) => c.cardId))
   });
   if (!await ctx.store.markChestOpened(userId, chest.id, env.nowIso)) return fail2("not-found", "Ce coffre est d\xE9j\xE0 ouvert.");
   let item = null;
   let spell = null;
+  let card = null;
   let extraFragments = 0;
   if (draw.template) {
     item = {
@@ -5602,6 +6140,12 @@ async function openChest(ctx, userId, input) {
     const after = { spellId: draw.spell.id, level: next ?? SPELL_MAX_LEVEL, equippedSlot: known?.equippedSlot ?? null };
     if (next !== null) await ctx.store.saveSpell(userId, after);
     spell = { spell: spellViewOf(after, env.classId), isNew: !known, levelBefore: before, fragments: extraFragments };
+  } else if (draw.card) {
+    const have = ownedCards.find((c) => c.cardId === draw.card.id);
+    const copies = (have?.copies ?? 0) + 1;
+    if (have) extraFragments = cardDuplicateFragments(draw.card.rarity);
+    await ctx.store.saveCard(userId, { cardId: draw.card.id, copies });
+    card = { cardId: draw.card.id, rarity: draw.card.rarity, isNew: !have, copies, fragments: extraFragments };
   }
   const character = {
     ...env.character,
@@ -5619,6 +6163,7 @@ async function openChest(ctx, userId, input) {
       chest: { ...chest, openedAt: env.nowIso },
       item: item ? viewOf(item, env.classId) : null,
       spell,
+      card,
       gold: draw.gold,
       fragments: draw.fragments + extraFragments,
       guaranteed: draw.guaranteed,
@@ -5626,6 +6171,18 @@ async function openChest(ctx, userId, input) {
     },
     character: synced
   };
+}
+async function buyChest(ctx, userId, input) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  const price = shopPrice(input.rarity);
+  if (price === null) return fail2("invalid", "Ce coffre n\u2019est pas en vente.");
+  if (env.character.fragments < price) return fail2("insufficient", "Il te faut " + price + " fragments pour ce coffre.");
+  const chest = newChest(env, input.rarity, "shop", ctx.uuid());
+  if (!await ctx.store.insertChest(userId, chest)) return fail2("invalid", "Achat impossible : r\xE9essaie.");
+  const character = { ...env.character, fragments: env.character.fragments - price };
+  await ctx.store.saveCharacter(userId, character);
+  return { ok: true, chest, price, character };
 }
 async function mergeChests(ctx, userId, input) {
   const env = await loadAdv(ctx, userId);
@@ -7081,6 +7638,7 @@ var emptyUserData = () => ({
   chests: [],
   dungeons: [],
   spells: [],
+  cards: [],
   seasonScores: [],
   seasonResults: []
 });
@@ -7114,6 +7672,7 @@ var MemoryStore = class {
     d.chests ??= [];
     d.dungeons ??= [];
     d.spells ??= [];
+    d.cards ??= [];
     d.seasonScores ??= [];
     d.seasonResults ??= [];
     return d;
@@ -7297,6 +7856,16 @@ var MemoryStore = class {
     const i = list.findIndex((x) => x.spellId === spell.spellId);
     if (i >= 0) list[i] = structuredClone(spell);
     else list.push(structuredClone(spell));
+    this.touch();
+  }
+  async listCards(userId) {
+    return structuredClone(this.data(userId).cards);
+  }
+  async saveCard(userId, card) {
+    const list = this.data(userId).cards;
+    const i = list.findIndex((x) => x.cardId === card.cardId);
+    if (i >= 0) list[i] = structuredClone(card);
+    else list.push(structuredClone(card));
     this.touch();
   }
   // ───── Raids d'amis
@@ -7941,6 +8510,18 @@ var SupabaseStore = class {
     );
     fail5(error, "spells_known.upsert");
   }
+  async listCards(userId) {
+    const { data, error } = await this.db.from("cards_owned").select("*").eq("profile_id", userId).order("card_id", { ascending: true });
+    fail5(error, "cards_owned.select");
+    return (data ?? []).map((r) => ({ cardId: r.card_id, copies: r.copies }));
+  }
+  async saveCard(userId, card) {
+    const { error } = await this.db.from("cards_owned").upsert(
+      { profile_id: userId, card_id: card.cardId, copies: card.copies },
+      { onConflict: "profile_id,card_id" }
+    );
+    fail5(error, "cards_owned.upsert");
+  }
   // ───── Raids d'amis
   async areFriends(a, b) {
     if (a === b) return false;
@@ -8204,6 +8785,12 @@ export {
   BALANCE_SPECIALIZE_FACTOR,
   BALANCE_SPECIALIZE_GAP,
   BASE_XP,
+  CARD_BY_ID,
+  CARD_CHANCE,
+  CARD_DEFS,
+  CARD_DUPLICATE_FRAGMENTS,
+  CARD_KINDS,
+  CARD_NEW_BIAS,
   CHEST_OPENS_PER_DAY,
   CHEST_RARITIES,
   CHEST_TABLE,
@@ -8314,6 +8901,7 @@ export {
   SEASON_MIN_SPAN_DAYS,
   SEASON_WEEKS,
   SETS,
+  SHOP_OFFERS,
   SOFT_CAP_SCORE,
   SPELL_BY_ID,
   SPELL_CHANCE,
@@ -8371,14 +8959,17 @@ export {
   buildRecap,
   buildRungTemplates,
   buildSnapshot,
+  buyChest,
   canDeclareRest,
   canForge,
   canUndo,
+  cardDuplicateFragments,
   changeClass,
   chooseImprovement,
   choosePath,
   claimExpedition,
   classEnvelope,
+  collectionProgress,
   completeQuest,
   completeQuestAction,
   computeBestStreak,
@@ -8485,6 +9076,7 @@ export {
   pendingImprovements,
   pendingPath,
   periodBounds,
+  pickCard,
   pickTavernMessage,
   pickTemplateForSlot,
   pointBuySpent,
@@ -8535,6 +9127,7 @@ export {
   setTier,
   setTrackPaused,
   setsProgress,
+  shopPrice,
   shuffle,
   slugify,
   spellBonuses,

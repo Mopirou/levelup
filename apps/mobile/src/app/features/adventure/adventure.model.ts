@@ -6,6 +6,7 @@ import items from '@levelup/content/items.fr.json';
 import sets from '@levelup/content/sets.fr.json';
 import spells from '@levelup/content/spells.fr.json';
 import classes from '@levelup/content/classes.fr.json';
+import cards from '@levelup/content/cards.fr.json';
 import type { PortraitGear } from '../../shared/ui';
 import type { ChestRarity, EquipSlot, ItemView } from '../../core/api/types';
 
@@ -85,6 +86,33 @@ export const FAMILY_GLYPH: Record<string, string> = { xp: '📈', stat: '💪', 
 /** Rareté à partir de laquelle une capacité obtenue dans un coffre est annoncée en grand. */
 const ANNOUNCED: readonly ItemRarity[] = ['rare', 'epique', 'legendaire'];
 export const isBigSpell = (r: ItemRarity): boolean => ANNOUNCED.includes(r);
+
+// ───────────────────────── Collection « Bestiaire & Reliques » (docs/COLLECTION.md) ─────────────────────────
+
+export type CardKind = 'bestiaire' | 'relique';
+export interface CardTemplate { id: string; kind: CardKind; rarity: ItemRarity; name: string; glyph: string; blurb: string }
+export const CARDS = cards as CardTemplate[];
+const CARD_TEMPLATES = new Map<string, CardTemplate>(CARDS.map((c) => [c.id, c]));
+
+export const CARD_KIND_LABEL: Record<CardKind, string> = { bestiaire: 'Bestiaire', relique: 'Reliques' };
+export const CARD_KIND_GLYPH: Record<CardKind, string> = { bestiaire: '🐉', relique: '🏺' };
+
+/** Nom, glyphe et description d'une carte (contenu statique `cards.fr.json`). */
+export function cardInfo(id: string): CardTemplate {
+  return CARD_TEMPLATES.get(id) ?? { id, kind: 'relique', rarity: 'commun', name: 'Carte mystérieuse', glyph: '🎴', blurb: '' };
+}
+
+/** Phrase d'ambiance d'une carte trouvée, selon sa rareté. */
+export const CARD_FLAVOR: Record<ItemRarity, string> = {
+  commun: 'Une nouvelle page pour ta collection.',
+  peu_commun: 'Une trouvaille qui a du caractère.',
+  rare: 'Une belle prise : elle fera envie à la taverne.',
+  epique: 'Une carte épique ! Le grimoire des monstres s’illumine.',
+  legendaire: 'Une légende s’ajoute à ta collection. Les bardes en parleront longtemps.',
+};
+
+/** Rareté à partir de laquelle une nouvelle carte est annoncée en grand. */
+export const isBigCard = (r: ItemRarity): boolean => r === 'epique' || r === 'legendaire';
 
 /** Phrase d'ambiance d'une capacité obtenue (rare ou mieux). */
 export const SPELL_FLAVOR: Partial<Record<ItemRarity, string>> = {

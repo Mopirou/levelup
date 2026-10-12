@@ -1,3 +1,4 @@
+import { CARD_CHANCE, pickCard } from './cards';
 import { createRng } from './random';
 import { NO_SET_BONUS, type SetBonusTotals } from './sets';
 import { NO_SPELL_BONUS, SPELL_MAX_FRAGMENTS, type SpellBonuses } from './spells';
@@ -6,6 +7,7 @@ import {
   ABILITIES,
   AbilityId,
   CHEST_RARITIES,
+  CardDef,
   CharacterCore,
   ChestPity,
   ChestRarity,
@@ -323,6 +325,10 @@ export interface ChestDrawInput {
   classId?: string | null;
   /** Capacités équipées : décalage de rareté supplémentaire, en points de probabilité */
   chestShift?: number;
+  /** Cartes de la collection possibles (aucune : le coffre ne donne ni carte) */
+  cards?: readonly CardDef[];
+  /** Identifiants des cartes déjà possédées (une carte inconnue est tirée en priorité une fois sur deux) */
+  ownedCards?: ReadonlySet<string>;
 }
 
 export interface ChestDraw {
@@ -331,6 +337,8 @@ export interface ChestDraw {
   template: ItemDef | null;
   /** Capacité tirée (`null` quand le coffre donne un objet) */
   spell: SpellDef | null;
+  /** Carte de la collection tirée (`null` quand le coffre donne un objet ou une capacité) */
+  card: CardDef | null;
   fragments: number;
   gold: number;
   /** Compteurs de pitié après ce tirage */
@@ -353,8 +361,8 @@ function pickByClass<T extends { classId?: string | null }>(pool: readonly T[], 
 }
 
 /**
- * Ouvre un coffre en deux temps : (1) la rareté (décalage SAG et capacités, pitié) ; (2) le type, objet d'équipement ou capacité
- * (`SPELL_CHANCE` selon le coffre) ; (3) le contenu, 70 % de la classe / 20 % universel / 10 % d'une autre classe pour un objet,
+ * Ouvre un coffre en deux temps : (1) la rareté (décalage SAG et capacités, pitié) ; (2) le type, capacité (`SPELL_CHANCE`), carte de
+ * la collection (`CARD_CHANCE`) ou objet d'équipement ; (3) le contenu, 70 % de la classe / 20 % universel / 10 % d'une autre classe pour un objet,
  * 80 % / 20 % pour une capacité. Déterministe pour une graine.
  */
 export function drawChest(input: ChestDrawInput): ChestDraw {
@@ -395,10 +403,16 @@ export function drawChest(input: ChestDrawInput): ChestDraw {
   const spellPool = (input.spells ?? []).filter((x) => x.rarity === rarity);
   if (spellPool.length && typeRoll < SPELL_CHANCE[chest]) {
     const spell = pickByClass(spellPool, rng, input.classId, SPELL_CLASS_SHARE, 0);
-    if (spell) return { rarity, template: null, spell, fragments, gold, pity, guaranteed };
+    if (spell) return { rarity, template: null, spell, card: null, fragments, gold, pity, guaranteed };
+  }
+  // Collection : la tranche qui suit celle des capacités (sans cartes en entrée, le tirage reste celui d'avant).
+  const cardPool = (input.cards ?? []).filter((c) => c.rarity === rarity);
+  if (cardPool.length && typeRoll >= SPELL_CHANCE[chest] && typeRoll < SPELL_CHANCE[chest] + CARD_CHANCE[chest]) {
+    const card = pickCard(cardPool, rng, input.ownedCards);
+    if (card) return { rarity, template: null, spell: null, card, fragments, gold, pity, guaranteed };
   }
   const template = pickByClass(input.templates, rng, input.classId, LOOT_CLASS_SHARE, LOOT_UNIVERSAL_SHARE) ?? input.templates[0];
-  return { rarity, template, spell: null, fragments, gold, pity, guaranteed };
+  return { rarity, template, spell: null, card: null, fragments, gold, pity, guaranteed };
 }
 
 /** Tire le modèle d'un objet de fusion : un modèle de l'emplacement donné, de préférence de la classe du joueur (déterministe pour une graine). */

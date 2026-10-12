@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { IonContent } from '@ionic/angular';
+import { IonContent, NavController } from '@ionic/angular';
 import { UiService } from '../../core/ui.service';
-import { PageHeaderComponent } from '../../shared/ui';
+import { BarComponent, PageHeaderComponent } from '../../shared/ui';
 import { ModalComponent } from '../../shared/modal.component';
 import { ItemChipComponent } from '../../shared/item-chip.component';
 import { fmt } from '../../shared/format';
@@ -11,14 +11,14 @@ import { SeasonCardComponent } from '../season/season-card.component';
 import { GrimoireCardComponent } from './grimoire-card.component';
 import { AdventureStore } from './adventure.store';
 import {
-  ABILITY_NAME, CHEST_GLYPH, CHEST_LABEL, CHEST_RARITIES, FAMILY_GLYPH, FAMILY_LABEL, ITEM_LABEL, ITEM_RARITIES, MAX_ITEM_LEVEL, SLOTS, SLOT_GLYPH, SLOT_LABEL, SPELL_FLAVOR, classInfo, isBigSpell, itemInfo, setInfo, spellInfo, tierLabel,
+  ABILITY_NAME, CARD_FLAVOR, CARD_KIND_GLYPH, CARD_KIND_LABEL, CHEST_GLYPH, CHEST_LABEL, CHEST_RARITIES, FAMILY_GLYPH, FAMILY_LABEL, ITEM_LABEL, ITEM_RARITIES, MAX_ITEM_LEVEL, SLOTS, SLOT_GLYPH, SLOT_LABEL, SPELL_FLAVOR, cardInfo, classInfo, isBigCard, isBigSpell, itemInfo, setInfo, spellInfo, tierLabel,
   type ItemRarity,
 } from './adventure.model';
 
 /** Onglet « Aventure » (docs/DONJONS.md §13) : puissance, expédition, coffres, équipement, donjons. */
 @Component({
   selector: 'app-adventure',
-  imports: [IonContent, PageHeaderComponent, ModalComponent, ItemChipComponent, GrimoireCardComponent, RaidCardComponent, SeasonCardComponent],
+  imports: [IonContent, PageHeaderComponent, BarComponent, ModalComponent, ItemChipComponent, GrimoireCardComponent, RaidCardComponent, SeasonCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ion-content>
@@ -89,6 +89,41 @@ import {
               </ul>
               @if (s.opensLeft() === 0) { <p class="xs muted">Plafond du jour atteint : les autres coffres t’attendent demain.</p> }
             }
+          </section>
+
+          <!-- Boutique : coffres contre fragments -->
+          <section class="lu-card" aria-labelledby="h-shop" data-testid="shop">
+            <div class="row">
+              <h2 id="h-shop" class="sh"><span aria-hidden="true">🛒</span> Boutique</h2>
+              <span class="lu-chip" data-testid="shop-fragments" [attr.aria-label]="fmt(state.fragments) + ' fragments'">🔹 {{ fmt(state.fragments) }}</span>
+            </div>
+            <p class="small muted">Dépense tes fragments pour acheter des coffres, et garde-les pour plus tard : l’ouverture reste limitée à {{ state.opens.max }} par jour. Chaque coffre peut cacher un objet, une capacité ou une carte de ta collection.</p>
+            <ul class="chests">
+              @for (o of s.shop(); track o.rarity) {
+                <li class="crow" [attr.data-rarity]="o.rarity" [attr.data-testid]="'shop-' + o.rarity">
+                  <span class="cg r-bg" aria-hidden="true">{{ chestGlyph[o.rarity] }}</span>
+                  <span class="ct">
+                    <strong>Coffre {{ chestLabel[o.rarity] }}</strong>
+                    <span class="xs muted">{{ o.price }} 🔹@if (state.fragments < o.price) { · il te manque {{ o.price - state.fragments }} }</span>
+                  </span>
+                  <button type="button" class="lu-btn small mint" [disabled]="s.busy() || state.fragments < o.price" [attr.aria-label]="'Acheter un coffre ' + chestLabel[o.rarity] + ' pour ' + o.price + ' fragments'" (click)="s.buy(o.rarity)">
+                    Acheter
+                  </button>
+                </li>
+              }
+            </ul>
+            <p class="xs muted">Les fragments viennent de l’expédition, des donjons, des doublons et du démontage d’objets. Les coffres d’or et mythiques se méritent : séries, échelons, boss.</p>
+          </section>
+
+          <!-- Collection : Bestiaire & Reliques -->
+          <section class="lu-card" aria-labelledby="h-coll" data-testid="collection-card">
+            <div class="row">
+              <h2 id="h-coll" class="sh"><span aria-hidden="true">🎴</span> Bestiaire &amp; Reliques</h2>
+              <span class="lu-chip" data-testid="collection-count">{{ s.collected() }}/{{ s.cardTotal }}</span>
+            </div>
+            <p class="small muted">Monstres célèbres et objets légendaires à collectionner : on les trouve dans les coffres. Les doublons se changent en fragments.</p>
+            <lu-bar [value]="s.collected()" [max]="s.cardTotal" tone="gold" label="Cartes de la collection" />
+            <button type="button" class="lu-btn" data-testid="open-collection" (click)="openCollection()">Ouvrir la collection</button>
           </section>
 
           <!-- Équipement -->
@@ -276,6 +311,23 @@ import {
               @else if (sg.fragments) { Déjà au niveau maximal ({{ sg.spell.maxLevel }}) : elle se transforme en {{ sg.fragments }} 🔹 fragments. }
               @else { Tu la connaissais déjà : elle passe du niveau {{ sg.levelBefore }} au niveau {{ sg.spell.level }}/{{ sg.spell.maxLevel }}. }
             </p>
+          } @else if (o.card; as cg) {
+            @let ci = cardInfo(cg.cardId);
+            @if (cg.isNew && bigCard(cg.rarity)) {
+              <p class="wow" data-testid="card-announce" role="status">✨ {{ ci.name }} !</p>
+            }
+            <div class="dhead r-border" [attr.data-rarity]="cg.rarity" data-testid="open-result">
+              <span class="big" aria-hidden="true">{{ ci.glyph }}</span>
+              <div>
+                <h3 class="mt2">{{ ci.name }}</h3>
+                <p class="xs"><span class="dot r-bg" aria-hidden="true"></span> Carte {{ itemLabel[cg.rarity].toLowerCase() }} · {{ kindGlyph[ci.kind] }} {{ kindLabel[ci.kind] }}</p>
+                <p class="xs muted">{{ ci.blurb }}</p>
+              </div>
+            </div>
+            <p class="small" data-testid="card-gain">
+              @if (cg.isNew) { Nouvelle carte ! Elle rejoint ta collection ({{ s.collected() }}/{{ s.cardTotal }}). {{ cardFlavor[cg.rarity] }} }
+              @else { Tu l’avais déjà (exemplaire {{ cg.copies }}) : le doublon se change en {{ cg.fragments }} 🔹 fragments. }
+            </p>
           } @else if (o.item; as it) {
             <div class="dhead r-border" [attr.data-rarity]="it.rarity" data-testid="open-result">
               <span class="big" aria-hidden="true">{{ glyph(it) }}</span>
@@ -376,6 +428,7 @@ import {
 export class AdventurePage {
   protected s = inject(AdventureStore);
   private ui = inject(UiService);
+  private nav = inject(NavController);
   readonly fmt = fmt;
   readonly st = this.s.state;
   readonly rarities = CHEST_RARITIES;
@@ -392,6 +445,11 @@ export class AdventurePage {
   readonly famGlyph = FAMILY_GLYPH;
   readonly flavor = SPELL_FLAVOR;
   readonly big = isBigSpell;
+  readonly bigCard = isBigCard;
+  readonly cardInfo = cardInfo;
+  readonly cardFlavor = CARD_FLAVOR;
+  readonly kindGlyph = CARD_KIND_GLYPH;
+  readonly kindLabel = CARD_KIND_LABEL;
   readonly tierLabel = tierLabel;
   readonly selected = signal<string | null>(null);
 
@@ -432,6 +490,10 @@ export class AdventurePage {
   }
   bestLabel(d: DungeonEntry): string {
     return d.bestRoom >= 6 ? 'Boss vaincu' : d.bestRoom === 0 ? 'Jamais exploré' : `Meilleure salle : ${d.bestRoom}/5`;
+  }
+
+  openCollection(): void {
+    void this.nav.navigateForward('/collection');
   }
 
   async equip(it: ItemView): Promise<void> {

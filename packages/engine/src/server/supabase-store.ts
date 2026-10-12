@@ -410,6 +410,20 @@ export class SupabaseStore {
     fail(error, 'spells_known.upsert');
   }
 
+  async listCards(userId: string): Promise<any[]> {
+    const { data, error } = await this.db.from('cards_owned').select('*').eq('profile_id', userId).order('card_id', { ascending: true });
+    fail(error, 'cards_owned.select');
+    return (data ?? []).map((r: any) => ({ cardId: r.card_id, copies: r.copies }));
+  }
+
+  async saveCard(userId: string, card: any): Promise<void> {
+    const { error } = await this.db.from('cards_owned').upsert(
+      { profile_id: userId, card_id: card.cardId, copies: card.copies },
+      { onConflict: 'profile_id,card_id' },
+    );
+    fail(error, 'cards_owned.upsert');
+  }
+
   // ───── Raids d'amis
   async areFriends(a: string, b: string): Promise<boolean> {
     if (a === b) return false;

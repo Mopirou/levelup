@@ -1,3 +1,4 @@
+import cardsJson from '../../../content/data/cards.fr.json';
 import classesJson from '../../../content/data/classes.fr.json';
 import itemsJson from '../../../content/data/items.fr.json';
 import setsJson from '../../../content/data/sets.fr.json';
@@ -6,7 +7,7 @@ import { adventureScores, heroPowerBreakdown, type HeroPowerBreakdown } from '..
 import { ClassDef, masteriesOf } from '../content-types';
 import { setBonusTotals, type SetBonusTotals } from '../sets';
 import { spellBonuses, type SpellBonuses } from '../spells';
-import { AbilityId, InventoryItem, ItemDef, SetDef, SpellDef, SpellKnown } from '../types';
+import { AbilityId, CardDef, InventoryItem, ItemDef, SetDef, SpellDef, SpellKnown } from '../types';
 import { abilityScores } from '../xp';
 import type { CharacterRecord, GameStore } from './types';
 
@@ -17,6 +18,9 @@ export const ITEM_DEFS = itemsJson as unknown as ItemDef[];
 /** Capacités de classe (contenu statique `spells.fr.json`) : 8 par classe. */
 export const SPELL_DEFS = spellsJson as unknown as SpellDef[];
 export const SPELL_BY_ID: ReadonlyMap<string, SpellDef> = new Map(SPELL_DEFS.map((s) => [s.id, s]));
+/** Cartes de la collection (contenu statique `cards.fr.json`) : 32 créatures et 28 objets magiques. */
+export const CARD_DEFS = cardsJson as unknown as CardDef[];
+export const CARD_BY_ID: ReadonlyMap<string, CardDef> = new Map(CARD_DEFS.map((c) => [c.id, c]));
 const CLASSES = classesJson as unknown as ClassDef[];
 const CLASS_OF_ITEM = new Map<string, string | null>(ITEM_DEFS.map((i) => [i.id, i.classId ?? null]));
 

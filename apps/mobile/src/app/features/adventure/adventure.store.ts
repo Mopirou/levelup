@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { GameService } from '../../core/game.service';
 import type { ChestOpening, ChestRarity, DungeonEntry, DungeonRunResult, ItemView } from '../../core/api/types';
-import { SPELL_FLAVOR, gearOf, isBigSpell, itemInfo, spellInfo, type ItemRarity } from './adventure.model';
+import { CARDS, CHEST_LABEL, SPELL_FLAVOR, cardInfo, gearOf, isBigSpell, itemInfo, spellInfo, type ItemRarity } from './adventure.model';
 
 export interface RunReport { dungeonName: string; result: DungeonRunResult }
 
@@ -32,6 +32,12 @@ export class AdventureStore {
   readonly stock = computed(() => this.items().filter((i) => !i.equipped));
   readonly chestCounts = computed(() => this.state()?.chestCounts ?? { bois: 0, bronze: 0, argent: 0, or: 0, mythique: 0 });
   readonly opensLeft = computed(() => this.state()?.opens.remaining ?? 0);
+  /** Boutique : coffres en vente contre des fragments */
+  readonly shop = computed(() => this.state()?.shop ?? []);
+  /** Collection : exemplaires possédés par carte, et nombre de cartes différentes */
+  readonly cards = computed(() => new Map((this.state()?.collection.cards ?? []).map((c) => [c.cardId, c.copies])));
+  readonly collected = computed(() => this.state()?.collection.progress.owned ?? 0);
+  readonly cardTotal = CARDS.length;
 
   /** Exécute une action ; `null` si une autre est en cours ou si elle a échoué (toast déjà affiché). */
   private async call<T>(fn: () => Promise<T | null>): Promise<T | null> {
@@ -76,9 +82,20 @@ export class AdventureStore {
       const name = spellInfo(sp.spell.id).name;
       const big = isBigSpell(sp.spell.rarity);
       this.announce.set(`Coffre ${rarity} ouvert : ${big ? 'capacité exceptionnelle, ' : 'capacité, '}${name}, ${sp.isNew ? 'nouvelle' : sp.fragments ? 'déjà au niveau maximal' : 'niveau ' + sp.spell.level}. ${big ? SPELL_FLAVOR[sp.spell.rarity] ?? '' : ''}`);
+    } else if (o.card) {
+      const c = cardInfo(o.card.cardId);
+      this.announce.set(`Coffre ${rarity} ouvert : carte ${c.name}, ${o.card.isNew ? 'nouvelle' : 'doublon, exemplaire ' + o.card.copies}.`);
     } else if (o.item) {
       this.announce.set(`Coffre ${rarity} ouvert : ${itemInfo(o.item).name}, ${o.item.rarity}.`);
     }
+    await this.load();
+  }
+
+  async buy(rarity: ChestRarity): Promise<void> {
+    const b = await this.call(() => this.game.buyChest(rarity));
+    if (!b) return;
+    this.game.toast(`Coffre ${CHEST_LABEL[rarity].toLowerCase()} acheté pour ${b.price} fragments.`, 'success');
+    this.announce.set(`Coffre ${CHEST_LABEL[rarity]} acheté : ${b.price} fragments dépensés.`);
     await this.load();
   }
 

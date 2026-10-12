@@ -322,8 +322,21 @@ for (const x of spells) {
 for (const a of ABILITIES) if (!spells.some((x) => x.ability === a)) throw new Error(`sorts: aucune capacité pour ${a}`);
 write('spells.fr.json', spells);
 
+// ───────────── Collection « Bestiaire & Reliques » : 60 cartes (16 / 14 / 12 / 10 / 8 par rareté) ─────────────
+const CARD_PLAN = { commun: 16, peu_commun: 14, rare: 12, epique: 10, legendaire: 8 };
+const cardRows = await imp('cards.mjs');
+const cards = cardRows.map(([id, kind, rarity, name, glyph, blurb]) => ({ id, kind, rarity, name, glyph, blurb }));
+if (new Set(cards.map((c) => c.id)).size !== cards.length) throw new Error('cartes: identifiants distincts attendus');
+for (const [rarity, n] of Object.entries(CARD_PLAN)) {
+  if (cards.filter((c) => c.rarity === rarity).length !== n) throw new Error(`cartes: ${n} cartes ${rarity} attendues`);
+}
+for (const c of cards) {
+  if (!['bestiaire', 'relique'].includes(c.kind) || !c.name.trim() || !c.glyph.trim() || !c.blurb.trim()) throw new Error(`carte invalide : ${c.id}`);
+}
+write('cards.fr.json', cards);
+
 const { buildDungeons } = await import(pathToFileURL(join(root, 'src', 'dungeons.mjs')).href);
 const dungeons = buildDungeons(themeRows);
 if (dungeons.length !== themeRows.length || dungeons.length !== new Set(tracks.map((t) => t.theme)).size) throw new Error('donjons: un par thème de parcours attendu');
 write('dungeons.fr.json', dungeons);
-console.log(`${items.length} objets, ${sets.length} sets, ${spells.length} capacités, ${dungeons.length} donjons`);
+console.log(`${items.length} objets, ${sets.length} sets, ${spells.length} capacités, ${cards.length} cartes, ${dungeons.length} donjons`);

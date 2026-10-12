@@ -6,6 +6,7 @@ import {
   QuestPreference,
   QuestTemplate,
   SpellKnown,
+  CardOwned,
   TrackState,
   emptyAdventureFields,
 } from '../types';
@@ -56,6 +57,8 @@ export interface UserData {
   dungeons?: DungeonProgress[];
   /** Capacités connues (V4, absentes des anciens instantanés) */
   spells?: SpellKnown[];
+  /** Collection de cartes (absente des anciens instantanés) */
+  cards?: CardOwned[];
   /** Saisons : puissance publiée et résultats (absents des anciens instantanés) */
   seasonScores?: SeasonScoreRecord[];
   seasonResults?: SeasonResultRecord[];
@@ -81,6 +84,7 @@ export const emptyUserData = (): UserData => ({
   chests: [],
   dungeons: [],
   spells: [],
+  cards: [],
   seasonScores: [],
   seasonResults: [],
 });
@@ -117,6 +121,7 @@ export class MemoryStore implements GameStore {
     d.chests ??= [];
     d.dungeons ??= [];
     d.spells ??= [];
+    d.cards ??= [];
     d.seasonScores ??= [];
     d.seasonResults ??= [];
     return d;
@@ -321,6 +326,17 @@ export class MemoryStore implements GameStore {
     const i = list.findIndex((x) => x.spellId === spell.spellId);
     if (i >= 0) list[i] = structuredClone(spell);
     else list.push(structuredClone(spell));
+    this.touch();
+  }
+
+  async listCards(userId: string) {
+    return structuredClone(this.data(userId).cards!);
+  }
+  async saveCard(userId: string, card: CardOwned) {
+    const list = this.data(userId).cards!;
+    const i = list.findIndex((x) => x.cardId === card.cardId);
+    if (i >= 0) list[i] = structuredClone(card);
+    else list.push(structuredClone(card));
     this.touch();
   }
 

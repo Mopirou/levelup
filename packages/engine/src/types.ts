@@ -294,8 +294,29 @@ export interface SpellKnown {
   equippedSlot: number | null;
 }
 
-/** D'où vient un coffre : quête du jour, promotion d'échelon, jalon de série, boss de donjon, fusion, raid (V2). */
-export type ChestSource = 'quest' | 'rung' | 'streak' | 'dungeon' | 'merge' | 'raid' | 'season' | 'daily';
+// ───────────────────────── Collection « Bestiaire & Reliques » (docs/COLLECTION.md) ─────────────────────────
+
+export type CardKind = 'bestiaire' | 'relique';
+export const CARD_KINDS: readonly CardKind[] = ['bestiaire', 'relique'] as const;
+
+/** Carte à collectionner (contenu statique `cards.fr.json`) : une créature ou un objet magique célèbre de D&D, sans effet de jeu. */
+export interface CardDef {
+  id: string;
+  kind: CardKind;
+  rarity: ItemRarity;
+  name: string;
+  glyph: string;
+  blurb: string;
+}
+
+/** Carte possédée : `copies` ≥ 1 (chaque doublon l'augmente d'une unité et rend des fragments). */
+export interface CardOwned {
+  cardId: string;
+  copies: number;
+}
+
+/** D'où vient un coffre : quête du jour, promotion d'échelon, jalon de série, boss de donjon, fusion, raid (V2), saison, coffre offert, achat en boutique. */
+export type ChestSource = 'quest' | 'rung' | 'streak' | 'dungeon' | 'merge' | 'raid' | 'season' | 'daily' | 'shop';
 
 export interface Chest {
   id: string;
