@@ -120,7 +120,6 @@ export type GameError =
   | 'forbidden'
   // Aventure (voir docs/DONJONS.md)
   | 'no-key'
-  | 'daily-cap'
   | 'insufficient'
   // Raids d'amis (voir docs/DONJONS.md §8)
   | 'no-team'

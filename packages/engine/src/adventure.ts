@@ -28,8 +28,6 @@ import {
 
 // ───────────────────────── Constantes de règles ─────────────────────────
 
-/** Ouvertures de coffres autorisées par jour de jeu */
-export const CHEST_OPENS_PER_DAY = 2;
 /** Clés de donjon en stock au maximum */
 export const MAX_KEYS = 3;
 /** Coffres (ou objets) nécessaires à une fusion */
@@ -258,8 +256,8 @@ export function rollExpeditionKey(seed: string, chance: number): boolean {
 
 // ───────────────────────── Coffres ─────────────────────────
 
-/** Coffre offert chaque jour de jeu à la première lecture de l'aventure, quelles que soient les quêtes validées. */
-export const DAILY_FREE_CHEST: ChestRarity = 'bois';
+/** Coffres offerts chaque jour de jeu à la première lecture de l'aventure, quelles que soient les quêtes validées (le reste s'achète). */
+export const DAILY_FREE_CHESTS: readonly ChestRarity[] = ['bois', 'argent'];
 
 /** Coffre donné par la 1re quête de parcours du jour : bois, bronze dès 7 jours de série, argent dès 30. */
 export function dailyChestRarity(streak: number): ChestRarity {

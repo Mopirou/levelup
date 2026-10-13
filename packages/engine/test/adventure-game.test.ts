@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  CHEST_OPENS_PER_DAY,
   DUNGEONS,
   ITEMS,
   MAX_KEYS,
@@ -129,24 +128,24 @@ describe('personnage et état de l’aventure', () => {
     const st = r.state;
     expect(st.power).toBe(st.powerBreakdown.level + st.powerBreakdown.scores + st.powerBreakdown.items + st.powerBreakdown.sets);
     expect(st.powerBreakdown.level).toBe(10);
-    expect(st).toMatchObject({ gold: 0, fragments: 0, keys: 0, maxKeys: MAX_KEYS, items: [], opens: { today: 0, max: CHEST_OPENS_PER_DAY, remaining: 2 } });
-    // Coffre de bois offert chaque jour, sans aucune quête validée
-    expect(st.chests).toHaveLength(1);
-    expect(st.chests[0]).toMatchObject({ rarity: 'bois', source: 'daily', sourceKey: date(5) });
-    expect(st.chestCounts).toEqual({ bois: 1, bronze: 0, argent: 0, or: 0, mythique: 0 });
+    expect(st).toMatchObject({ gold: 0, fragments: 0, keys: 0, maxKeys: MAX_KEYS, items: [], opens: { today: 0 } });
+    // Deux coffres offerts chaque jour (bois et argent), sans aucune quête validée
+    expect(st.chests).toHaveLength(2);
+    expect(st.chests.map((c) => [c.rarity, c.source, c.sourceKey])).toEqual([['bois', 'daily', date(5)], ['argent', 'daily', `${date(5)}:argent`]]);
+    expect(st.chestCounts).toEqual({ bois: 1, bronze: 0, argent: 1, or: 0, mythique: 0 });
     expect(st.expedition).toMatchObject({ hours: 5, capped: false, capHours: 24, claimable: true });
     expect(st.expedition.gold).toBeGreaterThan(0);
     expect(st.today).toBe(date(5));
   });
 
-  it('coffre quotidien offert : un seul par jour de jeu, un nouveau le lendemain', async () => {
+  it('coffres quotidiens offerts : un bois et un argent par jour de jeu, deux nouveaux le lendemain', async () => {
     const s = await hero();
     await getAdventureState(s.ctx, U);
     const again = await getAdventureState(s.ctx, U);
-    expect(again.ok && again.state.chests.filter((c) => c.source === 'daily')).toHaveLength(1);
+    expect(again.ok && again.state.chests.filter((c) => c.source === 'daily')).toHaveLength(2);
     s.advanceHours(24);
     const next = await getAdventureState(s.ctx, U);
-    expect(next.ok && next.state.chests.filter((c) => c.source === 'daily')).toHaveLength(2);
+    expect(next.ok && next.state.chests.filter((c) => c.source === 'daily')).toHaveLength(4);
   });
 
   it('sans personnage : no-character partout', async () => {
@@ -345,7 +344,7 @@ describe('coffres de quête', () => {
 });
 
 describe('ouverture des coffres', () => {
-  it('donne un objet, des fragments et de l’or ; 2 ouvertures par jour de jeu, puis plafond', async () => {
+  it('donne un objet, des fragments et de l’or ; aucune limite d’ouvertures par jour', async () => {
     const s = await hero();
     const [a, b, c] = await give(s, 'bois', 'bronze', 'argent');
     const r1 = await openChest(s.ctx, U, { chestId: a.id });
@@ -358,26 +357,30 @@ describe('ouverture des coffres', () => {
     expect(r1.character).toMatchObject({ gold: 50, fragments: 5, chestOpensDate: date(5), chestOpensToday: 1 });
     expect((await s.store.listItems(U))).toHaveLength(1);
     expect((await openChest(s.ctx, U, { chestId: b.id })).ok).toBe(true);
-    expect(await openChest(s.ctx, U, { chestId: c.id })).toMatchObject({ ok: false, error: 'daily-cap' });
-    expect((await s.store.listChests(U, { opened: false })).map((x) => x.id)).toEqual([c.id]);
-    // le lendemain (après la réinitialisation de 4 h), le plafond repart de zéro
+    // plus de plafond : un troisième coffre s'ouvre le même jour
+    const r2 = await openChest(s.ctx, U, { chestId: c.id });
+    expect(r2.ok && r2.opening.opensToday).toBe(3);
+    // le compteur (informatif) repart de zéro le lendemain, après la réinitialisation de 4 h
     s.setNow(at(6));
-    const r3 = await openChest(s.ctx, U, { chestId: c.id });
+    const [d] = await give(s, 'bois');
+    const r3 = await openChest(s.ctx, U, { chestId: d.id });
     expect(r3.ok && r3.opening.opensToday).toBe(1);
     expect((await getAdventureState(s.ctx, U)).ok).toBe(true);
   });
 
-  it('avant l’heure de réinitialisation, on est encore le jour précédent', async () => {
+  it('avant l’heure de réinitialisation, on est encore le jour précédent (compteur du jour)', async () => {
     const s = await hero();
     const chests = await give(s, 'bois', 'bois', 'bois');
     s.setNow(at(6, 3));
     await openChest(s.ctx, U, { chestId: chests[0].id });
     await openChest(s.ctx, U, { chestId: chests[1].id });
-    // 3 h du matin le 6 = encore le jour de jeu du 5 : plafond atteint, y compris à 3 h 59
-    s.setNow(at(6, 3));
-    expect(await openChest(s.ctx, U, { chestId: chests[2].id })).toMatchObject({ ok: false, error: 'daily-cap' });
+    // 3 h du matin le 6 = encore le jour de jeu du 5 : le compteur continue (3), puis repart à 1 à 5 h
+    const third = await openChest(s.ctx, U, { chestId: chests[2].id });
+    expect(third.ok && third.opening.opensToday).toBe(3);
     s.setNow(at(6, 5));
-    expect((await openChest(s.ctx, U, { chestId: chests[2].id })).ok).toBe(true);
+    const [e] = await give(s, 'bois');
+    const fourth = await openChest(s.ctx, U, { chestId: e.id });
+    expect(fourth.ok && fourth.opening.opensToday).toBe(1);
   });
 
   it('un coffre ne s’ouvre qu’une fois, un inconnu est introuvable', async () => {

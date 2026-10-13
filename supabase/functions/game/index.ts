@@ -99,6 +99,8 @@ Deno.serve(async (req: Request) => {
         return json(await engine.claimExpedition(ctx, userId));
       case 'chest-open':
         return json(await engine.openChest(ctx, userId, { chestId: p.chestId }));
+      case 'shop-fragments':
+        return json(await engine.buyFragments(ctx, userId, { packId: p.packId }));
       case 'shop-buy':
         return json(await engine.buyChest(ctx, userId, { rarity: p.rarity }));
       case 'chest-merge':

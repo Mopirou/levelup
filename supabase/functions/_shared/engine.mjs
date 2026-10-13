@@ -1289,7 +1289,6 @@ function setsProgress(sets, items) {
 }
 
 // packages/engine/src/adventure.ts
-var CHEST_OPENS_PER_DAY = 2;
 var MAX_KEYS = 3;
 var MERGE_COUNT = 3;
 var EXPEDITION_CAP_HOURS = 24;
@@ -1392,7 +1391,7 @@ function expeditionYield(input) {
 function rollExpeditionKey(seed, chance) {
   return createRng(`${seed}|key`)() < chance;
 }
-var DAILY_FREE_CHEST = "bois";
+var DAILY_FREE_CHESTS = ["bois", "argent"];
 function dailyChestRarity(streak) {
   return streak >= 30 ? "argent" : streak >= 7 ? "bronze" : "bois";
 }
@@ -1586,6 +1585,14 @@ var SHOP_OFFERS = [
 ];
 function shopPrice(rarity) {
   return SHOP_OFFERS.find((o) => o.rarity === rarity)?.price ?? null;
+}
+var FRAGMENT_PACKS = [
+  { id: "petit", fragments: 10, gold: 150 },
+  { id: "moyen", fragments: 50, gold: 700 },
+  { id: "grand", fragments: 200, gold: 2600 }
+];
+function fragmentPack(id) {
+  return FRAGMENT_PACKS.find((p) => p.id === id) ?? null;
 }
 
 // packages/engine/src/seasons.ts
@@ -6038,7 +6045,7 @@ async function stateOf(env) {
     expedition: expeditionOf(env, snap),
     chests,
     chestCounts: counts,
-    opens: { today: used, max: CHEST_OPENS_PER_DAY, remaining: Math.max(0, CHEST_OPENS_PER_DAY - used) },
+    opens: { today: used },
     pity: env.character.chestPity,
     items: snap.items.map((i) => viewOf(i, env.classId)),
     equipped,
@@ -6046,6 +6053,7 @@ async function stateOf(env) {
     setBonus: { pp: snap.setBonus.pp, abilities: snap.setBonus.abilities },
     grimoire: grimoireOf(snap, env.classId),
     shop: [...SHOP_OFFERS],
+    fragmentPacks: [...FRAGMENT_PACKS],
     collection: { cards, progress: collectionProgress(CARD_DEFS, cards) },
     heroClass: env.classId,
     seasonEvaluated: []
@@ -6060,7 +6068,7 @@ async function getAdventureState(ctx, userId) {
   }
   const season = await evaluateSeasons(ctx, userId, env.character, env.today, env.settings);
   env.character = season.character;
-  await ctx.store.insertChest(userId, newChest(env, DAILY_FREE_CHEST, "daily", env.today));
+  for (const r of DAILY_FREE_CHESTS) await ctx.store.insertChest(userId, newChest(env, r, "daily", r === "bois" ? env.today : `${env.today}:${r}`));
   const state = { ...await stateOf(env), seasonEvaluated: season.evaluated };
   env.character = await recordPower(ctx, userId, env.character, state.power, env.today);
   return { ok: true, state, character: env.character };
@@ -6100,7 +6108,6 @@ async function openChest(ctx, userId, input) {
   if (!chest) return fail2("not-found", "Coffre introuvable.");
   if (chest.openedAt) return fail2("not-found", "Ce coffre est d\xE9j\xE0 ouvert.");
   const used = opensToday(env.character, env.today);
-  if (used >= CHEST_OPENS_PER_DAY) return fail2("daily-cap", `Tu as d\xE9j\xE0 ouvert ${CHEST_OPENS_PER_DAY} coffres aujourd\u2019hui : reviens demain.`);
   const [snap, ownedCards] = await Promise.all([snapshot(env), ctx.store.listCards(userId)]);
   const draw = drawChest({
     chest: chest.rarity,
@@ -6183,6 +6190,16 @@ async function buyChest(ctx, userId, input) {
   const character = { ...env.character, fragments: env.character.fragments - price };
   await ctx.store.saveCharacter(userId, character);
   return { ok: true, chest, price, character };
+}
+async function buyFragments(ctx, userId, input) {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail2("no-character");
+  const pack = fragmentPack(String(input.packId));
+  if (!pack) return fail2("invalid", "Ce pack n\u2019existe pas.");
+  if (env.character.gold < pack.gold) return fail2("insufficient", "Il te faut " + pack.gold + " or pour ce pack.");
+  const character = { ...env.character, gold: env.character.gold - pack.gold, fragments: env.character.fragments + pack.fragments };
+  await ctx.store.saveCharacter(userId, character);
+  return { ok: true, pack, character };
 }
 async function mergeChests(ctx, userId, input) {
   const env = await loadAdv(ctx, userId);
@@ -8791,11 +8808,10 @@ export {
   CARD_DUPLICATE_FRAGMENTS,
   CARD_KINDS,
   CARD_NEW_BIAS,
-  CHEST_OPENS_PER_DAY,
   CHEST_RARITIES,
   CHEST_TABLE,
   CLASSES3 as CLASSES,
-  DAILY_FREE_CHEST,
+  DAILY_FREE_CHESTS,
   DIFFICULTIES,
   DIFFICULTY_LABEL,
   DIFFICULTY_SWORDS,
@@ -8827,6 +8843,7 @@ export {
   EXPEDITION_STREAK_MAX,
   EXPEDITION_STREAK_STEP,
   FORGE_LEVEL,
+  FRAGMENT_PACKS,
   IMPROVEMENT_LEVELS,
   ITEMS,
   ITEM_ABILITY_BONUS_DIV,
@@ -8960,6 +8977,7 @@ export {
   buildRungTemplates,
   buildSnapshot,
   buyChest,
+  buyFragments,
   canDeclareRest,
   canForge,
   canUndo,
@@ -9013,6 +9031,7 @@ export {
   expeditionRates,
   expeditionYield,
   expiredPartialXp,
+  fragmentPack,
   frameStyleOf,
   freeSpellSlot,
   gameDate,

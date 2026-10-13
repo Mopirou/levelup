@@ -11,11 +11,26 @@ Deux ajouts à l'onglet Aventure : acheter des coffres avec des fragments, et co
 | Argent | 225 🔹 |
 
 - Les prix valent trois coffres du rang inférieur : acheter ne revient jamais moins cher que fusionner.
-- Un coffre acheté rejoint les coffres fermés (source `shop`). Le plafond d'ouverture reste de 2 par jour : la boutique alimente le stock, elle ne contourne rien.
+- Un coffre acheté rejoint les coffres fermés (source `shop`). Il n'y a plus de plafond d'ouverture : on ouvre autant de coffres qu'on en possède.
 - Or et mythique ne sont pas en vente : ils se méritent (séries, échelons, boss, saisons).
 - Les fragments viennent de l'expédition, des donjons, du démontage et des doublons de cartes.
 
 Moteur : `shop.ts` (prix), `buyChest` dans `server/adventure-game.ts`. Commande API `shop-buy`.
+
+### Fragments contre de l'or
+
+| Pack | Prix |
+|---|---|
+| 10 fragments | 150 🪙 |
+| 50 fragments | 700 🪙 |
+| 200 fragments | 2 600 🪙 |
+
+15 or le fragment, un peu moins cher en gros. L'échange ne va que dans un sens (pas d'or contre des fragments). Commande API `shop-fragments`, fonction `buyFragments`.
+
+### Coffres gratuits et ouverture
+
+- Chaque jour de jeu, **2 coffres sont offerts** à la première lecture de l'aventure : un **bois** et un **argent** (`DAILY_FREE_CHESTS`). Les coffres de quêtes, échelons, séries, donjons et saisons restent en plus.
+- **Plus de limite d'ouverture** (l'ancien plafond de 2 par jour est supprimé). Le compteur « ouverts aujourd'hui » reste affiché à titre d'information.
 
 ## 2. Collection (60 cartes)
 

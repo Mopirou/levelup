@@ -31,9 +31,9 @@ export class AdventureStore {
   readonly heroClass = computed(() => this.state()?.heroClass ?? '');
   readonly stock = computed(() => this.items().filter((i) => !i.equipped));
   readonly chestCounts = computed(() => this.state()?.chestCounts ?? { bois: 0, bronze: 0, argent: 0, or: 0, mythique: 0 });
-  readonly opensLeft = computed(() => this.state()?.opens.remaining ?? 0);
   /** Boutique : coffres en vente contre des fragments */
   readonly shop = computed(() => this.state()?.shop ?? []);
+  readonly packs = computed(() => this.state()?.fragmentPacks ?? []);
   /** Collection : exemplaires possédés par carte, et nombre de cartes différentes */
   readonly cards = computed(() => new Map((this.state()?.collection.cards ?? []).map((c) => [c.cardId, c.copies])));
   readonly collected = computed(() => this.state()?.collection.progress.owned ?? 0);
@@ -88,6 +88,13 @@ export class AdventureStore {
     } else if (o.item) {
       this.announce.set(`Coffre ${rarity} ouvert : ${itemInfo(o.item).name}, ${o.item.rarity}.`);
     }
+    await this.load();
+  }
+
+  async buyFragments(pack: { id: string; fragments: number; gold: number }): Promise<void> {
+    if (!(await this.call(() => this.game.buyFragments(pack.id)))) return;
+    this.game.toast(`+${pack.fragments} fragments pour ${pack.gold} or.`, 'success');
+    this.announce.set(`${pack.fragments} fragments achetés pour ${pack.gold} or.`);
     await this.load();
   }
 

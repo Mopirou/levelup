@@ -63,20 +63,20 @@ import {
           <section class="lu-card" aria-labelledby="h-chests">
             <div class="row">
               <h2 id="h-chests" class="sh"><span aria-hidden="true">🎁</span> Coffres</h2>
-              <span class="lu-chip" data-testid="opens">{{ state.opens.today }}/{{ state.opens.max }} aujourd’hui</span>
+              <span class="lu-chip" data-testid="opens">{{ state.opens.today }} ouvert{{ state.opens.today > 1 ? 's' : '' }} aujourd’hui</span>
             </div>
             @if (totalChests() === 0) {
               <p class="small muted">Aucun coffre pour l’instant. Ils arrivent avec ta discipline : première quête de parcours du jour, échelons, séries.</p>
             } @else {
-              <p class="small muted">Tu peux ouvrir {{ state.opens.max }} coffres par jour. Fusionne trois coffres de même rareté pour en obtenir un meilleur.</p>
+              <p class="small muted">Ouvre autant de coffres que tu en as. Chaque jour, 2 coffres te sont offerts (bois et argent) ; les autres se méritent ou s’achètent. Fusionne trois coffres de même rareté pour en obtenir un meilleur.</p>
               <ul class="chests">
                 @for (r of rarities; track r) {
                   @if (s.chestCounts()[r] > 0) {
                     <li class="crow" [attr.data-rarity]="r">
                       <span class="cg r-bg" aria-hidden="true">{{ chestGlyph[r] }}</span>
                       <span class="ct"><strong>Coffre {{ chestLabel[r] }}</strong><span class="xs muted">x{{ s.chestCounts()[r] }}</span></span>
-                      <button type="button" class="lu-btn small" [disabled]="s.busy() || s.opensLeft() === 0" [attr.aria-label]="'Ouvrir un coffre ' + chestLabel[r] + ' (' + state.opens.today + ' sur ' + state.opens.max + ' aujourd’hui)'" (click)="s.open(r)">
-                        Ouvrir ({{ state.opens.today }}/{{ state.opens.max }})
+                      <button type="button" class="lu-btn small" [disabled]="s.busy()" [attr.aria-label]="'Ouvrir un coffre ' + chestLabel[r]" (click)="s.open(r)">
+                        Ouvrir
                       </button>
                       @if (r !== 'mythique') {
                         <button type="button" class="lu-btn small ghost" [disabled]="s.busy() || s.chestCounts()[r] < 3" [attr.aria-label]="'Fusionner 3 coffres ' + chestLabel[r] + ' en 1 coffre supérieur'" (click)="s.mergeChests(r)">
@@ -87,7 +87,6 @@ import {
                   }
                 }
               </ul>
-              @if (s.opensLeft() === 0) { <p class="xs muted">Plafond du jour atteint : les autres coffres t’attendent demain.</p> }
             }
           </section>
 
@@ -97,7 +96,7 @@ import {
               <h2 id="h-shop" class="sh"><span aria-hidden="true">🛒</span> Boutique</h2>
               <span class="lu-chip" data-testid="shop-fragments" [attr.aria-label]="fmt(state.fragments) + ' fragments'">🔹 {{ fmt(state.fragments) }}</span>
             </div>
-            <p class="small muted">Dépense tes fragments pour acheter des coffres, et garde-les pour plus tard : l’ouverture reste limitée à {{ state.opens.max }} par jour. Chaque coffre peut cacher un objet, une capacité ou une carte de ta collection.</p>
+            <p class="small muted">Dépense tes fragments pour acheter des coffres, et ouvre-les quand tu veux. Chaque coffre peut cacher un objet, une capacité ou une carte de ta collection.</p>
             <ul class="chests">
               @for (o of s.shop(); track o.rarity) {
                 <li class="crow" [attr.data-rarity]="o.rarity" [attr.data-testid]="'shop-' + o.rarity">
@@ -109,6 +108,17 @@ import {
                   <button type="button" class="lu-btn small mint" [disabled]="s.busy() || state.fragments < o.price" [attr.aria-label]="'Acheter un coffre ' + chestLabel[o.rarity] + ' pour ' + o.price + ' fragments'" (click)="s.buy(o.rarity)">
                     Acheter
                   </button>
+                </li>
+              }
+            </ul>
+            <h3 class="sh2">Acheter des fragments</h3>
+            <p class="xs muted">Tu as <strong>🪙 {{ fmt(state.gold) }}</strong>. L’or ne s’obtient pas en échange des fragments.</p>
+            <ul class="chests" data-testid="fragment-packs">
+              @for (p of s.packs(); track p.id) {
+                <li class="crow" [attr.data-testid]="'pack-' + p.id">
+                  <span class="cg" aria-hidden="true">🔹</span>
+                  <span class="ct"><strong>{{ p.fragments }} fragments</strong><span class="xs muted">{{ fmt(p.gold) }} 🪙@if (state.gold < p.gold) { · il te manque {{ fmt(p.gold - state.gold) }} }</span></span>
+                  <button type="button" class="lu-btn small" [disabled]="s.busy() || state.gold < p.gold" [attr.aria-label]="'Acheter ' + p.fragments + ' fragments pour ' + p.gold + ' or'" (click)="s.buyFragments(p)">Acheter</button>
                 </li>
               }
             </ul>

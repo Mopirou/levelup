@@ -12,7 +12,7 @@ test.describe('Aventure', () => {
     await expect(page.getByRole('heading', { name: /Coffres/ })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Équipement/ })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Donjons/ })).toBeVisible();
-    await expect(page.getByTestId('opens')).toContainText('0/2');
+    await expect(page.getByTestId('opens')).toContainText('0 ouvert');
     await expect(page.getByTestId('keys')).toContainText('/3');
     // l'expédition vient de partir : rien à réclamer avant une minute
     await expect(page.getByRole('button', { name: 'Réclamer le butin' })).toBeDisabled();
@@ -36,18 +36,21 @@ test.describe('Aventure', () => {
     expect(await page.locator('[data-testid^="set-"]').count()).toBe(7);
   });
 
-  test('ouvrir le coffre de bois offert annonce l’objet obtenu (jamais une capacité)', async ({ page }) => {
+  test('ouvrir le coffre de bois offert annonce un objet ou une carte (jamais une capacité)', async ({ page }) => {
     await createHero(page);
     await page.locator('ion-tab-button', { hasText: 'Aventure' }).click();
     await page.getByRole('button', { name: /Ouvrir un coffre Bois/ }).click();
     const result = page.getByTestId('open-result');
     await expect(result).toBeVisible();
     await expect(page.getByTestId('spell-announce')).toHaveCount(0);
-    await expect(result).toContainText(/PP/);
+    await expect(result).toContainText(/PP|Carte/);
+    const gotItem = /PP/.test((await result.textContent()) ?? '');
     await page.getByRole('button', { name: 'Super' }).click();
-    // l'objet obtenu est dans le sac : son détail indique s'il est de la classe du héros ou universel
-    await page.locator('.irow').first().click();
-    await expect(page.getByTestId('item-class')).toContainText(/Objet|universel|classe/);
+    if (gotItem) {
+      // l'objet obtenu est dans le sac : son détail indique s'il est de la classe du héros ou universel
+      await page.locator('.irow').first().click();
+      await expect(page.getByTestId('item-class')).toContainText(/Objet|universel|classe/);
+    }
   });
 
   test('réclamer l’expédition affiche un message de butin', async ({ page }) => {

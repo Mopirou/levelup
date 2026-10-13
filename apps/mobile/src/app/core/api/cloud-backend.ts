@@ -233,6 +233,7 @@ export function createCloudBackend(): Backend {
     adventureState: () => cmd('adventure-state'),
     expeditionClaim: () => cmd('expedition-claim'),
     chestOpen: (chestId) => cmd('chest-open', { chestId }),
+    shopFragments: (packId) => cmd('shop-fragments', { packId }),
     shopBuy: (rarity) => cmd('shop-buy', { rarity }),
     chestMerge: (rarity) => cmd('chest-merge', { rarity }),
     itemEquip: (itemId) => cmd('item-equip', { itemId }),

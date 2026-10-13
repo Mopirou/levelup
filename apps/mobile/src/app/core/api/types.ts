@@ -30,6 +30,7 @@ import type {
   SeasonState,
   SetProgress,
   ShopOffer,
+  FragmentPack,
   CompleteRequest,
   CompleteResponse,
   CreateCharacterInput,
@@ -51,7 +52,7 @@ import type {
 
 export type { CompleteRequest, CompleteResponse, CreateCharacterInput, GameError, ImprovementChoice };
 export type { GrimoireState, SpellGain, SpellView };
-export type { CardGain, CardOwned, CollectionState, ShopOffer };
+export type { CardGain, CardOwned, CollectionState, FragmentPack, ShopOffer };
 export type { AdventureState, Chest, ChestOpening, ChestRarity, DungeonEntry, DungeonProgress, DungeonRunResult, EquipSlot, ExpeditionClaim, ItemView };
 export type { SeasonResultView, SeasonState, SetProgress };
 export type { RaidHit, RaidInvitationView, RaidMemberView, RaidResult, RaidRules, RaidState, RaidStatus, RaidTeamView };
@@ -139,6 +140,8 @@ export interface GameApi {
   expeditionClaim(): Promise<CommandResult<{ claim: ExpeditionClaim; character: CharacterRecord }>>;
   /** Ouvre un coffre (2 par jour de jeu au maximum) */
   chestOpen(chestId: string): Promise<CommandResult<{ opening: ChestOpening; character: CharacterRecord }>>;
+  /** Boutique : achète un pack de fragments contre de l'or */
+  shopFragments(packId: string): Promise<CommandResult<{ pack: FragmentPack; character: CharacterRecord }>>;
   /** Boutique : achète un coffre (bois, bronze ou argent) contre des fragments */
   shopBuy(rarity: ChestRarity): Promise<CommandResult<{ chest: Chest; price: number; character: CharacterRecord }>>;
   /** 3 coffres fermés de même rareté -> 1 coffre de rareté supérieure */

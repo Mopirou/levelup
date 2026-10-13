@@ -2,13 +2,12 @@ import classesJson from '../../../content/data/classes.fr.json';
 import dungeonsJson from '../../../content/data/dungeons.fr.json';
 import itemsJson from '../../../content/data/items.fr.json';
 import {
-  CHEST_OPENS_PER_DAY,
   EXPEDITION_CAP_HOURS,
   EXPEDITION_MIN_CLAIM_MS,
   ITEM_MAX_LEVEL,
   MAX_KEYS,
   MERGE_COUNT,
-  DAILY_FREE_CHEST,
+  DAILY_FREE_CHESTS,
   dailyChestRarity,
   dismantleValue,
   drawChest,
@@ -36,7 +35,7 @@ import {
 } from '../adventure';
 import { cardDuplicateFragments, collectionProgress, type CollectionProgress } from '../cards';
 import { gameDate } from '../dates';
-import { SHOP_OFFERS, shopPrice, type ShopOffer } from '../shop';
+import { FRAGMENT_PACKS, SHOP_OFFERS, fragmentPack, shopPrice, type FragmentPack, type ShopOffer } from '../shop';
 import { ClassDef, masteriesOf } from '../content-types';
 import { setsProgress, type SetProgress } from '../sets';
 import { freeSpellSlot, nextSpellLevel, spellEffectLabel, spellEffectPoints, type SpellBonuses } from '../spells';
@@ -186,7 +185,8 @@ export interface AdventureState {
   /** Coffres fermés, du plus ancien au plus récent */
   chests: Chest[];
   chestCounts: Record<ChestRarity, number>;
-  opens: { today: number; max: number; remaining: number };
+  /** Coffres ouverts ce jour de jeu (information : il n'y a plus de plafond) */
+  opens: { today: number };
   pity: ChestPity;
   items: ItemView[];
   /** Objet équipé par emplacement (id de l'objet) */
@@ -199,6 +199,8 @@ export interface AdventureState {
   grimoire: GrimoireState;
   /** Boutique : coffres en vente contre des fragments */
   shop: ShopOffer[];
+  /** Boutique : packs de fragments vendus contre de l'or */
+  fragmentPacks: FragmentPack[];
   /** Collection « Bestiaire & Reliques » : cartes possédées et avancement */
   collection: CollectionState;
   /** Classe du héros : l'affinité donne +20 % de PP aux objets de sa classe, +25 % d'effet à ses capacités */
@@ -305,7 +307,7 @@ async function stateOf(env: AdvEnv): Promise<AdventureState> {
     expedition: expeditionOf(env, snap),
     chests,
     chestCounts: counts,
-    opens: { today: used, max: CHEST_OPENS_PER_DAY, remaining: Math.max(0, CHEST_OPENS_PER_DAY - used) },
+    opens: { today: used },
     pity: env.character.chestPity,
     items: snap.items.map((i) => viewOf(i, env.classId)),
     equipped,
@@ -313,6 +315,7 @@ async function stateOf(env: AdvEnv): Promise<AdventureState> {
     setBonus: { pp: snap.setBonus.pp, abilities: snap.setBonus.abilities },
     grimoire: grimoireOf(snap, env.classId),
     shop: [...SHOP_OFFERS],
+    fragmentPacks: [...FRAGMENT_PACKS],
     collection: { cards, progress: collectionProgress(CARD_DEFS, cards) },
     heroClass: env.classId,
     seasonEvaluated: [],
@@ -331,8 +334,8 @@ export async function getAdventureState(ctx: ServerContext, userId: string): Pro
   // Fin de saison : récompense versée à la première lecture après la clôture (idempotent), puis puissance publiée.
   const season = await evaluateSeasons(ctx, userId, env.character, env.today, env.settings);
   env.character = season.character;
-  // Coffre quotidien offert : un coffre de bois par jour de jeu, à la première lecture (idempotent : clé = jour).
-  await ctx.store.insertChest(userId, newChest(env, DAILY_FREE_CHEST, 'daily', env.today));
+  // Coffres quotidiens offerts : un bois et un argent par jour de jeu, à la première lecture (idempotent : clé = jour, puis jour:rareté).
+  for (const r of DAILY_FREE_CHESTS) await ctx.store.insertChest(userId, newChest(env, r, 'daily', r === 'bois' ? env.today : `${env.today}:${r}`));
   const state: AdventureState = { ...(await stateOf(env)), seasonEvaluated: season.evaluated };
   env.character = await recordPower(ctx, userId, env.character, state.power, env.today);
   return { ok: true, state, character: env.character };
@@ -418,7 +421,7 @@ export interface ChestOpening {
   opensToday: number;
 }
 
-/** Ouvre un coffre (2 par jour de jeu au maximum) : 1 objet, des fragments, de l'or. */
+/** Ouvre un coffre (sans limite par jour : seuls les coffres possédés comptent) : 1 objet, une capacité ou une carte, des fragments, de l'or. */
 export async function openChest(ctx: ServerContext, userId: string, input: { chestId: string }): Promise<Result<{ opening: ChestOpening; character: CharacterRecord }>> {
   const env = await loadAdv(ctx, userId);
   if (!env) return fail('no-character');
@@ -427,7 +430,6 @@ export async function openChest(ctx: ServerContext, userId: string, input: { che
   if (!chest) return fail('not-found', 'Coffre introuvable.');
   if (chest.openedAt) return fail('not-found', 'Ce coffre est déjà ouvert.');
   const used = opensToday(env.character, env.today);
-  if (used >= CHEST_OPENS_PER_DAY) return fail('daily-cap', `Tu as déjà ouvert ${CHEST_OPENS_PER_DAY} coffres aujourd’hui : reviens demain.`);
   const [snap, ownedCards] = await Promise.all([snapshot(env), ctx.store.listCards(userId)]);
   const draw = drawChest({
     chest: chest.rarity,
@@ -515,6 +517,18 @@ export async function buyChest(ctx: ServerContext, userId: string, input: { rari
   const character: CharacterRecord = { ...env.character, fragments: env.character.fragments - price };
   await ctx.store.saveCharacter(userId, character);
   return { ok: true, chest, price, character };
+}
+
+/** Boutique : achète un pack de fragments contre de l'or. */
+export async function buyFragments(ctx: ServerContext, userId: string, input: { packId: string }): Promise<Result<{ pack: FragmentPack; character: CharacterRecord }>> {
+  const env = await loadAdv(ctx, userId);
+  if (!env) return fail('no-character');
+  const pack = fragmentPack(String(input.packId));
+  if (!pack) return fail('invalid', 'Ce pack n’existe pas.');
+  if (env.character.gold < pack.gold) return fail('insufficient', 'Il te faut ' + pack.gold + ' or pour ce pack.');
+  const character: CharacterRecord = { ...env.character, gold: env.character.gold - pack.gold, fragments: env.character.fragments + pack.fragments };
+  await ctx.store.saveCharacter(userId, character);
+  return { ok: true, pack, character };
 }
 
 /** Fusion : 3 coffres fermés de même rareté donnent 1 coffre de rareté supérieure (instantané, hors plafond d'ouverture). */

@@ -3,7 +3,7 @@ import { expect, Page, test } from '@playwright/test';
 import { createHero } from './helpers';
 
 /** Modifie le personnage / les cartes du mode local (IndexedDB), puis recharge l'app. */
-async function patchLocal(page: Page, patch: { fragments?: number; cards?: { cardId: string; copies: number }[] }): Promise<void> {
+async function patchLocal(page: Page, patch: { gold?: number; fragments?: number; cards?: { cardId: string; copies: number }[] }): Promise<void> {
   // l'enregistrement du mode local est différé de 150 ms : on le laisse partir avant de le modifier
   await page.waitForTimeout(600);
   await page.evaluate(
@@ -19,6 +19,7 @@ async function patchLocal(page: Page, patch: { fragments?: number; cards?: { car
           get.onsuccess = () => {
             const row = get.result;
             const user = row.value.users['local-user'];
+            if (p.gold !== undefined) user.character.gold = p.gold;
             if (p.fragments !== undefined) user.character.fragments = p.fragments;
             if (p.cards) user.cards = p.cards;
             kv.put(row);
@@ -45,7 +46,7 @@ test.describe('Boutique et collection', () => {
     await createHero(page);
     await openAdventure(page);
     await expect(page.getByRole('heading', { name: /Boutique/ })).toBeVisible();
-    await expect(page.getByTestId('shop').locator('li.crow')).toHaveCount(3);
+    await expect(page.getByTestId('shop').locator('li[data-testid^=shop-]')).toHaveCount(3);
     for (const r of ['bois', 'bronze', 'argent']) await expect(page.getByTestId(`shop-${r}`)).toBeVisible();
     await expect(page.getByTestId('shop-bois')).toContainText('25');
     await expect(page.getByTestId('shop-bronze')).toContainText('75');
@@ -67,6 +68,40 @@ test.describe('Boutique et collection', () => {
     // les fragments restants ne suffisent plus pour un bronze
     await expect(page.getByRole('button', { name: /Acheter un coffre Bronze/ })).toBeDisabled();
     await expect(page.getByRole('button', { name: /Acheter un coffre Bois/ })).toBeEnabled();
+  });
+
+  test('deux coffres sont offerts chaque jour (bois et argent) et on les ouvre sans limite', async ({ page }) => {
+    await createHero(page);
+    await openAdventure(page);
+    await expect(page.getByRole('button', { name: 'Ouvrir un coffre Bois' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ouvrir un coffre Argent' })).toBeVisible();
+    for (const r of ['Bois', 'Argent']) {
+      await page.getByRole('button', { name: `Ouvrir un coffre ${r}` }).click();
+      await expect(page.getByTestId('open-result')).toBeVisible();
+      await page.getByRole('button', { name: 'Super' }).click();
+    }
+    await expect(page.getByTestId('opens')).toContainText('2 ouverts');
+    await patchLocal(page, { fragments: 200 });
+    await openAdventure(page);
+    for (let i = 0; i < 3; i++) await page.getByRole('button', { name: /Acheter un coffre Bois/ }).click();
+    for (let i = 0; i < 3; i++) {
+      await page.getByRole('button', { name: 'Ouvrir un coffre Bois' }).click();
+      await page.getByRole('button', { name: 'Super' }).click();
+    }
+    await expect(page.getByTestId('opens')).toContainText('5 ouverts');
+  });
+
+  test('acheter des fragments avec de l’or', async ({ page }) => {
+    await createHero(page);
+    await openAdventure(page);
+    await patchLocal(page, { gold: 1000, fragments: 0 });
+    await openAdventure(page);
+    await expect(page.getByTestId('pack-grand')).toContainText(/il te manque/);
+    await expect(page.getByRole('button', { name: /Acheter 200 fragments/ })).toBeDisabled();
+    await page.getByRole('button', { name: 'Acheter 50 fragments pour 700 or' }).click();
+    await expect(page.getByText('+50 fragments pour 700 or.')).toBeVisible();
+    await expect(page.getByTestId('shop-fragments')).toContainText('50');
+    await expect(page.getByRole('button', { name: /Acheter 50 fragments/ })).toBeDisabled();
   });
 
   test('la collection est vide au départ : 60 cartes cachées, filtres par type', async ({ page }) => {

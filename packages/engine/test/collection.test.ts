@@ -12,6 +12,8 @@ import {
   SPELL_DEFS,
   SPELL_CHANCE,
   buyChest,
+  buyFragments,
+  FRAGMENT_PACKS,
   cardDuplicateFragments,
   collectionProgress,
   createCharacter,
@@ -274,5 +276,50 @@ describe('boutique : achat de coffres', () => {
   it('personnage inexistant', async () => {
     const { ctx } = await hero();
     expect(await buyChest(ctx, 'fantome', { rarity: 'bois' })).toMatchObject({ ok: false, error: 'no-character' });
+  });
+});
+
+describe('boutique : fragments contre de l’or', () => {
+  const giveGold = async (store: MemoryStore, n: number) => {
+    const c = (await store.getCharacter(U))!;
+    await store.saveCharacter(U, { ...c, gold: n });
+  };
+
+  it('trois packs, de plus en plus avantageux au fragment', () => {
+    expect(FRAGMENT_PACKS.map((p) => p.id)).toEqual(['petit', 'moyen', 'grand']);
+    const rate = FRAGMENT_PACKS.map((p) => p.gold / p.fragments);
+    expect(rate).toEqual([...rate].sort((a, b) => b - a));
+  });
+
+  it('échange de l’or contre des fragments', async () => {
+    const { ctx, store } = await hero();
+    await giveGold(store, 1000);
+    const r = await buyFragments(ctx, U, { packId: 'moyen' });
+    expect(r.ok).toBe(true);
+    const ch = (await store.getCharacter(U))!;
+    expect(ch.gold).toBe(300);
+    expect(ch.fragments).toBe(50);
+  });
+
+  it('refuse sans assez d’or ou pour un pack inconnu, sans rien changer', async () => {
+    const { ctx, store } = await hero();
+    await giveGold(store, 149);
+    expect(await buyFragments(ctx, U, { packId: 'petit' })).toMatchObject({ ok: false, error: 'insufficient' });
+    expect(await buyFragments(ctx, U, { packId: 'geant' })).toMatchObject({ ok: false, error: 'invalid' });
+    const ch = (await store.getCharacter(U))!;
+    expect([ch.gold, ch.fragments]).toEqual([149, 0]);
+    expect(await buyFragments(ctx, 'fantome', { packId: 'petit' })).toMatchObject({ ok: false, error: 'no-character' });
+  });
+
+  it('l’état expose les packs, et on peut ouvrir autant de coffres qu’on en achète', async () => {
+    const { ctx, store } = await hero();
+    await giveGold(store, 3000);
+    await buyFragments(ctx, U, { packId: 'grand' });
+    const st = await getAdventureState(ctx, U);
+    expect(st.ok && st.state.fragmentPacks).toHaveLength(3);
+    for (let i = 0; i < 6; i++) expect((await buyChest(ctx, U, { rarity: 'bois' })).ok).toBe(true);
+    const chests = await store.listChests(U, { opened: false });
+    for (const ch of chests.filter((x) => x.source === 'shop')) expect((await openChest(ctx, U, { chestId: ch.id })).ok).toBe(true);
+    expect((await store.getCharacter(U))!.chestOpensToday).toBe(6);
   });
 });

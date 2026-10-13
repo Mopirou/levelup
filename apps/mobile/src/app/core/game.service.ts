@@ -50,7 +50,7 @@ import taverne from '@levelup/content/taverne.fr.json';
 import { TRACKS, suggestTracks, trackDef, trackLock, trackProgress, type TrackLock, type TrackProgress } from '../shared/tracks';
 import { BackendService } from './backend.service';
 import { offline, type PendingAction } from './offline';
-import type { AdventureState, Chest, ChestOpening, ChestRarity, CommandResult, CompleteRequest, CompleteResponse, DungeonEntry, DungeonProgress, DungeonRunResult, EquipSlot, ExpeditionClaim, GrimoireState, ItemView, RaidState, SeasonResultView, SeasonState } from './api/types';
+import type { AdventureState, Chest, ChestOpening, ChestRarity, CommandResult, CompleteRequest, CompleteResponse, DungeonEntry, DungeonProgress, DungeonRunResult, EquipSlot, ExpeditionClaim, FragmentPack, GrimoireState, ItemView, RaidState, SeasonResultView, SeasonState } from './api/types';
 
 export type Overlay =
   | { kind: 'level-up'; level: number }
@@ -399,7 +399,6 @@ export class GameService {
       case 'no-reroll': return 'Plus de relance gratuite aujourd’hui et aucune Inspiration.';
       case 'cannot-undo': return 'Cette quête ne peut plus être annulée (24 h maximum).';
       case 'no-key': return 'Il te faut une Clé de donjon.';
-      case 'daily-cap': return 'Tu as déjà ouvert 2 coffres aujourd’hui : reviens demain.';
       case 'insufficient': return 'Tu n’as pas assez de ressources pour cela.';
       case 'no-team': return 'Tu n’as pas d’équipe de raid cette semaine.';
       case 'team-full': return 'Cette équipe est complète (6 membres).';
@@ -818,6 +817,9 @@ export class GameService {
   }
   async openChest(chestId: string): Promise<ChestOpening | null> {
     return (await this.adventureCmd(() => this.be.game.chestOpen(chestId)))?.opening ?? null;
+  }
+  async buyFragments(packId: string): Promise<FragmentPack | null> {
+    return (await this.adventureCmd(() => this.be.game.shopFragments(packId)))?.pack ?? null;
   }
   async buyChest(rarity: ChestRarity): Promise<{ chest: Chest; price: number } | null> {
     return this.adventureCmd(() => this.be.game.shopBuy(rarity));

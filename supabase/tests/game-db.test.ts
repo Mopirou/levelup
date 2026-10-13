@@ -581,21 +581,25 @@ describe('aventure sur le vrai schéma (coffres, équipement, donjons, expéditi
     for (const c of cs) expect(await s.store.insertChest(V, c)).toBe(true);
     expect((await openChest(s.ctx, V, { chestId: cs[0].id })).ok).toBe(true);
     expect((await openChest(s.ctx, V, { chestId: cs[1].id })).ok).toBe(true);
-    expect(await openChest(s.ctx, V, { chestId: cs[2].id })).toMatchObject({ ok: false, error: 'daily-cap' });
+    // plus de plafond : le troisième coffre s'ouvre aussi
+    expect((await openChest(s.ctx, V, { chestId: cs[2].id })).ok).toBe(true);
     const [c] = await rows(`select gold, fragments, chest_opens_today, chest_opens_date::text d, chest_pity from characters where profile_id = $1`, [V]);
-    expect(c).toMatchObject({ gold: 200, chest_opens_today: 2, d: '2026-10-12' });
-    expect(c.fragments).toBeGreaterThanOrEqual(20);
+    expect(c).toMatchObject({ gold: 600, chest_opens_today: 3, d: '2026-10-12' });
+    expect(c.fragments).toBeGreaterThanOrEqual(60);
     // chaque ouverture donne un objet, une capacité ou une carte
     const got = (await rows(`select (select count(*) from inventory_items where profile_id = $1) + (select count(*) from spells_known where profile_id = $1) + (select count(*) from cards_owned where profile_id = $1) as n`, [V]))[0].n;
-    expect(Number(got)).toBe(2);
-    expect((await rows(`select count(*)::int n from chests where profile_id = $1 and opened_at is not null`, [V]))[0].n).toBe(2);
+    expect(Number(got)).toBe(3);
+    expect((await rows(`select count(*)::int n from chests where profile_id = $1 and opened_at is not null`, [V]))[0].n).toBe(3);
     // un coffre ouvert ne se rouvre pas
     expect(await s.store.markChestOpened(V, cs[0].id, new Date().toISOString())).toBe(false);
     s.setNow(at(13));
-    expect((await openChest(s.ctx, V, { chestId: cs[2].id })).ok).toBe(true);
+    const next = chestOf('bois', 'd');
+    expect(await s.store.insertChest(V, next)).toBe(true);
+    expect((await openChest(s.ctx, V, { chestId: next.id })).ok).toBe(true);
     expect((await rows(`select chest_opens_today n from characters where profile_id = $1`, [V]))[0].n).toBe(1);
     await pg.query(`delete from inventory_items where profile_id = $1`, [V]);
     await pg.query(`delete from cards_owned where profile_id = $1`, [V]);
+    await pg.query(`delete from spells_known where profile_id = $1`, [V]);
   });
 
   it('fusion de coffres : les 3 sont consommés (clé gardée), 1 coffre supérieur est créé', async () => {

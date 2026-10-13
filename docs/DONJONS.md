@@ -67,8 +67,8 @@ Les coffres s'accumulent dans l'inventaire (`chests`), sans limite, sans expirat
 ### 5.3 Fusion de coffres (moteur d'envie)
 **3 coffres de même rareté -> 1 coffre de rareté supérieure** (action `chest-merge`, instantanée, hors plafond d'ouverture ; les 3 plus anciens sont consommés ; pas de fusion au-delà de mythique). Le joueur choisit : ouvrir maintenant ou accumuler.
 
-### 5.4 Ouverture : max 2 par jour
-- **Plafond : 2 ouvertures par `game_date`** (`chest_opens_today`, `chest_opens_date`). Pas de timer d'attente : ouverture immédiate, mais plafonnée.
+### 5.4 Ouverture : sans plafond (modifié, voir COLLECTION.md)
+- **~~Plafond : 2 ouvertures par `game_date`~~ supprimé** ; le compteur `chest_opens_today` reste, à titre d'information (`chest_opens_today`, `chest_opens_date`). Pas de timer d'attente : ouverture immédiate, mais plafonnée.
 - Le plafond rend chaque ouverture précieuse et empêche de revenir souvent.
 
 ### 5.5 Contenu d'un coffre (gros loot, peu de tirages)
